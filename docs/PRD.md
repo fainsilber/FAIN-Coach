@@ -2,9 +2,9 @@
 
 ## AI Running Coach PWA ("OpenRun Coach")
 
-**Document Version:** 1.1 (2026-07-22: added §4.4 Local Profiles & Multi-User)
+**Document Version:** 1.2 (2026-07-22: §4.4 Local Profiles, §4.5 Localization & Units, §3 architecture corrected to as-built)
 
-**Target Release:** MVP
+**Target Release:** MVP shipped — live at https://fainsilber.github.io/FAIN-Coach/
 
 **Architecture:** Local-First Progressive Web App (PWA)
 
@@ -37,12 +37,16 @@
 
 ## 3. System Architecture & Tech Stack
 
+As-built (corrected in v1.2 — the original "reasoning tier" assumption did not
+survive testing; see §3.1):
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Progressive Web App (PWA)                   │
-│   - Framework: React / Vite or Next.js (SSG/PWA)                │
-│   - State & Local Storage: Dexie.js (IndexedDB)                 │
+│   - Framework: Vite + React 18 + TypeScript (SPA)               │
+│   - Storage: Dexie.js (IndexedDB), one database per profile     │
 │   - XML Parser: Native Browser DOMParser                        │
+│   - Hosting: GitHub Pages (static, HTTPS, /FAIN-Coach/ base)    │
 └───────────────────────────────┬─────────────────────────────────┘
                                 │
                                 ▼
@@ -50,17 +54,28 @@
 │                    Local Processing Pipeline                    │
 │   1. Defensive TCX XML Extraction & Normalization               │
 │   2. Single-leg Cadence Conversion (x2 for SPM)                 │
-│   3. Dynamic Metric Summary Formatter (Token Optimizer)          │
+│   3. Lap aggregation; trackpoints discarded                     │
+│   4. Macro Summary Formatter (present metrics only)             │
 └───────────────────────────────┬─────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                       OpenRouter API Proxy                      │
-│   - Fast Tier: Llama 3.3 70B / Qwen 2.5 72B (Post-Run Chat)       │
-│   - Reasoning Tier: DeepSeek R1 / Mistral Large (Training Plans) │
+│              OpenRouter (direct fetch, BYO key)                 │
+│   - Chat:  Llama 3.3 70B (default) / Qwen 2.5 72B / DeepSeek V3 │
+│   - Plans: Llama 3.3 70B (default); DeepSeek R1 / QwQ optional  │
 └─────────────────────────────────────────────────────────────────┘
 
 ```
+
+### 3.1 Model tiering — assumption revised
+
+v1.0 specified a slow "reasoning tier" for plan generation. A/B testing on
+identical inputs (2026-07-22) showed that once the prompt states taper and
+per-workout-type pace rules explicitly, an **instruct** model produces an
+equally sound plan — in fact a better taper — in ~67s versus DeepSeek R1's
+~267s. Because minutes-long generations are the failure mode on mobile
+connections, latency decides it. Plan generation now defaults to an instruct
+model; reasoning models remain user-selectable for richer prose.
 
 ---
 
@@ -98,19 +113,47 @@
 * **FR-4.3:** A profile **may** set an optional PIN, stored only as a salted SHA-256 hash. The PIN gates the UI against casual access on a shared device.
 * **FR-4.4 (explicit scope limitation):** Local profiles provide data *separation*, not *security*. Data is not encrypted at rest; anyone with device and browser access can read any profile's IndexedDB via developer tools. Server-side accounts with enforced isolation (and multi-device sync) are out of scope for MVP; the designated upgrade path is Dexie Cloud (see dev plan §7).
 
+### 4.5 Localization & Measurement Units (added v1.2)
+
+**Language**
+
+* **FR-5.1:** The app **must** let the user choose the interface language. Launch languages: **English** and **Hebrew**. The architecture must accept further languages without code changes to feature components.
+* **FR-5.2:** The app **must** fully support right-to-left (RTL) layout for Hebrew — `dir="rtl"`, mirrored layout, and correct alignment throughout, including navigation, forms, chat bubbles, tables, and the plan calendar.
+* **FR-5.3:** Numeric values (pace, distance, heart rate, dates, times) **must** render correctly inside RTL text. Bidirectional isolation is required so that strings such as `5:48 /km` are not visually reordered.
+* **FR-5.4:** Dates, times, numbers, and plural forms **must** be formatted per the active locale (e.g. Hebrew weekday names). The **first day of the week must follow the locale** — Sunday for `he-IL`, Monday for `en-GB`-style locales — because the plan view groups workouts by week.
+* **FR-5.5:** Language selection **must** default to the browser's preferred language when it is a supported one, otherwise English. The user's explicit choice always overrides detection.
+* **FR-5.6 (AI coach):** Coach and plan responses **must** be produced in the user's selected language. The system prompt carries the target language, and the enforced 3-step response layout (FR-3.3) must use localized section headings.
+
+**Measurement units**
+
+* **FR-5.7:** The app **must** support **metric** and **imperial** unit systems. **Metric is the default.**
+* **FR-5.8:** Unit selection affects display only. All data **must** remain stored canonically in SI units (metres, seconds) exactly as parsed; conversion happens solely at the presentation and prompt-formatting boundary. Imported backups therefore remain portable between users of different unit systems.
+* **FR-5.9:** Unit-dependent values are distance (km / miles), pace (min/km / min/mile), and elevation (m / ft). Heart rate (bpm), cadence (spm), and power (W) are unit-system independent and must not be converted.
+* **FR-5.10:** Data *entry* must respect the selected system (e.g. the plan wizard's weekly-volume field is km under metric and miles under imperial), and prompts sent to the LLM must express distances in the user's system so coaching replies use the same units.
+* **FR-5.11:** Language and unit preferences are **per profile**, stored alongside other settings and therefore included in backup export/import.
+
 ---
 
 ## 5. Non-Functional Requirements
 
-* **Performance:** TCX parsing and database insertion must execute in `< 50ms` for standard run files (< 10MB).
+* **Performance:** TCX parsing and database insertion must execute in `< 50ms` for standard run files (< 10MB). *Measured: a 5.5 MB / 22-lap / 7,441-trackpoint Garmin export parses and persists well inside budget in a real browser; the resulting record is ~3 KB because trackpoints are discarded.*
 * **Offline Functionality:** Complete web app functionality (past run history, telemetry charts, TCX parsing) must work offline. Only OpenRouter LLM requests require an active network connection.
 * **Cross-Platform:** Responsive web layout optimized for mobile screens (Android PWA home-screen installable) and desktop browsers.
+* **Network resilience:** Transient connection failures to OpenRouter must be retried automatically on the connection phase only — never after streaming has begun, and never for authentication or rate-limit errors.
+* **Localization:** The layout must not break in RTL, and no user-visible string may be hard-coded in a component once §4.5 is implemented.
 
 ---
 
 ## 6. Data Schema & Contracts
 
-### 6.1 Dexie IndexedDB Schema (`RunningCoachDB`)
+> **Note (v1.2):** the authoritative, as-built schema lives in
+> [dev-plan.md §3](dev-plan.md). It differs from the sketch below: `chatHistory`
+> was removed from `RunRecord` in favour of a global `ChatMessage` table, RPE /
+> feel tags / plan-matching fields were added, and the database is named
+> `FainCoachDB-<profileId>` (one per local profile). The sketch is retained for
+> historical context.
+
+### 6.1 Dexie IndexedDB Schema (original v1.0 sketch — superseded)
 
 ```typescript
 export interface LapSplit {
@@ -142,20 +185,18 @@ export interface RunRecord {
 
 ## 7. Development Roadmap
 
-1. **Core Storage & Parsing Engine:** Sprint 1.
-Build local PWA shell with Vite/React. Implement Dexie.js database schema and the defensive native TCX parser with cadence normalization.
+Superseded by [dev-plan.md §5](dev-plan.md), which is the authoritative sprint
+breakdown. Status as of 2026-07-22:
 
-
-2. **Dashboard & History UI:** Sprint 2.
-Develop run history list, lap breakdown views, metric charts (Pace/HR/Cadence), and local JSON export/import utilities.
-
-
-3. **OpenRouter Integration & Prompt Pipeline:** Sprint 3.
-Implement OpenRouter API client, prompt summarizer, user settings for API keys/model selection, and streaming chat interface.
-
-
-4. **PWA Optimization & Polish:** Sprint 4.
-Add Service Workers for offline caching, trigger Persistent Storage API prompts, optimize mobile UI touch targets, and audit cross-browser TCX compatibility.
-
+| Sprint | Scope | Status |
+|---|---|---|
+| 1 | Storage, TCX parsing engine, upload & post-run form | ✅ Complete |
+| 2 | History, run detail with lap charts, JSON export/import, settings | ✅ Complete |
+| 3 | OpenRouter streaming client, prompt pipeline, global coach chat | ✅ Complete |
+| 4 | Training plans, run↔plan auto-matching, plan-aware coaching | ✅ Complete |
+| 5 | PWA polish, offline shell, storage indicator, mobile audit | ✅ Complete |
+| — | Local profiles (§4.4) | ✅ Complete |
+| — | Deployment to GitHub Pages | ✅ Live |
+| 6 | Localization & units (§4.5) | ▶ Specified, not started |
 
 ---

@@ -2,38 +2,52 @@
 
 Local-first AI running coach PWA. Users upload `.tcx` files from any GPS watch, add subjective feedback (RPE, feel tags, notes), and chat with an AI coach via OpenRouter. All telemetry stays in the browser (IndexedDB) — only compact macro summaries are ever sent to the LLM.
 
-**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v1.1 — supersedes the PRD's roadmap and schema where they conflict).
+**Live:** https://fainsilber.github.io/FAIN-Coach/ (auto-deploys on push to `main`)
+
+**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v1.3 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
 
 ## Commands
 
-- `npm run dev` — Vite dev server
+- `npm run dev` — Vite dev server (serves at `/`, not the deploy subpath)
 - `npm run build` — typecheck (`tsc -b`) + production build
+- `npm run preview` — serve the built app at `/FAIN-Coach/`, matching production
 - `npm test` — Vitest, single run (`npm run test:watch` for watch mode)
-- `npm run typecheck` — typecheck only
 
 ## Stack (locked decisions — do not swap without discussion)
 
-Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwindcss/vite`, tokens in `src/index.css`) + shadcn/ui (`npx shadcn@latest add <component>` — `components.json` is configured) · Dexie.js + dexie-react-hooks · Recharts (lap-level charts only) · vite-plugin-pwa · Vitest (jsdom).
+Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwindcss/vite`, tokens in `src/index.css`) + shadcn/ui (`npx shadcn@latest add <component>`) · Dexie.js + dexie-react-hooks · Recharts (lap-level charts only) · vite-plugin-pwa · Vitest (jsdom, fake-indexeddb).
 
 ## Layout
 
-- `src/db/` — Dexie schema (`db.ts`) and data contracts (`types.ts`). 5 tables: runs, trainingPlans, plannedWorkouts, chatMessages, settings. Laps are embedded in `RunRecord`, not a table. One database per profile — the `db` singleton binds to the active profile's database at module load; switching profiles reloads the app.
-- `src/lib/profiles.ts` — local profile registry (localStorage), optional salted-PIN hashing, legacy DB adoption. Profiles are data separation, not security (PRD §4.4); Dexie Cloud is the future real-auth path (dev plan §7).
-- `src/parser/` — TCX parser (`tcx.ts`) + tests; put fixture TCX files in `src/parser/fixtures/`.
-- `src/llm/` — `LlmClient` transport interface + OpenRouter implementation. Never call fetch for LLMs outside this layer.
-- `src/prompts/` — pure prompt-pipeline functions (`summarizeRun`, `buildCoachContext`, `buildPlanRequest`). Mandatory unit-test target.
-- `src/pages/` — one file per route; `src/App.tsx` holds the router shell.
+- `src/db/` — Dexie schema (`db.ts`), contracts (`types.ts`), settings helpers (`settings.ts`). 5 tables: runs, trainingPlans, plannedWorkouts, chatMessages, settings. Laps are embedded in `RunRecord`, not a table. **One database per profile** — the `db` singleton binds to the active profile at module load, so switching profiles reloads the app.
+- `src/lib/profiles.ts` — local profile registry (localStorage), salted-PIN hashing, legacy-DB adoption. Data *separation*, not security (PRD §4.4).
+- `src/lib/backup.ts` — versioned JSON export/import over all tables; import replaces the DB, preserving ids and cross-table links.
+- `src/lib/matching.ts` — run↔plan auto-match (±1 day, distance tie-break) and adherence stats.
+- `src/parser/tcx.ts` — defensive TCX parser + fixtures in `src/parser/fixtures/`.
+- `src/llm/` — `LlmClient` transport interface, `openrouter.ts` (SSE streaming, retry, error mapping), `models.ts` (curated model catalog). **Never call fetch for LLMs outside this layer.**
+- `src/prompts/` — pure prompt-pipeline functions (`summarizeRun`, `buildCoachContext`, `buildPlanRequest`) and `planResponse.ts` (strict JSON validation + one retry). Mandatory unit-test target.
+- `src/pages/` — one file per route; `src/App.tsx` holds the router shell and profile gate.
 
 ## Hard rules (from the PRD/dev plan)
 
 - **No trackpoint storage.** The parser aggregates to laps and discards the time series.
-- **Optional metrics stay optional.** HR/cadence/power absent from a file → `undefined`, never 0, and never mentioned in prompts (enforced by only listing present metrics in summaries).
+- **Optional metrics stay optional.** HR/cadence/power absent from a file → `undefined`, never 0, and never mentioned in prompts (enforced by only listing present metrics in summaries, not by trusting the model).
 - Cadence < 120 in TCX is single-leg → ×2 to get SPM.
-- Post-run chat context ≤ 1,000 tokens (chars/4 heuristic); plan generation ~3-4k.
+- Post-run chat context ≤ 1,000 tokens (chars/4 heuristic); plan generation ~4k.
 - One global chat thread — no per-run threads.
 - Coach responses follow the 3-step layout: Big Picture / Telemetry Breakdown / Next Step.
 - API key is BYO, stored in IndexedDB `settings`, never sent anywhere except OpenRouter.
+- **Prompt rules must be literal.** Weaker instruct models follow instructions exactly: "taper before the race" produced an empty race week, and "derive a pace from the goal" put easy runs at race pace. State constraints explicitly — ambiguity here is a safety issue, not a style one.
+- **LLM retries**: the connection phase retries automatically; never retry after tokens have streamed (duplicates output) and never on 4xx.
+
+## Deployment gotcha
+
+Served from the `/FAIN-Coach/` subpath, so Vite `base`, the router `basename` (`import.meta.env.BASE_URL`), the PWA `scope`/`start_url`, and `public/404.html` must stay in agreement. `vite preview` runs as `command === 'serve'`, hence the `command === 'build' || isPreview` check in `vite.config.ts` — without it, preview serves at `/` while assets reference `/FAIN-Coach/`.
+
+## Conventions for Sprint 6 (localization — specified, not yet built)
+
+When implementing [dev-plan §8](docs/dev-plan.md): no user-visible string hard-coded in a component; **logical** Tailwind utilities only (`ms-*`/`ps-*`/`text-start`, never `ml-*`/`pl-*`/`text-left`); wrap numerals and paces in `<bdi>` so RTL doesn't reorder them; keep plan JSON keys and enum values in English (localize only `description`); store SI always and convert at the display boundary.
 
 ## Status
 
-All 5 sprints complete (2026-07-22); MVP feature-complete. Remaining backlog lives in [docs/dev-plan.md](docs/dev-plan.md) §8 (GPX parser for Apple Watch is the main P2). Real-key testing done: chat, R1 plan generation, plan-aware coaching all verified live.
+Sprints 1–5 complete, local profiles added, deployed to GitHub Pages (2026-07-22). 78 tests passing. Next: Sprint 6 — localization (English/Hebrew RTL) and metric/imperial units, specified in [docs/dev-plan.md §8](docs/dev-plan.md). Open backlog in §9.
