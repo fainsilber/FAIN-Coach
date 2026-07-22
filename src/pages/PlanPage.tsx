@@ -171,8 +171,9 @@ function PlanWizard() {
       </button>
       {busy && (
         <p className="text-sm text-muted-foreground" aria-live="polite">
-          {progress ?? 'Contacting the model…'} Reasoning models can take a few
-          minutes.
+          {progress ?? 'Contacting the model…'} Reasoning models can take
+          several minutes — keep this screen open, as phones pause background
+          tabs. Pick an instruct model in Settings for a result in seconds.
         </p>
       )}
     </section>

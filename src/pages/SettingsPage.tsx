@@ -13,15 +13,8 @@ import {
   DEFAULT_FAST_MODEL,
   DEFAULT_REASONING_MODEL,
 } from '@/llm/openrouter';
-
-const FAST_MODEL_SUGGESTIONS = [
-  'meta-llama/llama-3.3-70b-instruct',
-  'qwen/qwen-2.5-72b-instruct',
-];
-const REASONING_MODEL_SUGGESTIONS = [
-  'deepseek/deepseek-r1',
-  'mistralai/mistral-large',
-];
+import { ModelSelect } from '@/components/ModelSelect';
+import { CHAT_MODEL_GROUPS, PLAN_MODEL_GROUPS } from '@/llm/models';
 
 const inputClass = 'w-full rounded-md border bg-background p-2 text-sm';
 
@@ -157,39 +150,23 @@ export function SettingsPage() {
           </span>
         </label>
 
-        <label className="block">
-          <span className="mb-1 block text-sm">Chat model (fast tier)</span>
-          <input
-            list="fast-models"
-            value={fastModel}
-            onChange={(e) => setFastModel(e.target.value)}
-            placeholder={DEFAULT_FAST_MODEL}
-            className={inputClass}
-          />
-          <datalist id="fast-models">
-            {FAST_MODEL_SUGGESTIONS.map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
-        </label>
+        <ModelSelect
+          label="Chat model"
+          hint="Used for post-run coaching."
+          groups={CHAT_MODEL_GROUPS}
+          value={fastModel}
+          defaultModel={DEFAULT_FAST_MODEL}
+          onChange={setFastModel}
+        />
 
-        <label className="block">
-          <span className="mb-1 block text-sm">
-            Plan model (reasoning tier)
-          </span>
-          <input
-            list="reasoning-models"
-            value={reasoningModel}
-            onChange={(e) => setReasoningModel(e.target.value)}
-            placeholder={DEFAULT_REASONING_MODEL}
-            className={inputClass}
-          />
-          <datalist id="reasoning-models">
-            {REASONING_MODEL_SUGGESTIONS.map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
-        </label>
+        <ModelSelect
+          label="Plan model"
+          hint="Used to generate training plans. Reasoning models produce the best plans but can take several minutes — instruct models finish in seconds and are more reliable on mobile."
+          groups={PLAN_MODEL_GROUPS}
+          value={reasoningModel}
+          defaultModel={DEFAULT_REASONING_MODEL}
+          onChange={setReasoningModel}
+        />
 
         <button
           type="button"

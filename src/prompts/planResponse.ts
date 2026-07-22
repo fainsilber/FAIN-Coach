@@ -102,6 +102,13 @@ export interface PlanProgress {
   chars: number;
 }
 
+/**
+ * Reasoning models can go quiet between chunks, and mobile networks stall —
+ * so plan generation gets a much longer silence budget than chat. This is an
+ * *idle* timeout: continuous streaming never trips it, however long it runs.
+ */
+const PLAN_IDLE_TIMEOUT_MS = 240_000;
+
 /** Ask the reasoning model for a plan; on a malformed response, retry once
  * with the validation error appended. */
 export async function requestPlanWorkouts(
@@ -130,7 +137,7 @@ export async function requestPlanWorkouts(
     [{ role: 'user', content: prompt }],
     model,
     firstCb.onToken,
-    { onReasoning: firstCb.onReasoning },
+    { onReasoning: firstCb.onReasoning, idleTimeoutMs: PLAN_IDLE_TIMEOUT_MS },
   );
   try {
     return { workouts: parsePlanResponse(first), generationContext: prompt };
@@ -143,7 +150,7 @@ export async function requestPlanWorkouts(
       [{ role: 'user', content: retryPrompt }],
       model,
       retryCb.onToken,
-      { onReasoning: retryCb.onReasoning },
+      { onReasoning: retryCb.onReasoning, idleTimeoutMs: PLAN_IDLE_TIMEOUT_MS },
     );
     return { workouts: parsePlanResponse(second), generationContext: retryPrompt };
   }

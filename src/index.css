@@ -96,12 +96,16 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
-  /* Sub-16px inputs make iOS Safari zoom the page on focus */
-  @media (max-width: 640px) {
-    input,
-    select,
-    textarea {
-      font-size: 1rem;
-    }
+}
+
+/* Sub-16px inputs make iOS Safari zoom the page on focus. This rule is
+   deliberately UNLAYERED: unlayered CSS outranks every cascade layer, so it
+   beats Tailwind's `text-sm` utility on form controls (inside @layer base it
+   silently lost). */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 1rem;
   }
 }
