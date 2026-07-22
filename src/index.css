@@ -22,6 +22,14 @@
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
   --radius: 0.625rem;
+
+  /* Chart series colors — validated light-mode palette (one hue per metric) */
+  --chart-pace: #2a78d6; /* blue */
+  --chart-hr: #e34948; /* red */
+  --chart-cadence: #1baf7a; /* aqua */
+  --chart-power: #eb6834; /* orange */
+  --chart-grid: #e1e0d9;
+  --chart-axis: #898781;
 }
 
 .dark {
@@ -44,6 +52,14 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
+
+  /* Dark-surface steps of the same hues, not a separate palette */
+  --chart-pace: #3987e5;
+  --chart-hr: #e66767;
+  --chart-cadence: #199e70;
+  --chart-power: #d95926;
+  --chart-grid: #2c2c2a;
+  --chart-axis: #898781;
 }
 
 @theme inline {

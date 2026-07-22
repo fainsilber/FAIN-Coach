@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PostRunForm, type PostRunDetails } from '@/components/PostRunForm';
+import { StatGrid } from '@/components/StatGrid';
 import { db, requestPersistentStorage } from '@/db/db';
 import { formatDuration, formatKm, formatPace } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -73,14 +74,7 @@ export function UploadPage() {
             {fileName} · {new Date(run.date).toLocaleString()}
           </p>
         </div>
-        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {stats.map(([label, value]) => (
-            <div key={label} className="rounded-lg border p-3">
-              <dt className="text-xs text-muted-foreground">{label}</dt>
-              <dd className="mt-1 font-semibold">{value}</dd>
-            </div>
-          ))}
-        </dl>
+        <StatGrid stats={stats} />
         {error && <p className="text-sm text-destructive">{error}</p>}
         <PostRunForm onSave={handleSave} saving={saving} />
         <button

@@ -2,6 +2,7 @@ import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
 import { ChatPage } from './pages/ChatPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { PlanPage } from './pages/PlanPage';
+import { RunDetailPage } from './pages/RunDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { UploadPage } from './pages/UploadPage';
 
@@ -23,6 +24,7 @@ export function App() {
         <main className="flex-1 p-4">
           <Routes>
             <Route path="/" element={<HistoryPage />} />
+            <Route path="/runs/:id" element={<RunDetailPage />} />
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/plan" element={<PlanPage />} />

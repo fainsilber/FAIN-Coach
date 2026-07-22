@@ -1,12 +1,210 @@
-// Sprint 2: OpenRouter API key entry (stored locally in IndexedDB, masked),
-// fast/reasoning model pickers, JSON export/import (versioned envelope).
+import { useLiveQuery } from 'dexie-react-hooks';
+import { useEffect, useRef, useState } from 'react';
+import { db } from '@/db/db';
+import { SETTING_KEYS, setSetting } from '@/db/settings';
+import {
+  exportBackup,
+  importBackup,
+  parseBackup,
+  BackupError,
+} from '@/lib/backup';
+import {
+  DEFAULT_FAST_MODEL,
+  DEFAULT_REASONING_MODEL,
+} from '@/llm/openrouter';
+
+const FAST_MODEL_SUGGESTIONS = [
+  'meta-llama/llama-3.3-70b-instruct',
+  'qwen/qwen-2.5-72b-instruct',
+];
+const REASONING_MODEL_SUGGESTIONS = [
+  'deepseek/deepseek-r1',
+  'mistralai/mistral-large',
+];
+
+const inputClass = 'w-full rounded-md border bg-background p-2 text-sm';
+
 export function SettingsPage() {
+  const settings = useLiveQuery(async () => {
+    const rows = await db.settings.toArray();
+    return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  });
+
+  const [apiKey, setApiKey] = useState('');
+  const [showKey, setShowKey] = useState(false);
+  const [fastModel, setFastModel] = useState('');
+  const [reasoningModel, setReasoningModel] = useState('');
+  const [status, setStatus] = useState<string>();
+  const [importError, setImportError] = useState<string>();
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const loaded = settings !== undefined;
+
+  // Prefill the form once the DB read resolves.
+  useEffect(() => {
+    if (settings === undefined) return;
+    setApiKey(settings[SETTING_KEYS.apiKey] ?? '');
+    setFastModel(settings[SETTING_KEYS.fastModel] ?? '');
+    setReasoningModel(settings[SETTING_KEYS.reasoningModel] ?? '');
+  }, [loaded]);
+
+  if (!loaded) return null;
+
+  async function handleSave() {
+    await setSetting(SETTING_KEYS.apiKey, apiKey.trim());
+    await setSetting(SETTING_KEYS.fastModel, fastModel.trim());
+    await setSetting(SETTING_KEYS.reasoningModel, reasoningModel.trim());
+    setStatus('Settings saved.');
+    setTimeout(() => setStatus(undefined), 2500);
+  }
+
+  async function handleExport() {
+    const envelope = await exportBackup();
+    const blob = new Blob([JSON.stringify(envelope, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fain-coach-backup-${envelope.exportedAt.slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleImportFile(file: File) {
+    setImportError(undefined);
+    try {
+      const envelope = parseBackup(await file.text());
+      const counts = `${envelope.tables.runs.length} runs, ${envelope.tables.trainingPlans.length} plans, ${envelope.tables.chatMessages.length} chat messages`;
+      if (
+        !window.confirm(
+          `Import backup from ${envelope.exportedAt.slice(0, 10)} (${counts})?\n\nThis REPLACES all data currently on this device.`,
+        )
+      ) {
+        return;
+      }
+      await importBackup(envelope);
+      setStatus('Backup imported.');
+      setTimeout(() => setStatus(undefined), 2500);
+    } catch (e) {
+      setImportError(
+        e instanceof BackupError ? e.message : 'Failed to import backup.',
+      );
+    }
+  }
+
   return (
-    <section>
-      <h2 className="text-xl font-semibold">Settings</h2>
-      <p className="mt-2 text-muted-foreground">
-        API key and model selection (coming in Sprint 2).
-      </p>
+    <section className="mx-auto max-w-xl space-y-8">
+      <div>
+        <h2 className="text-xl font-semibold">Settings</h2>
+        {status && <p className="mt-1 text-sm text-muted-foreground">{status}</p>}
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="font-medium">AI Coach (OpenRouter)</h3>
+        <label className="block">
+          <span className="mb-1 block text-sm">API key</span>
+          <div className="flex gap-2">
+            <input
+              type={showKey ? 'text' : 'password'}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="sk-or-…"
+              autoComplete="off"
+              className={inputClass}
+            />
+            <button
+              type="button"
+              onClick={() => setShowKey((s) => !s)}
+              className="rounded-md border px-3 text-sm"
+            >
+              {showKey ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            Stored only in this browser. Sent only to openrouter.ai.
+          </span>
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-sm">Chat model (fast tier)</span>
+          <input
+            list="fast-models"
+            value={fastModel}
+            onChange={(e) => setFastModel(e.target.value)}
+            placeholder={DEFAULT_FAST_MODEL}
+            className={inputClass}
+          />
+          <datalist id="fast-models">
+            {FAST_MODEL_SUGGESTIONS.map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-sm">
+            Plan model (reasoning tier)
+          </span>
+          <input
+            list="reasoning-models"
+            value={reasoningModel}
+            onChange={(e) => setReasoningModel(e.target.value)}
+            placeholder={DEFAULT_REASONING_MODEL}
+            className={inputClass}
+          />
+          <datalist id="reasoning-models">
+            {REASONING_MODEL_SUGGESTIONS.map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+        </label>
+
+        <button
+          type="button"
+          onClick={() => void handleSave()}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+        >
+          Save settings
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="font-medium">Data</h3>
+        <p className="text-sm text-muted-foreground">
+          Backups contain all runs, plans, chat history, and settings
+          (including your API key) as a JSON file.
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => void handleExport()}
+            className="rounded-md border px-4 py-2 text-sm font-medium"
+          >
+            Export backup
+          </button>
+          <button
+            type="button"
+            onClick={() => importInputRef.current?.click()}
+            className="rounded-md border px-4 py-2 text-sm font-medium"
+          >
+            Import backup…
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleImportFile(file);
+              e.target.value = '';
+            }}
+          />
+        </div>
+        {importError && (
+          <p className="text-sm text-destructive">{importError}</p>
+        )}
+      </div>
     </section>
   );
 }
