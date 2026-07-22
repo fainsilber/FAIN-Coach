@@ -7,9 +7,31 @@ import {
 
 export const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
-// Model tiers (PRD §3): fast tier for post-run chat, reasoning tier for plans.
 export const DEFAULT_FAST_MODEL = 'meta-llama/llama-3.3-70b-instruct';
-export const DEFAULT_REASONING_MODEL = 'deepseek/deepseek-r1';
+
+/**
+ * The PRD assumed a "reasoning tier" for plans. A/B testing (2026-07-22)
+ * showed an instruct model produces an equally sound plan — better taper,
+ * correct per-type paces — in 67s versus DeepSeek R1's 267s, once the prompt
+ * states the taper and pace rules explicitly. Speed matters here: minutes-long
+ * generations are what fail on mobile connections. R1 remains one tap away in
+ * Settings for anyone who wants its richer workout descriptions.
+ */
+export const DEFAULT_PLAN_MODEL = 'meta-llama/llama-3.3-70b-instruct';
+
+// Observed in live testing: ~1 in 3 requests failed with a connection error
+// before any bytes arrived, then succeeded immediately on retry. Only the
+// connection phase is retried — once tokens stream, a retry would duplicate
+// output, so mid-stream failures still surface to the user.
+const MAX_CONNECT_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 800;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Transient gateway failures worth retrying; 4xx never is. */
+function isRetryableStatus(status: number): boolean {
+  return status === 502 || status === 503 || status === 504;
+}
 
 function errorFromStatus(status: number, detail: string): LlmError {
   if (status === 401 || status === 403) {
@@ -43,32 +65,48 @@ export class OpenRouterClient implements LlmClient {
     };
 
     try {
-      let res: Response;
-      armIdleTimer();
-      try {
-        res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            // Attribution headers recommended by OpenRouter
-            'HTTP-Referer': 'https://github.com/fainsilber/FAIN-Coach',
-            'X-Title': 'FAIN Coach',
-          },
-          body: JSON.stringify({ model, messages, stream: true }),
-          signal: controller.signal,
-        });
-      } catch {
-        throw controller.signal.aborted
-          ? new LlmError(
+      let res: Response | undefined;
+      let lastError: LlmError | undefined;
+
+      for (let attempt = 1; attempt <= MAX_CONNECT_ATTEMPTS; attempt++) {
+        armIdleTimer();
+        try {
+          res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${this.apiKey}`,
+              'Content-Type': 'application/json',
+              // Attribution headers recommended by OpenRouter
+              'HTTP-Referer': 'https://github.com/fainsilber/FAIN-Coach',
+              'X-Title': 'FAIN Coach',
+            },
+            body: JSON.stringify({ model, messages, stream: true }),
+            signal: controller.signal,
+          });
+        } catch {
+          if (controller.signal.aborted) {
+            throw new LlmError(
               'network',
               'The model stopped responding. Try again, or switch models in Settings.',
-            )
-          : new LlmError('network', 'Could not reach OpenRouter.');
+            );
+          }
+          lastError = new LlmError('network', 'Could not reach OpenRouter.');
+          res = undefined;
+        }
+
+        if (res && !res.ok) {
+          const error = errorFromStatus(res.status, (await res.text()).slice(0, 300));
+          if (!isRetryableStatus(res.status)) throw error; // auth, rate limit, bad request
+          lastError = error;
+          res = undefined;
+        }
+
+        if (res) break;
+        if (attempt < MAX_CONNECT_ATTEMPTS) await sleep(RETRY_BASE_DELAY_MS * attempt);
       }
 
-      if (!res.ok) {
-        throw errorFromStatus(res.status, (await res.text()).slice(0, 300));
+      if (!res) {
+        throw lastError ?? new LlmError('network', 'Could not reach OpenRouter.');
       }
       if (!res.body) {
         throw new LlmError('bad-response', 'OpenRouter returned no body.');

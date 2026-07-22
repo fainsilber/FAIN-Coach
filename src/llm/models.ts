@@ -64,26 +64,26 @@ export const CHAT_MODEL_GROUPS: ModelGroup[] = [
  */
 export const PLAN_MODEL_GROUPS: ModelGroup[] = [
   {
-    label: 'Open weights — reasoning (slow, thorough)',
-    options: [
-      {
-        id: 'deepseek/deepseek-r1',
-        label: 'DeepSeek R1',
-        note: 'highest quality, minutes not seconds',
-      },
-      { id: 'qwen/qwq-32b', label: 'QwQ 32B', note: 'reasoning, faster than R1' },
-    ],
-  },
-  {
-    label: 'Open weights — instruct (fast)',
+    label: 'Open weights — instruct (fast, recommended)',
     options: [
       {
         id: 'meta-llama/llama-3.3-70b-instruct',
         label: 'Llama 3.3 70B',
-        note: 'seconds, best for mobile',
+        note: 'default — about a minute',
       },
-      { id: 'qwen/qwen-2.5-72b-instruct', label: 'Qwen 2.5 72B', note: 'seconds' },
-      { id: 'deepseek/deepseek-chat', label: 'DeepSeek V3', note: 'seconds' },
+      { id: 'qwen/qwen-2.5-72b-instruct', label: 'Qwen 2.5 72B', note: 'fast' },
+      { id: 'deepseek/deepseek-chat', label: 'DeepSeek V3', note: 'fast' },
+    ],
+  },
+  {
+    label: 'Open weights — reasoning (slow, more detail)',
+    options: [
+      {
+        id: 'deepseek/deepseek-r1',
+        label: 'DeepSeek R1',
+        note: 'richer descriptions, ~4 min',
+      },
+      { id: 'qwen/qwq-32b', label: 'QwQ 32B', note: 'reasoning, faster than R1' },
     ],
   },
   {

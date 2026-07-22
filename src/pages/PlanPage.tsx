@@ -5,7 +5,7 @@ import { getSetting, SETTING_KEYS } from '@/db/settings';
 import type { PlannedWorkout } from '@/db/types';
 import { cn } from '@/lib/utils';
 import { LlmError } from '@/llm/LlmClient';
-import { DEFAULT_REASONING_MODEL, OpenRouterClient } from '@/llm/openrouter';
+import { DEFAULT_PLAN_MODEL, OpenRouterClient } from '@/llm/openrouter';
 import { requestPlanWorkouts, PlanParseError } from '@/prompts/planResponse';
 import { weeksUntil } from '@/prompts/prompts';
 
@@ -54,8 +54,7 @@ function PlanWizard() {
         return;
       }
       const model =
-        (await getSetting(SETTING_KEYS.reasoningModel)) ||
-        DEFAULT_REASONING_MODEL;
+        (await getSetting(SETTING_KEYS.reasoningModel)) || DEFAULT_PLAN_MODEL;
       const history = await db.runs.orderBy('date').reverse().limit(8).toArray();
       const goalInput = {
         goal: goal.trim(),

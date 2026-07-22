@@ -185,10 +185,22 @@ migrate to **Dexie Cloud** (~2–4 days):
   workouts~~ — **resolved in Sprint 5** (2026-07-22): `buildCoachContext`
   now lists the next 7 days of pending workouts with an explicit
   "do not invent a schedule" instruction; verified live.
-- **DeepSeek R1 plan generation is slow** (~6 min, ~37k reasoning chars for a
-  13-week plan) but valid on the first attempt. Mitigated with streamed
-  progress phases and a 90s idle timeout; consider a faster default
-  reasoning model or `deepseek-r1-distill` variants.
+- ~~DeepSeek R1 plan generation is slow~~ — **resolved 2026-07-22.** A/B tested
+  R1 vs Llama 3.3 70B on identical inputs. The "reasoning tier" assumption from
+  the PRD did not hold: once the prompt states taper and per-type pace rules
+  explicitly, an instruct model produces an equally sound plan (better taper,
+  correct paces) in 67s vs R1's 267s. **Default plan model is now Llama 3.3
+  70B**; R1 remains selectable for richer workout descriptions.
+  - Lesson recorded: weaker models read prompts *literally*. "Taper before the
+    race" → scheduled nothing at all that week; "state a pace derived from the
+    goal" → put every easy run at race pace. Prompt ambiguity is a safety
+    issue, not just a quality one. Both rules are now explicit.
+- **Remaining plan-quality nit**: Llama occasionally jumps weekly volume ~49%
+  in one step, violating the stated ~10%/week rule. Candidate fix: state the
+  cap as an explicit per-week ceiling rather than a percentage.
+- **Transient OpenRouter connection failures** (~1 in 3 requests in live
+  testing) now auto-retry up to 3 attempts with backoff — connection phase
+  only, never once tokens have streamed, so output can't duplicate.
 
 - **Plan JSON reliability**: reasoning models may return malformed plan JSON → strict schema validation + one automatic retry with error feedback; blocking issue for Sprint 4.
 - **Apple Watch exports**: Apple exports GPX natively, TCX only via third-party apps — may need a GPX parser later (P2, design parser interface to allow it).

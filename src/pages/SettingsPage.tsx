@@ -9,10 +9,7 @@ import {
   wipeAllData,
   BackupError,
 } from '@/lib/backup';
-import {
-  DEFAULT_FAST_MODEL,
-  DEFAULT_REASONING_MODEL,
-} from '@/llm/openrouter';
+import { DEFAULT_FAST_MODEL, DEFAULT_PLAN_MODEL } from '@/llm/openrouter';
 import { ModelSelect } from '@/components/ModelSelect';
 import { CHAT_MODEL_GROUPS, PLAN_MODEL_GROUPS } from '@/llm/models';
 
@@ -164,7 +161,7 @@ export function SettingsPage() {
           hint="Used to generate training plans. Reasoning models produce the best plans but can take several minutes — instruct models finish in seconds and are more reliable on mobile."
           groups={PLAN_MODEL_GROUPS}
           value={reasoningModel}
-          defaultModel={DEFAULT_REASONING_MODEL}
+          defaultModel={DEFAULT_PLAN_MODEL}
           onChange={setReasoningModel}
         />
 

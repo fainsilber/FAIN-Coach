@@ -103,6 +103,59 @@ describe('OpenRouterClient', () => {
     ).rejects.toBeInstanceOf(LlmError);
   });
 
+  it('retries a transient connection failure and succeeds', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(sseResponse([delta('recovered'), 'data: [DONE]\n\n']));
+    vi.stubGlobal('fetch', fetchMock);
+    const result = await new OpenRouterClient('key').chat(
+      [{ role: 'user', content: 'hi' }],
+      'm',
+    );
+    expect(result).toBe('recovered');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries transient 503s but gives up after the attempt limit', async () => {
+    const fetchMock = vi.fn(async () => new Response('busy', { status: 503 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(
+      new OpenRouterClient('key').chat([{ role: 'user', content: 'hi' }], 'm'),
+    ).rejects.toMatchObject({ name: 'LlmError' });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('never retries an auth failure', async () => {
+    const fetchMock = vi.fn(async () => new Response('nope', { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(
+      new OpenRouterClient('key').chat([{ role: 'user', content: 'hi' }], 'm'),
+    ).rejects.toMatchObject({ code: 'invalid-key' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry once tokens have streamed (no duplicate output)', async () => {
+    const fetchMock = vi.fn(async (_u: string, init: RequestInit) => {
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(delta('partial')));
+          init.signal?.addEventListener('abort', () =>
+            controller.error(new DOMException('aborted', 'AbortError')),
+          );
+        },
+      });
+      return new Response(stream, { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(
+      new OpenRouterClient('key').chat([{ role: 'user', content: 'hi' }], 'm', undefined, {
+        idleTimeoutMs: 100,
+      }),
+    ).rejects.toMatchObject({ code: 'network' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('routes reasoning deltas to onReasoning, not the answer', async () => {
     vi.stubGlobal(
       'fetch',
