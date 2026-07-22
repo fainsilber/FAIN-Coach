@@ -112,6 +112,47 @@ describe('buildCoachContext', () => {
     expect(ctx).toContain('4 completed, 1 missed');
     expect(ctx).toContain('2026-04-17: 21.3km');
   });
+
+  it("lists the coming week's actual workouts and forbids inventing a schedule", () => {
+    const ctx = buildCoachContext(
+      {
+        createdAt: '2026-07-01',
+        status: 'active',
+        goal: 'Sub-2:00 half',
+        weeks: 13,
+        generationContext: '',
+      },
+      [],
+      { completed: 0, missed: 0, skipped: 0, pending: 5 },
+      [
+        {
+          id: 1,
+          planId: 1,
+          date: '2026-07-24',
+          type: 'tempo',
+          description: '8km total: 2km warm-up, 4km at 5:40-5:45/km',
+          targetDistanceMeters: 8000,
+          status: 'pending',
+        },
+        {
+          id: 2,
+          planId: 1,
+          date: '2026-07-26',
+          type: 'long',
+          description: 'Long 14k steady',
+          status: 'pending',
+        },
+      ],
+    );
+    expect(ctx).toContain('2026-07-24 tempo (8.0km): 8km total');
+    expect(ctx).toContain('2026-07-26 long: Long 14k steady');
+    expect(ctx).toContain('do not invent a schedule');
+  });
+
+  it('omits the upcoming-workouts section without a plan or workouts', () => {
+    const ctx = buildCoachContext(undefined, [], undefined, []);
+    expect(ctx).not.toContain('coming week');
+  });
 });
 
 describe('capMessages token budget', () => {

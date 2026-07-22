@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '@/db/db';
 import { getSetting, SETTING_KEYS } from '@/db/settings';
+import type { PlannedWorkout } from '@/db/types';
 import { computeAdherence } from '@/lib/matching';
 import { cn } from '@/lib/utils';
 import { LlmError } from '@/llm/LlmClient';
@@ -74,13 +75,28 @@ export function ChatPage() {
         db.runs.orderBy('date').reverse().limit(3).toArray(),
         db.trainingPlans.where('status').equals('active').first(),
       ]);
-      const adherence =
-        plan?.id !== undefined
-          ? computeAdherence(
-              await db.plannedWorkouts.where('planId').equals(plan.id).toArray(),
-            )
-          : undefined;
-      const system = buildCoachContext(plan, recentRuns, adherence);
+      let adherence;
+      let upcoming: PlannedWorkout[] = [];
+      if (plan?.id !== undefined) {
+        const workouts = await db.plannedWorkouts
+          .where('planId')
+          .equals(plan.id)
+          .toArray();
+        adherence = computeAdherence(workouts);
+        const todayIso = new Date().toISOString().slice(0, 10);
+        const weekAhead = new Date(Date.now() + 7 * 86_400_000)
+          .toISOString()
+          .slice(0, 10);
+        upcoming = workouts
+          .filter(
+            (w) =>
+              w.status === 'pending' &&
+              w.date >= todayIso &&
+              w.date <= weekAhead,
+          )
+          .sort((a, b) => a.date.localeCompare(b.date));
+      }
+      const system = buildCoachContext(plan, recentRuns, adherence, upcoming);
       const outgoing = capMessages(
         system,
         history.map((m) => ({ role: m.role, content: m.content })),

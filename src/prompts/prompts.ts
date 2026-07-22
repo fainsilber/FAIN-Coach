@@ -4,7 +4,12 @@
 // Token budgets: post-run chat ≤ 1,000 tokens total (summary ≤ ~600); plan
 // generation gets ~3-4k. No in-browser tokenizer → chars/4 heuristic + margin.
 
-import type { LapSplit, RunRecord, TrainingPlan } from '@/db/types';
+import type {
+  LapSplit,
+  PlannedWorkout,
+  RunRecord,
+  TrainingPlan,
+} from '@/db/types';
 import type { LlmMessage } from '@/llm/LlmClient';
 
 /** chars/4 heuristic with safety margin (dev plan §6). */
@@ -123,6 +128,7 @@ export function buildCoachContext(
   plan: TrainingPlan | undefined,
   recentRuns: RunRecord[],
   adherence: AdherenceStats | undefined,
+  upcomingWorkouts: PlannedWorkout[] = [],
 ): string {
   const lines: string[] = [COACH_SYSTEM_PROMPT, '', 'Context:'];
   if (plan) {
@@ -131,6 +137,18 @@ export function buildCoachContext(
       lines.push(
         `- Plan adherence: ${adherence.completed} completed, ${adherence.missed} missed, ${adherence.skipped} skipped, ${adherence.pending} upcoming.`,
       );
+    }
+    if (upcomingWorkouts.length > 0) {
+      lines.push(
+        '- Planned workouts for the coming week (refer to THESE when discussing what is next, do not invent a schedule):',
+      );
+      for (const w of upcomingWorkouts.slice(0, 7)) {
+        const target =
+          w.targetDistanceMeters !== undefined
+            ? ` (${(w.targetDistanceMeters / 1000).toFixed(1)}km)`
+            : '';
+        lines.push(`  ${w.date} ${w.type}${target}: ${w.description.slice(0, 90)}`);
+      }
     }
   } else {
     lines.push('- No active training plan.');

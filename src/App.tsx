@@ -1,12 +1,17 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
 import { ProfileGate } from './components/ProfileGate';
 import { clearActiveProfile, getActiveProfile } from './lib/profiles';
 import { ChatPage } from './pages/ChatPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { PlanPage } from './pages/PlanPage';
-import { RunDetailPage } from './pages/RunDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { UploadPage } from './pages/UploadPage';
+
+// Recharts lives only in the run detail route — keep it out of the main chunk.
+const RunDetailPage = lazy(() =>
+  import('./pages/RunDetailPage').then((m) => ({ default: m.RunDetailPage })),
+);
 
 const navItems = [
   { to: '/', label: 'History' },
@@ -41,20 +46,27 @@ export function App() {
         <main className="flex flex-1 flex-col p-4">
           <Routes>
             <Route path="/" element={<HistoryPage />} />
-            <Route path="/runs/:id" element={<RunDetailPage />} />
+            <Route
+              path="/runs/:id"
+              element={
+                <Suspense fallback={null}>
+                  <RunDetailPage />
+                </Suspense>
+              }
+            />
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/plan" element={<PlanPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>
-        <nav className="sticky bottom-0 flex justify-around border-t bg-background py-2">
+        <nav className="sticky bottom-0 flex border-t bg-background pb-[env(safe-area-inset-bottom)]">
           {navItems.map(({ to, label }) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
-                `px-3 py-2 text-sm ${isActive ? 'font-semibold' : 'text-muted-foreground'}`
+                `min-h-11 flex-1 py-3 text-center text-sm ${isActive ? 'font-semibold' : 'text-muted-foreground'}`
               }
             >
               {label}

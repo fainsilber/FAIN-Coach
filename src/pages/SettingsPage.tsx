@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
-import { db } from '@/db/db';
+import { db, requestPersistentStorage } from '@/db/db';
 import { SETTING_KEYS, setSetting } from '@/db/settings';
 import {
   exportBackup,
@@ -38,7 +38,38 @@ export function SettingsPage() {
   const [status, setStatus] = useState<string>();
   const [importError, setImportError] = useState<string>();
   const importInputRef = useRef<HTMLInputElement>(null);
+  const [storage, setStorage] = useState<{
+    usageMB: string;
+    quotaMB: string;
+    persisted: boolean;
+  }>();
   const loaded = settings !== undefined;
+
+  useEffect(() => {
+    void (async () => {
+      if (!navigator.storage?.estimate) return;
+      const [estimate, persisted] = await Promise.all([
+        navigator.storage.estimate(),
+        navigator.storage.persisted?.() ?? Promise.resolve(false),
+      ]);
+      setStorage({
+        usageMB: ((estimate.usage ?? 0) / 1048576).toFixed(1),
+        quotaMB: ((estimate.quota ?? 0) / 1048576).toFixed(0),
+        persisted,
+      });
+    })();
+  }, []);
+
+  async function handleRequestPersist() {
+    const granted = await requestPersistentStorage();
+    setStorage((s) => (s ? { ...s, persisted: granted } : s));
+    setStatus(
+      granted
+        ? 'Persistent storage granted.'
+        : 'The browser declined for now — it usually grants this after the app is installed or used more.',
+    );
+    setTimeout(() => setStatus(undefined), 4000);
+  }
 
   // Prefill the form once the DB read resolves.
   useEffect(() => {
@@ -206,6 +237,27 @@ export function SettingsPage() {
           <p className="text-sm text-destructive">{importError}</p>
         )}
       </div>
+
+      {storage && (
+        <div className="space-y-2">
+          <h3 className="font-medium">Storage</h3>
+          <p className="text-sm text-muted-foreground">
+            Using {storage.usageMB} MB of {storage.quotaMB} MB available ·{' '}
+            {storage.persisted
+              ? 'protected from browser eviction'
+              : 'not yet protected from browser eviction'}
+          </p>
+          {!storage.persisted && (
+            <button
+              type="button"
+              onClick={() => void handleRequestPersist()}
+              className="rounded-md border px-4 py-2 text-sm font-medium"
+            >
+              Request persistent storage
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="space-y-3">
         <h3 className="font-medium text-destructive">Danger zone</h3>

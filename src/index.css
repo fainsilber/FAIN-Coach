@@ -96,4 +96,12 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+  /* Sub-16px inputs make iOS Safari zoom the page on focus */
+  @media (max-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 1rem;
+    }
+  }
 }

@@ -181,11 +181,10 @@ migrate to **Dexie Cloud** (~2–4 days):
 
 ## 8. Risks / Open Questions
 
-- **Coach context should include the upcoming week's actual planned workouts**
-  (found in live testing 2026-07-22): with only goal + adherence in context,
-  the coach invents plausible-but-wrong weekly schedules when asked "what are
-  my key workouts this week?". Add the next ~7 days of `PlannedWorkout` rows
-  to `buildCoachContext` (fits the 1k budget: ~5 one-liners). → Sprint 5.
+- ~~Coach context should include the upcoming week's actual planned
+  workouts~~ — **resolved in Sprint 5** (2026-07-22): `buildCoachContext`
+  now lists the next 7 days of pending workouts with an explicit
+  "do not invent a schedule" instruction; verified live.
 - **DeepSeek R1 plan generation is slow** (~6 min, ~37k reasoning chars for a
   13-week plan) but valid on the first attempt. Mitigated with streamed
   progress phases and a 90s idle timeout; consider a faster default
