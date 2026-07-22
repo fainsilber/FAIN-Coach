@@ -205,8 +205,19 @@ export function buildPlanRequest(
     `- Dates from ${todayIso} (exclusive) through ${goalInput.raceDate}, ${goalInput.daysPerWeek} workouts per week.`,
     '- Do NOT list rest days — only actual workouts.',
     '- Include the race itself as the final workout with type "race".',
-    '- Progress weekly volume gradually (max ~10%/week) and taper before the race.',
-    '- description: one concrete sentence (paces/efforts). targetDistanceMeters required; targetDurationSeconds optional.',
+    '- Progress weekly volume gradually (max ~10%/week), with an easier recovery week roughly every 4th week.',
+    // Without these three, models "taper" by scheduling nothing at all in the
+    // final week — detraining, not tapering.
+    `- EVERY calendar week from ${todayIso} through race week must contain at least one workout. Never leave a week empty.`,
+    '- Taper by REDUCING volume (roughly 40-50% below peak) in the final week — never by removing runs.',
+    '- Race week must contain at least one short, easy run of 3-5 km in the days before the race, in addition to the race itself.',
+    // "Derive a pace from the goal" alone makes weaker models put EVERY
+    // workout at race pace, which is how runners get hurt. Spell out the
+    // offset per workout type instead.
+    '- description: one concrete sentence with a target pace in min/km that MATCHES THE WORKOUT TYPE, not the race goal:',
+    '    easy/long = 60-90 sec per km SLOWER than goal race pace; tempo = 10-20 sec slower; intervals = at or slightly faster than goal pace; race = goal pace.',
+    '  Never prescribe goal race pace for an easy or long run.',
+    '- targetDistanceMeters required; targetDurationSeconds optional.',
   );
   return lines.join('\n');
 }
