@@ -120,7 +120,7 @@ model; reasoning models remain user-selectable for richer prose.
 * **FR-5.1:** The app **must** let the user choose the interface language. Launch languages: **English** and **Hebrew**. The architecture must accept further languages without code changes to feature components.
 * **FR-5.2:** The app **must** fully support right-to-left (RTL) layout for Hebrew — `dir="rtl"`, mirrored layout, and correct alignment throughout, including navigation, forms, chat bubbles, tables, and the plan calendar.
 * **FR-5.3:** Numeric values (pace, distance, heart rate, dates, times) **must** render correctly inside RTL text. Bidirectional isolation is required so that strings such as `5:48 /km` are not visually reordered.
-* **FR-5.4:** Dates, times, numbers, and plural forms **must** be formatted per the active locale (e.g. Hebrew weekday names). The **first day of the week must follow the locale** — Sunday for `he-IL`, Monday for `en-GB`-style locales — because the plan view groups workouts by week.
+* **FR-5.4:** Dates, times, numbers, and plural forms **must** be formatted per the active locale (e.g. Hebrew weekday names).
 * **FR-5.5:** Language selection **must** default to the browser's preferred language when it is a supported one, otherwise English. The user's explicit choice always overrides detection.
 * **FR-5.6 (AI coach):** Coach and plan responses **must** be produced in the user's selected language. The system prompt carries the target language, and the enforced 3-step response layout (FR-3.3) must use localized section headings.
 
@@ -131,6 +131,12 @@ model; reasoning models remain user-selectable for richer prose.
 * **FR-5.9:** Unit-dependent values are distance (km / miles), pace (min/km / min/mile), and elevation (m / ft). Heart rate (bpm), cadence (spm), and power (W) are unit-system independent and must not be converted.
 * **FR-5.10:** Data *entry* must respect the selected system (e.g. the plan wizard's weekly-volume field is km under metric and miles under imperial), and prompts sent to the LLM must express distances in the user's system so coaching replies use the same units.
 * **FR-5.11:** Language and unit preferences are **per profile**, stored alongside other settings and therefore included in backup export/import.
+
+**Week start**
+
+* **FR-5.12:** The first day of the week **must default to Sunday**, and **must** be user-configurable (Sunday or Monday). This is a deliberate departure from ISO 8601, which defines the week as Monday-start.
+* **FR-5.13:** The week-start preference **must** apply consistently everywhere weeks are derived — the training-plan week grouping, any weekly volume totals, and any week references sent to the AI coach — so that a "week" means the same thing across the whole app.
+* **FR-5.14:** The preference is **per profile** (like language and units) and is independent of the selected language: a user may run the interface in English while keeping a Sunday week, or vice versa.
 
 ---
 

@@ -29,6 +29,7 @@ tiering, and specifies **Sprint 6 — Localization & Units** (§9).
 | Hosting (v1.3) | GitHub Pages, static, deployed by Actions on push to `main`. Project subpath `/FAIN-Coach/` — Vite `base`, router `basename`, PWA scope, and a `404.html` SPA fallback must stay in agreement |
 | Model defaults (v1.3) | Chat **and** plans default to Llama 3.3 70B (instruct). The PRD's "reasoning tier" for plans was tested and rejected on latency; R1/QwQ remain user-selectable |
 | Language & units (v1.3) | English + Hebrew (RTL) at launch, extensible; metric default with imperial option. Per profile. Storage stays SI — conversion at the display boundary only |
+| Week start (v1.3) | Defaults to **Sunday** (deliberately not ISO 8601), switchable to Monday in Settings. Per profile, independent of language |
 
 ## 2. Deviations from PRD v1.0
 
@@ -239,8 +240,13 @@ backup export/import for free:
 ```typescript
 // Settings.key additions
 'language'    // 'en' | 'he'
-'unitSystem'  // 'metric' | 'imperial'   (default 'metric')
+'unitSystem'  // 'metric' | 'imperial'        (default 'metric')
+'weekStart'   // 'sunday' | 'monday'          (default 'sunday')
 ```
+
+`weekStart` is deliberately **independent of `language`** — running the UI in
+English while keeping a Sunday week is a legitimate combination, so it must not
+be derived from the locale (FR-5.14).
 
 **Chicken-and-egg:** the profile picker renders *before* any profile is active,
 so it cannot read profile settings. Language therefore needs a device-level
@@ -281,10 +287,30 @@ translators need standard tooling.
   time axis left-to-right (time-series convention holds across locales) but move
   the Y axis to the right and mirror surrounding padding. Flag for a visual
   decision when implementing.
-- **Week start (FR-5.4)**: `RunDetailPage`/`PlanPage` currently hard-code Monday
-  as the first day of the week (`isoWeekLabel`). Israel starts the week on
-  **Sunday**, so plan grouping is wrong for `he-IL` today. Derive from the
-  locale rather than hard-coding.
+- Week start is a user preference, not an RTL concern — see §8.3a.
+
+### 8.3a Week start (FR-5.12 – 5.14)
+
+**Default changes to Sunday**, with a Settings control to switch to Monday.
+
+- Current code hard-codes Monday: `isoWeekLabel()` in `PlanPage.tsx` computes
+  `d.getUTCDay() + 6) % 7` days back to reach Monday. For a Sunday start that
+  becomes simply `d.getUTCDay()`. Generalize to an offset derived from the
+  preference rather than branching at each call site.
+- **Rename the helper.** "ISO week" specifically *means* Monday-start
+  (ISO 8601); once it is configurable the name is a lie. Something like
+  `startOfWeek(date, weekStart)` / `weekLabel(...)` in a shared module — the
+  plan view should not own week math that other features need.
+- **Apply everywhere a week is derived** (FR-5.13), not just the plan calendar:
+  week grouping in the plan view, any weekly volume aggregation, and the
+  "coming week" window that `buildCoachContext` sends to the model. If these
+  disagree, adherence and coaching will quietly reference different weeks.
+- Because it changes how existing plans are grouped visually, verify a plan
+  generated before the switch still renders sensibly after it — grouping is
+  derived at render time, so no migration is needed, but the week boundaries
+  in an existing plan will shift by a day.
+- Note this makes the default non-ISO. That is intentional and user-driven;
+  record it so nobody "fixes" it back to Monday later.
 
 ### 8.4 Units
 
@@ -320,6 +346,9 @@ translators need standard tooling.
   **zero** stored values change (verify by export-diffing before and after).
 - Coach replies arrive in the selected language using the selected units.
 - Type-check fails if a Hebrew string is missing.
+- Week grouping defaults to Sunday, switches to Monday from Settings, and the
+  plan view, weekly totals, and the coach's "coming week" window all agree on
+  the same boundaries.
 
 ## 9. Risks / Open Questions
 

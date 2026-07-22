@@ -46,7 +46,7 @@ Served from the `/FAIN-Coach/` subpath, so Vite `base`, the router `basename` (`
 
 ## Conventions for Sprint 6 (localization — specified, not yet built)
 
-When implementing [dev-plan §8](docs/dev-plan.md): no user-visible string hard-coded in a component; **logical** Tailwind utilities only (`ms-*`/`ps-*`/`text-start`, never `ml-*`/`pl-*`/`text-left`); wrap numerals and paces in `<bdi>` so RTL doesn't reorder them; keep plan JSON keys and enum values in English (localize only `description`); store SI always and convert at the display boundary.
+When implementing [dev-plan §8](docs/dev-plan.md): no user-visible string hard-coded in a component; **logical** Tailwind utilities only (`ms-*`/`ps-*`/`text-start`, never `ml-*`/`pl-*`/`text-left`); wrap numerals and paces in `<bdi>` so RTL doesn't reorder them; keep plan JSON keys and enum values in English (localize only `description`); store SI always and convert at the display boundary. **Week starts Sunday by default** (not ISO 8601) and is user-configurable — derive it from the setting in one shared helper, never hard-code, and make sure the plan view, weekly totals, and the coach's "coming week" window all use it.
 
 ## Status
 
