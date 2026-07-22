@@ -11,6 +11,17 @@ export interface LapSplit {
 
 export type MatchStatus = 'unmatched' | 'suggested' | 'confirmed' | 'unplanned';
 
+export const FEEL_TAGS = [
+  'fresh',
+  'strong',
+  'tired',
+  'legs-heavy',
+  'sore',
+  'slept-poorly',
+] as const;
+
+export type FeelTag = (typeof FEEL_TAGS)[number];
+
 export interface RunRecord {
   id?: number;
   date: string; // ISO, indexed
