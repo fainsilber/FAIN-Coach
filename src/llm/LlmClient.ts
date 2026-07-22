@@ -23,6 +23,13 @@ export class LlmError extends Error {
   }
 }
 
+export interface LlmChatOptions {
+  /** Reasoning-model "thinking" tokens (not part of the final answer). */
+  onReasoning?: (token: string) => void;
+  /** Abort if the stream goes silent for this long. */
+  idleTimeoutMs?: number;
+}
+
 export interface LlmClient {
   /**
    * Send a chat completion request.
@@ -33,5 +40,6 @@ export interface LlmClient {
     messages: LlmMessage[],
     model: string,
     onToken?: (token: string) => void,
+    options?: LlmChatOptions,
   ): Promise<string>;
 }

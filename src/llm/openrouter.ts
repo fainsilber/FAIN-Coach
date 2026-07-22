@@ -1,4 +1,9 @@
-import { LlmError, type LlmClient, type LlmMessage } from './LlmClient';
+import {
+  LlmError,
+  type LlmChatOptions,
+  type LlmClient,
+  type LlmMessage,
+} from './LlmClient';
 
 export const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
@@ -27,67 +32,97 @@ export class OpenRouterClient implements LlmClient {
     messages: LlmMessage[],
     model: string,
     onToken?: (token: string) => void,
+    options: LlmChatOptions = {},
   ): Promise<string> {
-    let res: Response;
+    const idleMs = options.idleTimeoutMs ?? 90_000;
+    const controller = new AbortController();
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    const armIdleTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => controller.abort(), idleMs);
+    };
+
     try {
-      res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-          // Attribution headers recommended by OpenRouter
-          'HTTP-Referer': 'https://github.com/fainsilber/FAIN-Coach',
-          'X-Title': 'FAIN Coach',
-        },
-        body: JSON.stringify({ model, messages, stream: true }),
-      });
-    } catch {
-      throw new LlmError('network', 'Could not reach OpenRouter.');
-    }
+      let res: Response;
+      armIdleTimer();
+      try {
+        res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+            // Attribution headers recommended by OpenRouter
+            'HTTP-Referer': 'https://github.com/fainsilber/FAIN-Coach',
+            'X-Title': 'FAIN Coach',
+          },
+          body: JSON.stringify({ model, messages, stream: true }),
+          signal: controller.signal,
+        });
+      } catch {
+        throw controller.signal.aborted
+          ? new LlmError(
+              'network',
+              'The model stopped responding. Try again, or switch models in Settings.',
+            )
+          : new LlmError('network', 'Could not reach OpenRouter.');
+      }
 
-    if (!res.ok) {
-      throw errorFromStatus(res.status, (await res.text()).slice(0, 300));
-    }
-    if (!res.body) {
-      throw new LlmError('bad-response', 'OpenRouter returned no body.');
-    }
+      if (!res.ok) {
+        throw errorFromStatus(res.status, (await res.text()).slice(0, 300));
+      }
+      if (!res.body) {
+        throw new LlmError('bad-response', 'OpenRouter returned no body.');
+      }
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let full = '';
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let full = '';
 
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
-      for (const raw of lines) {
-        const line = raw.trim();
-        // SSE comments (": OPENROUTER PROCESSING" keep-alives) and blanks
-        if (!line || line.startsWith(':')) continue;
-        if (!line.startsWith('data:')) continue;
-        const payload = line.slice(5).trim();
-        if (payload === '[DONE]') {
-          return full;
-        }
-        let token: string | undefined;
+      for (;;) {
+        let chunk: ReadableStreamReadResult<Uint8Array>;
+        armIdleTimer();
         try {
-          const parsed = JSON.parse(payload) as {
-            choices?: Array<{ delta?: { content?: string } }>;
-          };
-          token = parsed.choices?.[0]?.delta?.content;
+          chunk = await reader.read();
         } catch {
-          continue; // partial/malformed frame — skip
+          throw new LlmError(
+            'network',
+            'The model stopped responding mid-stream. Try again, or switch models in Settings.',
+          );
         }
-        if (token) {
-          full += token;
-          onToken?.(token);
+        if (chunk.done) break;
+        buffer += decoder.decode(chunk.value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const raw of lines) {
+          const line = raw.trim();
+          // SSE comments (": OPENROUTER PROCESSING" keep-alives) and blanks
+          if (!line || line.startsWith(':')) continue;
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (payload === '[DONE]') {
+            return full;
+          }
+          let delta: { content?: string; reasoning?: string } | undefined;
+          try {
+            const parsed = JSON.parse(payload) as {
+              choices?: Array<{ delta?: { content?: string; reasoning?: string } }>;
+            };
+            delta = parsed.choices?.[0]?.delta;
+          } catch {
+            continue; // partial/malformed frame — skip
+          }
+          if (delta?.reasoning) options.onReasoning?.(delta.reasoning);
+          if (delta?.content) {
+            full += delta.content;
+            onToken?.(delta.content);
+          }
         }
       }
+      return full;
+    } finally {
+      clearTimeout(idleTimer);
     }
-    return full;
   }
 }

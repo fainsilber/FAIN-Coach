@@ -34,6 +34,7 @@ function PlanWizard() {
   const [weeklyKm, setWeeklyKm] = useState('');
   const [daysPerWeek, setDaysPerWeek] = useState('4');
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<string>();
   const [error, setError] = useState<string>();
 
   const valid =
@@ -67,6 +68,16 @@ function PlanWizard() {
         model,
         goalInput,
         history,
+        new Date(),
+        ({ phase, chars }) => {
+          const label =
+            phase === 'reasoning'
+              ? 'Model is thinking'
+              : phase === 'retrying'
+                ? 'Response was malformed — retrying'
+                : 'Writing your plan';
+          setProgress(`${label}… (${chars.toLocaleString()} characters)`);
+        },
       );
       const planId = (await db.trainingPlans.add({
         createdAt: new Date().toISOString(),
@@ -94,6 +105,7 @@ function PlanWizard() {
       }
     } finally {
       setBusy(false);
+      setProgress(undefined);
     }
   }
 
@@ -155,8 +167,14 @@ function PlanWizard() {
         onClick={() => void handleGenerate()}
         className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
       >
-        {busy ? 'Building your plan… (this can take a minute)' : 'Generate plan'}
+        {busy ? 'Building your plan…' : 'Generate plan'}
       </button>
+      {busy && (
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          {progress ?? 'Contacting the model…'} Reasoning models can take a few
+          minutes.
+        </p>
+      )}
     </section>
   );
 }

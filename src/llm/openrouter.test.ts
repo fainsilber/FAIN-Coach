@@ -103,6 +103,57 @@ describe('OpenRouterClient', () => {
     ).rejects.toBeInstanceOf(LlmError);
   });
 
+  it('routes reasoning deltas to onReasoning, not the answer', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        sseResponse([
+          `data: ${JSON.stringify({ choices: [{ delta: { reasoning: 'thinking…' } }] })}\n\n`,
+          delta('Answer'),
+          'data: [DONE]\n\n',
+        ]),
+      ),
+    );
+    const reasoning: string[] = [];
+    const client = new OpenRouterClient('key');
+    const result = await client.chat(
+      [{ role: 'user', content: 'hi' }],
+      'deepseek/deepseek-r1',
+      undefined,
+      { onReasoning: (t) => reasoning.push(t) },
+    );
+    expect(result).toBe('Answer');
+    expect(reasoning).toEqual(['thinking…']);
+  });
+
+  it('aborts with a network LlmError when the stream goes idle', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(delta('partial')));
+            // …then silence forever; the abort signal must break the read
+            init.signal?.addEventListener('abort', () =>
+              controller.error(new DOMException('aborted', 'AbortError')),
+            );
+          },
+        });
+        return new Response(stream, { status: 200 });
+      }),
+    );
+    const client = new OpenRouterClient('key');
+    await expect(
+      client.chat([{ role: 'user', content: 'hi' }], 'm', undefined, {
+        idleTimeoutMs: 100,
+      }),
+    ).rejects.toMatchObject({
+      name: 'LlmError',
+      code: 'network',
+      message: /stopped responding/,
+    });
+  });
+
   it('skips malformed frames without dropping the stream', async () => {
     vi.stubGlobal(
       'fetch',

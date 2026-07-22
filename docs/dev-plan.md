@@ -181,6 +181,16 @@ migrate to **Dexie Cloud** (~2–4 days):
 
 ## 8. Risks / Open Questions
 
+- **Coach context should include the upcoming week's actual planned workouts**
+  (found in live testing 2026-07-22): with only goal + adherence in context,
+  the coach invents plausible-but-wrong weekly schedules when asked "what are
+  my key workouts this week?". Add the next ~7 days of `PlannedWorkout` rows
+  to `buildCoachContext` (fits the 1k budget: ~5 one-liners). → Sprint 5.
+- **DeepSeek R1 plan generation is slow** (~6 min, ~37k reasoning chars for a
+  13-week plan) but valid on the first attempt. Mitigated with streamed
+  progress phases and a 90s idle timeout; consider a faster default
+  reasoning model or `deepseek-r1-distill` variants.
+
 - **Plan JSON reliability**: reasoning models may return malformed plan JSON → strict schema validation + one automatic retry with error feedback; blocking issue for Sprint 4.
 - **Apple Watch exports**: Apple exports GPX natively, TCX only via third-party apps — may need a GPX parser later (P2, design parser interface to allow it).
 - **Token estimation**: no tokenizer in-browser for arbitrary models → use chars/4 heuristic with safety margin.

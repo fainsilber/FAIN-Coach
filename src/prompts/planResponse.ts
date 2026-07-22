@@ -97,6 +97,11 @@ export interface GeneratedPlan {
   generationContext: string;
 }
 
+export interface PlanProgress {
+  phase: 'reasoning' | 'writing' | 'retrying';
+  chars: number;
+}
+
 /** Ask the reasoning model for a plan; on a malformed response, retry once
  * with the validation error appended. */
 export async function requestPlanWorkouts(
@@ -105,17 +110,40 @@ export async function requestPlanWorkouts(
   goalInput: PlanGoalInput,
   history: RunRecord[],
   today: Date = new Date(),
+  onProgress?: (progress: PlanProgress) => void,
 ): Promise<GeneratedPlan> {
+  let chars = 0;
+  const callbacks = (retrying: boolean) => ({
+    onToken: (t: string) => {
+      chars += t.length;
+      onProgress?.({ phase: retrying ? 'retrying' : 'writing', chars });
+    },
+    onReasoning: (t: string) => {
+      chars += t.length;
+      onProgress?.({ phase: retrying ? 'retrying' : 'reasoning', chars });
+    },
+  });
+
   const prompt = buildPlanRequest(goalInput, history, today);
-  const first = await client.chat([{ role: 'user', content: prompt }], model);
+  const firstCb = callbacks(false);
+  const first = await client.chat(
+    [{ role: 'user', content: prompt }],
+    model,
+    firstCb.onToken,
+    { onReasoning: firstCb.onReasoning },
+  );
   try {
     return { workouts: parsePlanResponse(first), generationContext: prompt };
   } catch (e) {
     const error = e instanceof PlanParseError ? e.message : String(e);
+    onProgress?.({ phase: 'retrying', chars });
     const retryPrompt = `${prompt}\n\nYour previous response could not be used: ${error}\nRespond again with ONLY the valid JSON object described above.`;
+    const retryCb = callbacks(true);
     const second = await client.chat(
       [{ role: 'user', content: retryPrompt }],
       model,
+      retryCb.onToken,
+      { onReasoning: retryCb.onReasoning },
     );
     return { workouts: parsePlanResponse(second), generationContext: retryPrompt };
   }
