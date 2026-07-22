@@ -38,7 +38,7 @@ export function App() {
             {profile.name} · switch
           </button>
         </header>
-        <main className="flex-1 p-4">
+        <main className="flex flex-1 flex-col p-4">
           <Routes>
             <Route path="/" element={<HistoryPage />} />
             <Route path="/runs/:id" element={<RunDetailPage />} />

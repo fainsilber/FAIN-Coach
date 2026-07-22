@@ -6,6 +6,23 @@ export interface LlmMessage {
   content: string;
 }
 
+export type LlmErrorCode =
+  | 'invalid-key'
+  | 'rate-limit'
+  | 'network'
+  | 'server'
+  | 'bad-response';
+
+export class LlmError extends Error {
+  constructor(
+    public readonly code: LlmErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'LlmError';
+  }
+}
+
 export interface LlmClient {
   /**
    * Send a chat completion request.

@@ -6,6 +6,7 @@ import { db, requestPersistentStorage } from '@/db/db';
 import { formatDuration, formatKm, formatPace } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { parseTcx, TcxParseError, type ParsedRun } from '@/parser/tcx';
+import { summarizeRun } from '@/prompts/prompts';
 
 type UploadState =
   | { step: 'idle' }
@@ -41,9 +42,17 @@ export function UploadPage() {
     if (state.step !== 'review') return;
     setSaving(true);
     try {
-      await db.runs.add({ ...state.run, ...details });
+      const record = { ...state.run, ...details };
+      await db.runs.add(record);
       void requestPersistentStorage(); // FR-2.2, fire-and-forget
-      navigate('/');
+      // Hand the run to the coach: inject the macro summary as a user message
+      // and let ChatPage request the coached response.
+      await db.chatMessages.add({
+        timestamp: new Date().toISOString(),
+        role: 'user',
+        content: `I just finished a run.\n\n${summarizeRun(record)}\n\nWhat do you make of it, and what should I do next?`,
+      });
+      navigate('/chat', { state: { pendingReply: true } });
     } catch {
       setError('Failed to save the run to local storage.');
       setSaving(false);
