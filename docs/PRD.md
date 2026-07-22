@@ -2,7 +2,7 @@
 
 ## AI Running Coach PWA ("OpenRun Coach")
 
-**Document Version:** 1.0
+**Document Version:** 1.1 (2026-07-22: added §4.4 Local Profiles & Multi-User)
 
 **Target Release:** MVP
 
@@ -19,6 +19,7 @@
 * **Local-First & Private:** All parsing and time-series telemetry remain strictly in the browser's IndexedDB.
 * **Model Agnostic:** Seamless integration with OpenRouter (Meta Llama 3.3, Qwen 2.5, DeepSeek R1).
 * **Subjective + Objective Fusion:** Merges telemetry metrics (HR, Pace, Cadence, Power) with user-reported effort and recovery notes.
+* **Multi-Runner on One Device:** Local profiles keep each runner's data in its own isolated database on shared devices.
 
 ---
 
@@ -89,6 +90,13 @@
 
 
 * **FR-3.4:** The AI **must never** invent or comment on missing metrics (e.g., power or cadence if omitted from the TCX file).
+
+### 4.4 Local Profiles & Multi-User (added v1.1)
+
+* **FR-4.1:** The app **must** support multiple local profiles on one device. Each profile owns its own isolated IndexedDB database; no feature may read or write another profile's data.
+* **FR-4.2:** On launch without an active profile, the app **must** show a profile picker (select, create, delete). All runs, plans, chat history, settings, and backups are scoped to the active profile.
+* **FR-4.3:** A profile **may** set an optional PIN, stored only as a salted SHA-256 hash. The PIN gates the UI against casual access on a shared device.
+* **FR-4.4 (explicit scope limitation):** Local profiles provide data *separation*, not *security*. Data is not encrypted at rest; anyone with device and browser access can read any profile's IndexedDB via developer tools. Server-side accounts with enforced isolation (and multi-device sync) are out of scope for MVP; the designated upgrade path is Dexie Cloud (see dev plan §7).
 
 ---
 

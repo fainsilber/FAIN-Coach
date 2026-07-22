@@ -17,7 +17,8 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 
 ## Layout
 
-- `src/db/` — Dexie schema (`db.ts`) and data contracts (`types.ts`). 5 tables: runs, trainingPlans, plannedWorkouts, chatMessages, settings. Laps are embedded in `RunRecord`, not a table.
+- `src/db/` — Dexie schema (`db.ts`) and data contracts (`types.ts`). 5 tables: runs, trainingPlans, plannedWorkouts, chatMessages, settings. Laps are embedded in `RunRecord`, not a table. One database per profile — the `db` singleton binds to the active profile's database at module load; switching profiles reloads the app.
+- `src/lib/profiles.ts` — local profile registry (localStorage), optional salted-PIN hashing, legacy DB adoption. Profiles are data separation, not security (PRD §4.4); Dexie Cloud is the future real-auth path (dev plan §7).
 - `src/parser/` — TCX parser (`tcx.ts`) + tests; put fixture TCX files in `src/parser/fixtures/`.
 - `src/llm/` — `LlmClient` transport interface + OpenRouter implementation. Never call fetch for LLMs outside this layer.
 - `src/prompts/` — pure prompt-pipeline functions (`summarizeRun`, `buildCoachContext`, `buildPlanRequest`). Mandatory unit-test target.
@@ -35,4 +36,4 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 
 ## Status
 
-Scaffold complete (2026-07-22). Next: Sprint 1 — implement `parseTcx` + fixtures, upload UI, post-run form. Sprint plan and exit criteria are in [docs/dev-plan.md](docs/dev-plan.md) §5.
+Sprints 1–2 complete; local profiles added (2026-07-22). Next: Sprint 3 — OpenRouter client, `summarizeRun`, global coach chat. Sprint plan and exit criteria are in [docs/dev-plan.md](docs/dev-plan.md) §5.

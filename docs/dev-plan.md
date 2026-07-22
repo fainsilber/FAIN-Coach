@@ -1,6 +1,7 @@
-# OpenRun Coach — Development Plan (v1.1)
+# OpenRun Coach — Development Plan (v1.2)
 
-Supersedes the PRD v1.0 roadmap. Incorporates decisions made 2026-07-21.
+Supersedes the PRD roadmap. Incorporates decisions made 2026-07-21; v1.2
+(2026-07-22) adds local profiles and the account-migration path (§7).
 
 ---
 
@@ -20,6 +21,7 @@ Supersedes the PRD v1.0 roadmap. Incorporates decisions made 2026-07-21.
 | Reset | Two actions: (a) archive plan + start new, (b) full wipe (runs, plans, chat) |
 | Run↔plan matching | Auto-match by date/type, then confirm with user ("Was this your planned tempo run?") |
 | Subjective input | RPE 1–10 + feel tags (legs, sleep, soreness) + free-text notes |
+| Multi-user (v1.2) | Local device profiles: one Dexie DB per profile, reload-on-switch, optional hashed PIN. No server auth in MVP; Dexie Cloud is the upgrade path (§7) |
 
 ## 2. Deviations from PRD v1.0
 
@@ -141,7 +143,43 @@ interface Settings {
 - Cross-device TCX compatibility pass (Garmin/Coros/Apple/Suunto exports).
 - **Exit criteria**: Lighthouse PWA installable; full offline function except LLM calls.
 
-## 6. Risks / Open Questions
+## 6. Profiles & Multi-User (implemented 2026-07-22)
+
+Requirement added after Sprint 2: multiple runners per device, each seeing only
+their own data (PRD §4.4).
+
+**Design (chosen to keep the Dexie Cloud path cheap):**
+
+- **One database per profile** (`FainCoachDB-<profileId>`), *not* a `userId`
+  column on every table. Queries and schema stay untouched; isolation is by
+  database. The pre-profile database (`FainCoachDB`) is adopted as the
+  "Default" profile on first launch so existing data survives.
+- **Profile registry in `localStorage`** (`fain-coach.profiles` +
+  `fain-coach.activeProfileId`): id, name, dbName, createdAt, optional
+  salted-SHA-256 PIN hash. PIN is a deterrent, not encryption — stated in the
+  UI and PRD.
+- **Reload-on-switch:** the `db` singleton binds to the active profile's
+  database at module load; entering/leaving a profile reloads the app. No
+  component changes; same shape as a future "switch account".
+- Backups (export/import) operate on the active profile only.
+
+## 7. Future: Real Accounts via Dexie Cloud (deferred)
+
+Decision 2026-07-22: local profiles are sufficient for now. When real
+authentication, server-enforced isolation, or multi-device sync is needed,
+migrate to **Dexie Cloud** (~2–4 days):
+
+1. Add `dexie-cloud-addon`; mark synced tables; wire login (email OTP). The
+   profile picker becomes the account screen.
+2. **Id remap** (main cost): local auto-increment number ids → globally unique
+   string ids; rewrite `run.plannedWorkoutId`, `plannedWorkout.planId`,
+   `chatMessage.planId` during a one-time per-profile import (reuses the
+   backup/import machinery).
+3. Keep the OpenRouter API key in an **unsynced, device-local** table — the
+   key must not roam through the sync service.
+4. Test offline conflict scenarios (two devices, archive vs upload).
+
+## 8. Risks / Open Questions
 
 - **Plan JSON reliability**: reasoning models may return malformed plan JSON → strict schema validation + one automatic retry with error feedback; blocking issue for Sprint 4.
 - **Apple Watch exports**: Apple exports GPX natively, TCX only via third-party apps — may need a GPX parser later (P2, design parser interface to allow it).

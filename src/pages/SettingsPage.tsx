@@ -171,8 +171,8 @@ export function SettingsPage() {
       <div className="space-y-3">
         <h3 className="font-medium">Data</h3>
         <p className="text-sm text-muted-foreground">
-          Backups contain all runs, plans, chat history, and settings
-          (including your API key) as a JSON file.
+          Backups contain the current profile's runs, plans, chat history,
+          and settings (including your API key) as a JSON file.
         </p>
         <div className="flex gap-2">
           <button

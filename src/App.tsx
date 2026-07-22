@@ -1,4 +1,6 @@
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
+import { ProfileGate } from './components/ProfileGate';
+import { clearActiveProfile, getActiveProfile } from './lib/profiles';
 import { ChatPage } from './pages/ChatPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { PlanPage } from './pages/PlanPage';
@@ -15,11 +17,26 @@ const navItems = [
 ];
 
 export function App() {
+  const profile = getActiveProfile();
+
+  if (!profile) return <ProfileGate />;
+
   return (
     <BrowserRouter>
       <div className="flex min-h-dvh flex-col">
-        <header className="border-b px-4 py-3">
+        <header className="flex items-center justify-between border-b px-4 py-3">
           <h1 className="text-lg font-semibold">FAIN Coach</h1>
+          <button
+            type="button"
+            onClick={() => {
+              clearActiveProfile();
+              window.location.reload();
+            }}
+            className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent"
+            title="Switch profile"
+          >
+            {profile.name} · switch
+          </button>
         </header>
         <main className="flex-1 p-4">
           <Routes>

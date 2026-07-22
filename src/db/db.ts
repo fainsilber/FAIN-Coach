@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
+import { getActiveProfile, LEGACY_DB_NAME } from '@/lib/profiles';
 import type {
   ChatMessage,
   PlannedWorkout,
@@ -15,8 +16,8 @@ export class FainCoachDB extends Dexie {
   chatMessages!: EntityTable<ChatMessage, 'id'>;
   settings!: EntityTable<Settings, 'key'>;
 
-  constructor() {
-    super('FainCoachDB');
+  constructor(name: string) {
+    super(name);
     this.version(1).stores({
       runs: '++id, date, matchStatus, plannedWorkoutId',
       trainingPlans: '++id, status, createdAt',
@@ -27,7 +28,10 @@ export class FainCoachDB extends Dexie {
   }
 }
 
-export const db = new FainCoachDB();
+// One database per profile; the module binds to the active profile at load
+// time, and switching profiles reloads the app (see ProfileGate). Falls back
+// to the legacy name so tests and the pre-profile boot path keep working.
+export const db = new FainCoachDB(getActiveProfile()?.dbName ?? LEGACY_DB_NAME);
 
 /**
  * FR-2.2: request persistent storage so the browser doesn't evict IndexedDB.
