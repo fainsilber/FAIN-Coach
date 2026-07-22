@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Simulates a non-Garmin export: different extension prefix (x:), no lap-level
+     LX aggregates (forces trackpoint fallback), second lap missing lap
+     DistanceMeters (forces cumulative-distance fallback). -->
+<TrainingCenterDatabase
+  xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
+  xmlns:x="http://www.garmin.com/xmlschemas/ActivityExtension/v2">
+  <Activities>
+    <Activity Sport="Running">
+      <Id>2026-07-03T06:00:00.000Z</Id>
+      <Lap StartTime="2026-07-03T06:00:00.000Z">
+        <TotalTimeSeconds>300.0</TotalTimeSeconds>
+        <DistanceMeters>1000.0</DistanceMeters>
+        <Track>
+          <Trackpoint>
+            <Time>2026-07-03T06:00:00.000Z</Time>
+            <DistanceMeters>0.0</DistanceMeters>
+            <HeartRateBpm>
+              <Value>130</Value>
+            </HeartRateBpm>
+            <Extensions>
+              <x:TPX>
+                <x:RunCadence>84</x:RunCadence>
+              </x:TPX>
+            </Extensions>
+          </Trackpoint>
+          <Trackpoint>
+            <Time>2026-07-03T06:02:30.000Z</Time>
+            <DistanceMeters>500.0</DistanceMeters>
+            <HeartRateBpm>
+              <Value>140</Value>
+            </HeartRateBpm>
+            <Extensions>
+              <x:TPX>
+                <x:RunCadence>86</x:RunCadence>
+              </x:TPX>
+            </Extensions>
+          </Trackpoint>
+        </Track>
+      </Lap>
+      <Lap StartTime="2026-07-03T06:05:00.000Z">
+        <TotalTimeSeconds>300.0</TotalTimeSeconds>
+        <Track>
+          <Trackpoint>
+            <Time>2026-07-03T06:05:00.000Z</Time>
+            <DistanceMeters>1000.0</DistanceMeters>
+            <Extensions>
+              <x:TPX>
+                <x:RunCadence>130</x:RunCadence>
+              </x:TPX>
+            </Extensions>
+          </Trackpoint>
+          <Trackpoint>
+            <Time>2026-07-03T06:10:00.000Z</Time>
+            <DistanceMeters>1500.0</DistanceMeters>
+            <Extensions>
+              <x:TPX>
+                <x:RunCadence>130</x:RunCadence>
+              </x:TPX>
+            </Extensions>
+          </Trackpoint>
+        </Track>
+      </Lap>
+    </Activity>
+  </Activities>
+</TrainingCenterDatabase>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TrainingCenterDatabase>
+  <Activities>
+    <Activity Sport="Running">
+      <Id>2026-07-04T06:00:00.000Z</Id>
+      <Lap StartTime="2026-07-04T06:00:00.000Z">
+        <TotalTimeSeconds>600.0
