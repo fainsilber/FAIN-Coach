@@ -27,7 +27,7 @@ export function App() {
   if (!profile) return <ProfileGate />;
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <div className="flex min-h-dvh flex-col">
         <header className="flex items-center justify-between border-b px-4 py-3">
           <h1 className="text-lg font-semibold">FAIN Coach</h1>
