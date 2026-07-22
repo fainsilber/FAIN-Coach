@@ -36,4 +36,4 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 
 ## Status
 
-Sprints 1–3 complete; local profiles added (2026-07-22). Next: Sprint 4 — training plans (`buildPlanRequest`, plan wizard, run↔plan auto-match, adherence in coach context). Sprint plan and exit criteria are in [docs/dev-plan.md](docs/dev-plan.md) §5.
+Sprints 1–4 complete; local profiles added (2026-07-22). Next: Sprint 5 — PWA polish (offline shell, storage indicator, mobile audit, cross-device TCX pass, code-split Recharts). Sprint plan and exit criteria are in [docs/dev-plan.md](docs/dev-plan.md) §5.

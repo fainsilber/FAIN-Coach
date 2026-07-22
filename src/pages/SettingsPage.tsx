@@ -6,6 +6,7 @@ import {
   exportBackup,
   importBackup,
   parseBackup,
+  wipeAllData,
   BackupError,
 } from '@/lib/backup';
 import {
@@ -205,6 +206,41 @@ export function SettingsPage() {
           <p className="text-sm text-destructive">{importError}</p>
         )}
       </div>
+
+      <div className="space-y-3">
+        <h3 className="font-medium text-destructive">Danger zone</h3>
+        <p className="text-sm text-muted-foreground">
+          Wipe removes this profile's runs, plans, chat history, and settings
+          permanently.
+        </p>
+        <button
+          type="button"
+          onClick={() => void handleWipe()}
+          className="rounded-md border border-destructive/40 px-4 py-2 text-sm font-medium text-destructive"
+        >
+          Wipe all data…
+        </button>
+      </div>
     </section>
   );
+
+  async function handleWipe() {
+    if (
+      window.confirm(
+        'Export a backup before wiping? (Recommended — this is your last chance.)',
+      )
+    ) {
+      await handleExport();
+    }
+    if (
+      !window.confirm(
+        'Really delete ALL data for this profile — runs, plans, chat, and settings? This cannot be undone.',
+      )
+    ) {
+      return;
+    }
+    await wipeAllData();
+    setStatus('All data wiped.');
+    setTimeout(() => setStatus(undefined), 2500);
+  }
 }

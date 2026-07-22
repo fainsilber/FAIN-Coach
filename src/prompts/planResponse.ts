@@ -1,0 +1,122 @@
+import type { PlannedWorkout, RunRecord, WorkoutType } from '@/db/types';
+import type { LlmClient } from '@/llm/LlmClient';
+import { buildPlanRequest, type PlanGoalInput } from './prompts';
+
+// Reasoning models sometimes wrap JSON in prose or fences, or return a
+// malformed plan — strict validation plus ONE automatic retry with error
+// feedback (dev plan risk #1).
+
+export type PlannedWorkoutDraft = Omit<PlannedWorkout, 'id' | 'planId' | 'status'>;
+
+export class PlanParseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PlanParseError';
+  }
+}
+
+const WORKOUT_TYPES: ReadonlySet<string> = new Set([
+  'easy',
+  'tempo',
+  'intervals',
+  'long',
+  'rest',
+  'race',
+]);
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function extractJson(text: string): string {
+  const cleaned = text.replace(/```(?:json)?/g, '');
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start === -1 || end <= start) {
+    throw new PlanParseError('No JSON object found in the response.');
+  }
+  return cleaned.slice(start, end + 1);
+}
+
+function optionalPositiveInt(value: unknown, path: string): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) {
+    throw new PlanParseError(`${path} must be a positive number.`);
+  }
+  return Math.round(n);
+}
+
+export function parsePlanResponse(text: string): PlannedWorkoutDraft[] {
+  let data: unknown;
+  try {
+    data = JSON.parse(extractJson(text));
+  } catch (e) {
+    if (e instanceof PlanParseError) throw e;
+    throw new PlanParseError('Response is not valid JSON.');
+  }
+  const workouts = (data as { workouts?: unknown }).workouts;
+  if (!Array.isArray(workouts) || workouts.length === 0) {
+    throw new PlanParseError('"workouts" must be a non-empty array.');
+  }
+  const drafts = workouts.map((raw, i): PlannedWorkoutDraft => {
+    const w = raw as Record<string, unknown>;
+    const path = `workouts[${i}]`;
+    if (typeof w.date !== 'string' || !DATE_RE.test(w.date)) {
+      throw new PlanParseError(`${path}.date must be "YYYY-MM-DD".`);
+    }
+    if (Number.isNaN(Date.parse(w.date))) {
+      throw new PlanParseError(`${path}.date is not a real date.`);
+    }
+    if (typeof w.type !== 'string' || !WORKOUT_TYPES.has(w.type)) {
+      throw new PlanParseError(
+        `${path}.type must be one of easy|tempo|intervals|long|rest|race.`,
+      );
+    }
+    if (typeof w.description !== 'string' || !w.description.trim()) {
+      throw new PlanParseError(`${path}.description must be a non-empty string.`);
+    }
+    return {
+      date: w.date,
+      type: w.type as WorkoutType,
+      description: w.description.trim(),
+      targetDistanceMeters: optionalPositiveInt(
+        w.targetDistanceMeters,
+        `${path}.targetDistanceMeters`,
+      ),
+      targetDurationSeconds: optionalPositiveInt(
+        w.targetDurationSeconds,
+        `${path}.targetDurationSeconds`,
+      ),
+    };
+  });
+  return drafts.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export interface GeneratedPlan {
+  workouts: PlannedWorkoutDraft[];
+  /** Exact prompt that produced the accepted response (auditability). */
+  generationContext: string;
+}
+
+/** Ask the reasoning model for a plan; on a malformed response, retry once
+ * with the validation error appended. */
+export async function requestPlanWorkouts(
+  client: LlmClient,
+  model: string,
+  goalInput: PlanGoalInput,
+  history: RunRecord[],
+  today: Date = new Date(),
+): Promise<GeneratedPlan> {
+  const prompt = buildPlanRequest(goalInput, history, today);
+  const first = await client.chat([{ role: 'user', content: prompt }], model);
+  try {
+    return { workouts: parsePlanResponse(first), generationContext: prompt };
+  } catch (e) {
+    const error = e instanceof PlanParseError ? e.message : String(e);
+    const retryPrompt = `${prompt}\n\nYour previous response could not be used: ${error}\nRespond again with ONLY the valid JSON object described above.`;
+    const second = await client.chat(
+      [{ role: 'user', content: retryPrompt }],
+      model,
+    );
+    return { workouts: parsePlanResponse(second), generationContext: retryPrompt };
+  }
+}

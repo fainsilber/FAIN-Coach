@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '@/db/db';
 import { getSetting, SETTING_KEYS } from '@/db/settings';
+import { computeAdherence } from '@/lib/matching';
 import { cn } from '@/lib/utils';
 import { LlmError } from '@/llm/LlmClient';
 import { DEFAULT_FAST_MODEL, OpenRouterClient } from '@/llm/openrouter';
@@ -68,12 +69,18 @@ export function ChatPage() {
       }
       const model =
         (await getSetting(SETTING_KEYS.fastModel)) || DEFAULT_FAST_MODEL;
-      const [history, recentRuns] = await Promise.all([
+      const [history, recentRuns, plan] = await Promise.all([
         db.chatMessages.orderBy('timestamp').toArray(),
         db.runs.orderBy('date').reverse().limit(3).toArray(),
+        db.trainingPlans.where('status').equals('active').first(),
       ]);
-      // Plan + adherence arrive in Sprint 4; context is plan-less until then.
-      const system = buildCoachContext(undefined, recentRuns, undefined);
+      const adherence =
+        plan?.id !== undefined
+          ? computeAdherence(
+              await db.plannedWorkouts.where('planId').equals(plan.id).toArray(),
+            )
+          : undefined;
+      const system = buildCoachContext(plan, recentRuns, adherence);
       const outgoing = capMessages(
         system,
         history.map((m) => ({ role: m.role, content: m.content })),

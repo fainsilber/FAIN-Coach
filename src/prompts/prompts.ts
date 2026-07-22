@@ -146,17 +146,51 @@ export function buildCoachContext(
 
 export interface PlanGoalInput {
   goal: string;
-  raceDate: string;
+  raceDate: string; // YYYY-MM-DD
   currentWeeklyKm: number;
   daysPerWeek: number;
 }
 
-/** Sprint 4 — reasoning-tier prompt requesting a structured plan (strict JSON). */
+export const PLAN_TOKEN_BUDGET = 4000;
+
+export function weeksUntil(raceDate: string, today: Date): number {
+  const ms = Date.parse(raceDate) - today.getTime();
+  return Math.max(1, Math.ceil(ms / (7 * 24 * 3600 * 1000)));
+}
+
+/** Reasoning-tier prompt requesting a structured plan as strict JSON. */
 export function buildPlanRequest(
-  _goalInput: PlanGoalInput,
-  _history: RunRecord[],
+  goalInput: PlanGoalInput,
+  history: RunRecord[],
+  today: Date = new Date(),
 ): string {
-  throw new Error('Not implemented — Sprint 4');
+  const todayIso = today.toISOString().slice(0, 10);
+  const weeks = weeksUntil(goalInput.raceDate, today);
+  const lines = [
+    'You are an experienced running coach. Create a personalized training plan.',
+    '',
+    `Today is ${todayIso}.`,
+    `Goal: ${goalInput.goal}`,
+    `Race date: ${goalInput.raceDate} (${weeks} week(s) away).`,
+    `Current volume: about ${goalInput.currentWeeklyKm} km/week across ${goalInput.daysPerWeek} run(s)/week.`,
+  ];
+  if (history.length > 0) {
+    lines.push('Recent runs (newest first):');
+    for (const run of history.slice(0, 8)) lines.push(`  ${runOneLiner(run)}`);
+  }
+  lines.push(
+    '',
+    'Respond with ONLY a JSON object — no prose, no markdown fences — exactly this shape:',
+    '{"workouts":[{"date":"YYYY-MM-DD","type":"easy|tempo|intervals|long|race","description":"...","targetDistanceMeters":8000,"targetDurationSeconds":3000}]}',
+    '',
+    'Rules:',
+    `- Dates from ${todayIso} (exclusive) through ${goalInput.raceDate}, ${goalInput.daysPerWeek} workouts per week.`,
+    '- Do NOT list rest days — only actual workouts.',
+    '- Include the race itself as the final workout with type "race".',
+    '- Progress weekly volume gradually (max ~10%/week) and taper before the race.',
+    '- description: one concrete sentence (paces/efforts). targetDistanceMeters required; targetDurationSeconds optional.',
+  );
+  return lines.join('\n');
 }
 
 /**

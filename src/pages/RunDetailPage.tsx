@@ -29,6 +29,14 @@ function points(
   return out;
 }
 
+function dayGap(a: string, b: string): number {
+  return Math.abs(
+    Math.round(
+      (Date.parse(a.slice(0, 10)) - Date.parse(b.slice(0, 10))) / 86_400_000,
+    ),
+  );
+}
+
 export function RunDetailPage() {
   const { id } = useParams();
   // undefined = still loading; null = looked up and not found
@@ -36,6 +44,36 @@ export function RunDetailPage() {
     async () => (await db.runs.get(Number(id))) ?? null,
     [id],
   );
+  const linkOptions = useLiveQuery(async () => {
+    if (!run) return [];
+    const plan = await db.trainingPlans.where('status').equals('active').first();
+    if (plan?.id === undefined) return [];
+    const workouts = await db.plannedWorkouts
+      .where('planId')
+      .equals(plan.id)
+      .toArray();
+    return workouts
+      .filter((w) => w.type !== 'rest' && dayGap(w.date, run.date) <= 7)
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [run?.id, run?.plannedWorkoutId]);
+
+  async function handleRelink(value: string) {
+    if (!run?.id) return;
+    const newId = value ? Number(value) : undefined;
+    const oldId = run.plannedWorkoutId;
+    await db.transaction('rw', [db.runs, db.plannedWorkouts], async () => {
+      if (oldId !== undefined && oldId !== newId) {
+        await db.plannedWorkouts.update(oldId, { status: 'pending' });
+      }
+      if (newId !== undefined) {
+        await db.plannedWorkouts.update(newId, { status: 'completed' });
+      }
+      await db.runs.update(run.id!, {
+        plannedWorkoutId: newId,
+        matchStatus: newId !== undefined ? 'confirmed' : 'unplanned',
+      });
+    });
+  }
 
   if (run === undefined) return null; // initial DB read
 
@@ -100,6 +138,26 @@ export function RunDetailPage() {
         <blockquote className="rounded-lg border p-3 text-sm text-muted-foreground">
           {run.userNotes}
         </blockquote>
+      )}
+
+      {linkOptions !== undefined && linkOptions.length > 0 && (
+        <label className="block rounded-lg border p-3">
+          <span className="mb-1 block text-sm font-medium">
+            Planned workout
+          </span>
+          <select
+            value={run.plannedWorkoutId ?? ''}
+            onChange={(e) => void handleRelink(e.target.value)}
+            className="w-full rounded-md border bg-background p-2 text-sm"
+          >
+            <option value="">— not linked (unplanned run) —</option>
+            {linkOptions.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.date} · {w.type} · {w.description.slice(0, 60)}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
 
       <div className="space-y-6">
