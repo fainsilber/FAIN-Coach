@@ -52,10 +52,14 @@ Served from the `/FAIN-Coach/` subpath, so Vite `base`, the router `basename` (`
 - `PlanGoalInput.currentWeeklyKm` is canonical km — the wizard converts from miles on entry, and `buildPlanRequest` always states the unit so a bare "16" can't be misread.
 - Plan JSON `targetDistanceMeters` is always metres, whatever units the prose uses; the prompt says so explicitly.
 
-## Conventions for Sprint 7 (language & RTL — specified, not yet built)
+## Language & RTL (built — Sprint 7)
 
-[dev-plan §9](docs/dev-plan.md): no user-visible string hard-coded in a component; **logical** Tailwind utilities only (`ms-*`/`ps-*`/`text-start`, never `ml-*`/`pl-*`/`text-left`); wrap numerals and paces in `<bdi>` so RTL doesn't reorder them; keep plan JSON keys and enum values in English and localize only `description`.
+- `src/i18n/` owns it: `en.ts` is the source of truth for keys; every other catalog is `Record<MessageKey, string>` so a missing translation is a **compile error**. Adding a language = one catalog file + one `LANGUAGES` entry.
+- **No user-visible string hard-coded in a component** — always `t('key')` via `useT()`/`useI18n()`. Pure functions (prompts) take a `PromptLanguage` parameter instead of using React context.
+- **Logical** Tailwind utilities only (`ms-*`/`ps-*`/`text-start`, never `ml-*`/`pl-*`/`text-left`). Numeric compound lines get `dir="ltr"`; inline values inside text get `<bdi>`; chat bubbles and workout descriptions use `dir="auto"`; charts and the lap table stay `dir="ltr"`.
+- Coach prompts localize the demanded OUTPUT and 3-step headings, but instructions stay English; plan JSON keys and `type` enum values stay English — only `description` is localized.
+- Language is per profile (`settings.language`) with a device-level `localStorage` fallback (`fain-coach.language`) so the profile gate is localized before any profile is active.
 
 ## Status
 
-Sprints 1–6 complete, local profiles added, deployed to GitHub Pages. 98 tests passing. Next: **Sprint 7 — English/Hebrew with RTL** ([§9](docs/dev-plan.md)). Open backlog in §10.
+Sprints 1–7 complete, local profiles added, deployed to GitHub Pages. 109 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start all shipped. Open backlog in [dev-plan §10](docs/dev-plan.md) — Hebrew LLM output quality is the main untested item.

@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { useT } from '@/i18n';
 import { isKnownModel, type ModelGroup } from '@/llm/models';
 
 const CUSTOM = '__custom__';
@@ -24,6 +25,7 @@ export function ModelSelect({
   defaultModel: string;
   onChange: (value: string) => void;
 }) {
+  const t = useT();
   const id = useId();
   // An unset setting resolves to the default, so show that as the selection.
   const effective = value || defaultModel;
@@ -52,7 +54,7 @@ export function ModelSelect({
             ))}
           </optgroup>
         ))}
-        <option value={CUSTOM}>Custom…</option>
+        <option value={CUSTOM}>{t('model.custom')}</option>
       </select>
 
       {custom && (
@@ -62,14 +64,15 @@ export function ModelSelect({
           placeholder="e.g. mistralai/mistral-small-3.1-24b-instruct"
           autoComplete="off"
           spellCheck={false}
-          aria-label={`${label} — custom model id`}
+          dir="ltr"
+          aria-label={t('model.customAria', { label })}
           className="w-full rounded-md border bg-background p-2 text-sm"
         />
       )}
 
       <p className="text-xs text-muted-foreground">
-        {hint ? `${hint} ` : ''}Any model id from openrouter.ai/models works via
-        Custom.
+        {hint ? `${hint} ` : ''}
+        {t('model.customHint')}
       </p>
     </div>
   );

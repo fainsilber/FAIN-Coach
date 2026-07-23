@@ -16,6 +16,7 @@ A local-first AI running coach. Upload `.tcx` files from any GPS watch (Garmin, 
 - **Local profiles** — several runners can share one device, each with isolated data and an optional PIN. Note this is data *separation*, not encryption.
 - **Offline** — everything except LLM calls works without a network.
 - **Units & week start** — metric or imperial, and a week that starts Sunday or Monday. Switching only changes what you see: runs are always stored in metres, so backups stay portable between users of either system.
+- **English & Hebrew** — full right-to-left interface in Hebrew, per profile, and the AI coach replies in your language. More languages are a single translation file away.
 - **Backups** — versioned JSON export/import to move data between devices.
 
 ## Development
@@ -38,8 +39,7 @@ Data is per-device by design — there is no server and no sync. Each device sta
 
 ## Roadmap
 
-- ✅ **Units & week start** — metric or imperial (metric is the default), and a configurable first day of the week, defaulting to Sunday.
-- **Multi-language** — English and Hebrew with full right-to-left support. [Spec](docs/dev-plan.md)
+All planned sprints are complete. Open items live in [docs/dev-plan.md §10](docs/dev-plan.md) — notably a GPX parser for native Apple Watch exports, and validating Hebrew coaching quality across models.
 
 ## Docs
 

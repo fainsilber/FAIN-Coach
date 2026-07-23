@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { RunRecord } from '@/db/types';
 import {
   buildCoachContext,
+  buildPlanRequest,
   capMessages,
   CHAT_TOKEN_BUDGET,
   estimateTokens,
@@ -169,6 +170,42 @@ describe('buildCoachContext', () => {
   it('omits the upcoming-workouts section without a plan or workouts', () => {
     const ctx = buildCoachContext(undefined, [], undefined, []);
     expect(ctx).not.toContain('coming week');
+  });
+});
+
+describe('language support (FR-5.6)', () => {
+  it('demands Hebrew output with Hebrew section headings', () => {
+    const ctx = buildCoachContext(undefined, [], undefined, [], 'metric', 'he');
+    expect(ctx).toContain('ENTIRELY in Hebrew');
+    expect(ctx).toContain('התמונה הגדולה');
+    expect(ctx).toContain('ניתוח הנתונים');
+    expect(ctx).toContain('הצעד הבא');
+    // The metric-omission rule must survive localization
+    expect(ctx).toContain('never mention');
+  });
+
+  it('keeps English headings by default', () => {
+    const ctx = buildCoachContext(undefined, [], undefined);
+    expect(ctx).toContain('The Big Picture');
+    expect(ctx).not.toContain('Hebrew');
+  });
+
+  it('plan request localizes descriptions but pins JSON schema to English', () => {
+    const prompt = buildPlanRequest(
+      {
+        goal: 'Sub-50 10k',
+        raceDate: '2026-10-04',
+        currentWeeklyKm: 25,
+        daysPerWeek: 4,
+      },
+      [],
+      new Date('2026-07-23T12:00:00Z'),
+      'metric',
+      'he',
+    );
+    expect(prompt).toContain('in HEBREW');
+    expect(prompt).toContain('"type" values in English');
+    expect(prompt).toContain('easy|tempo|intervals|long|race');
   });
 });
 

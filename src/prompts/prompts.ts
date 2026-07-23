@@ -117,15 +117,37 @@ export function summarizeRun(
   return lines.join('\n');
 }
 
+/** Prompt-facing language type. Mirrors the UI languages but is kept as a
+ * plain union so prompt functions have no dependency on React code. */
+export type PromptLanguage = 'en' | 'he';
+
 /**
  * System prompt contract (FR-3.3): responses must follow the 3-step layout.
+ * FR-5.6: the response language follows the user's setting, with localized
+ * section headings. The INSTRUCTIONS stay in English — models follow English
+ * instructions most reliably — only the demanded output language changes.
  */
-export const COACH_SYSTEM_PROMPT = `You are FAIN Coach, an experienced running coach.
+export function coachSystemPrompt(language: PromptLanguage = 'en'): string {
+  const headings =
+    language === 'he'
+      ? {
+          big: 'התמונה הגדולה',
+          telemetry: 'ניתוח הנתונים',
+          next: 'הצעד הבא',
+        }
+      : { big: 'The Big Picture', telemetry: 'Telemetry Breakdown', next: 'Next Step' };
+  const languageRule =
+    language === 'he'
+      ? 'Respond ENTIRELY in Hebrew, using the exact Hebrew section headings below.'
+      : '';
+  return `You are FAIN Coach, an experienced running coach.
+${languageRule}
 Structure every response in exactly three sections:
-1. **The Big Picture** — what this workout accomplished.
-2. **Telemetry Breakdown** — bullet points about the metrics provided. Discuss ONLY metrics that appear in the summary; never mention, estimate, or comment on metrics that are absent.
-3. **Next Step** — one actionable recommendation for the next run.
+1. **${headings.big}** — what this workout accomplished.
+2. **${headings.telemetry}** — bullet points about the metrics provided. Discuss ONLY metrics that appear in the summary; never mention, estimate, or comment on metrics that are absent.
+3. **${headings.next}** — one actionable recommendation for the next run.
 Keep responses under 250 words. Be specific and concrete, never generic.`;
+}
 
 export interface AdherenceStats {
   completed: number;
@@ -152,9 +174,10 @@ export function buildCoachContext(
   adherence: AdherenceStats | undefined,
   upcomingWorkouts: PlannedWorkout[] = [],
   unit: UnitSystem = 'metric',
+  language: PromptLanguage = 'en',
 ): string {
   const lines: string[] = [
-    COACH_SYSTEM_PROMPT,
+    coachSystemPrompt(language),
     `Use ${unit === 'imperial' ? 'miles and min/mile' : 'kilometres and min/km'} for all distances and paces.`,
     '',
     'Context:',
@@ -212,6 +235,7 @@ export function buildPlanRequest(
   history: RunRecord[],
   today: Date = new Date(),
   unit: UnitSystem = 'metric',
+  language: PromptLanguage = 'en',
 ): string {
   const todayIso = today.toISOString().slice(0, 10);
   const weeks = weeksUntil(goalInput.raceDate, today);
@@ -257,6 +281,13 @@ export function buildPlanRequest(
     // the model happily writes a mile count into a field named "...Meters".
     '- targetDistanceMeters is ALWAYS in METRES, whatever units the descriptions use. targetDurationSeconds (seconds) optional.',
   );
+  if (language === 'he') {
+    // FR-5.6 + dev plan §9.4: prose localized, schema untouched. Translating
+    // the type enum would break parsePlanResponse's validation.
+    lines.push(
+      '- Write every "description" in HEBREW. Keep all JSON keys and the "type" values in English exactly as specified above.',
+    );
+  }
   return lines.join('\n');
 }
 

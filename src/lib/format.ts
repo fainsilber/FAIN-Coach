@@ -54,11 +54,11 @@ export function formatPace(
   return `${formatPaceValue(perUnit)} ${paceUnitLabel(unit)}`;
 }
 
-export function formatDate(iso: string): string {
+export function formatDate(iso: string, locale?: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleDateString(undefined, {
+    : d.toLocaleDateString(locale, {
         weekday: 'short',
         year: 'numeric',
         month: 'short',

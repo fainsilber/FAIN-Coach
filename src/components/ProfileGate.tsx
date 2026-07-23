@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useT } from '@/i18n';
 import {
   adoptLegacyDatabase,
   createProfile,
@@ -17,6 +18,7 @@ function enter(profile: Profile) {
 }
 
 export function ProfileGate() {
+  const t = useT();
   const [profiles, setProfiles] = useState<Profile[]>();
   const [unlocking, setUnlocking] = useState<Profile>();
   const [pinEntry, setPinEntry] = useState('');
@@ -48,11 +50,7 @@ export function ProfileGate() {
   }
 
   async function handleDelete(profile: Profile) {
-    if (
-      !window.confirm(
-        `Delete profile "${profile.name}" and ALL of its runs, plans, and chat history? This cannot be undone.`,
-      )
-    ) {
+    if (!window.confirm(t('gate.deleteConfirm', { name: profile.name }))) {
       return;
     }
     await deleteProfile(profile.id);
@@ -66,9 +64,11 @@ export function ProfileGate() {
   if (unlocking) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-4 p-6">
-        <h1 className="text-xl font-semibold">Hi {unlocking.name}</h1>
+        <h1 className="text-xl font-semibold">
+          {t('gate.hi', { name: unlocking.name })}
+        </h1>
         <label className="block">
-          <span className="mb-1 block text-sm">Enter your PIN</span>
+          <span className="mb-1 block text-sm">{t('gate.enterPin')}</span>
           <input
             type="password"
             inputMode="numeric"
@@ -84,10 +84,12 @@ export function ProfileGate() {
             className={inputClass}
           />
         </label>
-        {pinError && <p className="text-sm text-destructive">Wrong PIN.</p>}
+        {pinError && (
+          <p className="text-sm text-destructive">{t('gate.wrongPin')}</p>
+        )}
         <div className="flex gap-2">
           <button type="button" onClick={() => void handleUnlock()} className={primaryBtn}>
-            Unlock
+            {t('gate.unlock')}
           </button>
           <button
             type="button"
@@ -98,7 +100,7 @@ export function ProfileGate() {
             }}
             className="rounded-md border px-4 py-2 text-sm"
           >
-            Back
+            {t('gate.back')}
           </button>
         </div>
       </main>
@@ -109,7 +111,9 @@ export function ProfileGate() {
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 p-6">
       <div>
         <h1 className="text-2xl font-semibold">FAIN Coach</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Who's running?</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t('gate.whosRunning')}
+        </p>
       </div>
 
       {profiles.length > 0 && (
@@ -121,16 +125,16 @@ export function ProfileGate() {
                 onClick={() =>
                   profile.pinHash ? setUnlocking(profile) : enter(profile)
                 }
-                className="flex-1 rounded-lg border p-3 text-left font-medium hover:bg-accent"
+                className="flex-1 rounded-lg border p-3 text-start font-medium hover:bg-accent"
               >
                 {profile.name}
                 {profile.pinHash && (
-                  <span className="ml-2 text-xs text-muted-foreground">🔒</span>
+                  <span className="ms-2 text-xs text-muted-foreground">🔒</span>
                 )}
               </button>
               <button
                 type="button"
-                aria-label={`Delete profile ${profile.name}`}
+                aria-label={t('gate.deleteAria', { name: profile.name })}
                 onClick={() => void handleDelete(profile)}
                 className="rounded-md border px-3 py-3 text-sm text-muted-foreground hover:text-destructive"
               >
@@ -144,7 +148,7 @@ export function ProfileGate() {
       {creating ? (
         <div className="space-y-3 rounded-lg border p-4">
           <label className="block">
-            <span className="mb-1 block text-sm">Name</span>
+            <span className="mb-1 block text-sm">{t('gate.name')}</span>
             <input
               autoFocus
               value={newName}
@@ -154,7 +158,8 @@ export function ProfileGate() {
           </label>
           <label className="block">
             <span className="mb-1 block text-sm">
-              PIN <span className="text-muted-foreground">(optional)</span>
+              {t('gate.pin')}{' '}
+              <span className="text-muted-foreground">{t('gate.optional')}</span>
             </span>
             <input
               type="password"
@@ -164,8 +169,7 @@ export function ProfileGate() {
               className={inputClass}
             />
             <span className="mt-1 block text-xs text-muted-foreground">
-              A PIN deters casual access on a shared device. It does not
-              encrypt your data.
+              {t('gate.pinHint')}
             </span>
           </label>
           <div className="flex gap-2">
@@ -175,14 +179,14 @@ export function ProfileGate() {
               onClick={() => void handleCreate()}
               className={primaryBtn}
             >
-              Create profile
+              {t('gate.create')}
             </button>
             <button
               type="button"
               onClick={() => setCreating(false)}
               className="rounded-md border px-4 py-2 text-sm"
             >
-              Cancel
+              {t('gate.cancel')}
             </button>
           </div>
         </div>
@@ -192,7 +196,7 @@ export function ProfileGate() {
           onClick={() => setCreating(true)}
           className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground hover:bg-accent"
         >
-          + New profile
+          {t('gate.newProfile')}
         </button>
       )}
     </main>

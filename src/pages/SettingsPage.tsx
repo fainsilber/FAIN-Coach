@@ -14,10 +14,12 @@ import { ModelSelect } from '@/components/ModelSelect';
 import { CHAT_MODEL_GROUPS, PLAN_MODEL_GROUPS } from '@/llm/models';
 import { DEFAULT_UNIT_SYSTEM, type UnitSystem } from '@/lib/units';
 import { DEFAULT_WEEK_START, type WeekStart } from '@/lib/week';
+import { LANGUAGES, isLanguage, useI18n } from '@/i18n';
 
 const inputClass = 'w-full rounded-md border bg-background p-2 text-sm';
 
 export function SettingsPage() {
+  const { t, language, setLanguage } = useI18n();
   const settings = useLiveQuery(async () => {
     const rows = await db.settings.toArray();
     return Object.fromEntries(rows.map((r) => [r.key, r.value]));
@@ -58,9 +60,7 @@ export function SettingsPage() {
     const granted = await requestPersistentStorage();
     setStorage((s) => (s ? { ...s, persisted: granted } : s));
     setStatus(
-      granted
-        ? 'Persistent storage granted.'
-        : 'The browser declined for now — it usually grants this after the app is installed or used more.',
+      granted ? t('settings.persistGranted') : t('settings.persistDeclined'),
     );
     setTimeout(() => setStatus(undefined), 4000);
   }
@@ -91,7 +91,7 @@ export function SettingsPage() {
     await setSetting(SETTING_KEYS.reasoningModel, reasoningModel.trim());
     await setSetting(SETTING_KEYS.unitSystem, unitSystem);
     await setSetting(SETTING_KEYS.weekStart, weekStart);
-    setStatus('Settings saved.');
+    setStatus(t('settings.saved'));
     setTimeout(() => setStatus(undefined), 2500);
   }
 
@@ -112,20 +112,27 @@ export function SettingsPage() {
     setImportError(undefined);
     try {
       const envelope = parseBackup(await file.text());
-      const counts = `${envelope.tables.runs.length} runs, ${envelope.tables.trainingPlans.length} plans, ${envelope.tables.chatMessages.length} chat messages`;
+      const counts = t('settings.importCounts', {
+        runs: envelope.tables.runs.length,
+        plans: envelope.tables.trainingPlans.length,
+        messages: envelope.tables.chatMessages.length,
+      });
       if (
         !window.confirm(
-          `Import backup from ${envelope.exportedAt.slice(0, 10)} (${counts})?\n\nThis REPLACES all data currently on this device.`,
+          t('settings.importConfirm', {
+            date: envelope.exportedAt.slice(0, 10),
+            counts,
+          }),
         )
       ) {
         return;
       }
       await importBackup(envelope);
-      setStatus('Backup imported.');
+      setStatus(t('settings.imported'));
       setTimeout(() => setStatus(undefined), 2500);
     } catch (e) {
       setImportError(
-        e instanceof BackupError ? e.message : 'Failed to import backup.',
+        e instanceof BackupError ? e.message : t('settings.importFailed'),
       );
     }
   }
@@ -133,49 +140,66 @@ export function SettingsPage() {
   return (
     <section className="mx-auto max-w-xl space-y-8">
       <div>
-        <h2 className="text-xl font-semibold">Settings</h2>
+        <h2 className="text-xl font-semibold">{t('settings.title')}</h2>
         {status && <p className="mt-1 text-sm text-muted-foreground">{status}</p>}
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-medium">Preferences</h3>
+        <h3 className="font-medium">{t('settings.preferences')}</h3>
 
         <label className="block">
-          <span className="mb-1 block text-sm">Units</span>
+          <span className="mb-1 block text-sm">{t('settings.language')}</span>
+          <select
+            value={language}
+            onChange={(e) => {
+              // Applies immediately — no Save needed for language.
+              if (isLanguage(e.target.value)) void setLanguage(e.target.value);
+            }}
+            className={inputClass}
+          >
+            {LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-sm">{t('settings.units')}</span>
           <select
             value={unitSystem}
             onChange={(e) => setUnitSystem(e.target.value as UnitSystem)}
             className={inputClass}
           >
-            <option value="metric">Metric — kilometres, min/km</option>
-            <option value="imperial">Imperial — miles, min/mile</option>
+            <option value="metric">{t('settings.unitsMetric')}</option>
+            <option value="imperial">{t('settings.unitsImperial')}</option>
           </select>
           <span className="mt-1 block text-xs text-muted-foreground">
-            Changes how values are shown. Your runs are always stored in metres,
-            so switching never alters your data or your backups.
+            {t('settings.unitsHint')}
           </span>
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm">Week starts on</span>
+          <span className="mb-1 block text-sm">{t('settings.weekStart')}</span>
           <select
             value={weekStart}
             onChange={(e) => setWeekStart(e.target.value as WeekStart)}
             className={inputClass}
           >
-            <option value="sunday">Sunday</option>
-            <option value="monday">Monday</option>
+            <option value="sunday">{t('settings.sunday')}</option>
+            <option value="monday">{t('settings.monday')}</option>
           </select>
           <span className="mt-1 block text-xs text-muted-foreground">
-            Used to group your training plan into weeks.
+            {t('settings.weekStartHint')}
           </span>
         </label>
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-medium">AI Coach (OpenRouter)</h3>
+        <h3 className="font-medium">{t('settings.aiSection')}</h3>
         <label className="block">
-          <span className="mb-1 block text-sm">API key</span>
+          <span className="mb-1 block text-sm">{t('settings.apiKey')}</span>
           <div className="flex gap-2">
             <input
               type={showKey ? 'text' : 'password'}
@@ -183,6 +207,7 @@ export function SettingsPage() {
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="sk-or-…"
               autoComplete="off"
+              dir="ltr"
               className={inputClass}
             />
             <button
@@ -190,17 +215,17 @@ export function SettingsPage() {
               onClick={() => setShowKey((s) => !s)}
               className="rounded-md border px-3 text-sm"
             >
-              {showKey ? 'Hide' : 'Show'}
+              {showKey ? t('settings.hide') : t('settings.show')}
             </button>
           </div>
           <span className="mt-1 block text-xs text-muted-foreground">
-            Stored only in this browser. Sent only to openrouter.ai.
+            {t('settings.apiKeyHint')}
           </span>
         </label>
 
         <ModelSelect
-          label="Chat model"
-          hint="Used for post-run coaching."
+          label={t('settings.chatModel')}
+          hint={t('settings.chatModelHint')}
           groups={CHAT_MODEL_GROUPS}
           value={fastModel}
           defaultModel={DEFAULT_FAST_MODEL}
@@ -208,8 +233,8 @@ export function SettingsPage() {
         />
 
         <ModelSelect
-          label="Plan model"
-          hint="Used to generate training plans. Reasoning models produce the best plans but can take several minutes — instruct models finish in seconds and are more reliable on mobile."
+          label={t('settings.planModel')}
+          hint={t('settings.planModelHint')}
           groups={PLAN_MODEL_GROUPS}
           value={reasoningModel}
           defaultModel={DEFAULT_PLAN_MODEL}
@@ -221,30 +246,27 @@ export function SettingsPage() {
           onClick={() => void handleSave()}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
         >
-          Save settings
+          {t('settings.save')}
         </button>
       </div>
 
       <div className="space-y-3">
-        <h3 className="font-medium">Data</h3>
-        <p className="text-sm text-muted-foreground">
-          Backups contain the current profile's runs, plans, chat history,
-          and settings (including your API key) as a JSON file.
-        </p>
+        <h3 className="font-medium">{t('settings.data')}</h3>
+        <p className="text-sm text-muted-foreground">{t('settings.dataDesc')}</p>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => void handleExport()}
             className="rounded-md border px-4 py-2 text-sm font-medium"
           >
-            Export backup
+            {t('settings.export')}
           </button>
           <button
             type="button"
             onClick={() => importInputRef.current?.click()}
             className="rounded-md border px-4 py-2 text-sm font-medium"
           >
-            Import backup…
+            {t('settings.import')}
           </button>
           <input
             ref={importInputRef}
@@ -265,12 +287,18 @@ export function SettingsPage() {
 
       {storage && (
         <div className="space-y-2">
-          <h3 className="font-medium">Storage</h3>
+          <h3 className="font-medium">{t('settings.storage')}</h3>
           <p className="text-sm text-muted-foreground">
-            Using {storage.usageMB} MB of {storage.quotaMB} MB available ·{' '}
+            <bdi>
+              {t('settings.storageLine', {
+                usage: storage.usageMB,
+                quota: storage.quotaMB,
+              })}
+            </bdi>{' '}
+            ·{' '}
             {storage.persisted
-              ? 'protected from browser eviction'
-              : 'not yet protected from browser eviction'}
+              ? t('settings.protected')
+              : t('settings.notProtected')}
           </p>
           {!storage.persisted && (
             <button
@@ -278,46 +306,35 @@ export function SettingsPage() {
               onClick={() => void handleRequestPersist()}
               className="rounded-md border px-4 py-2 text-sm font-medium"
             >
-              Request persistent storage
+              {t('settings.requestPersist')}
             </button>
           )}
         </div>
       )}
 
       <div className="space-y-3">
-        <h3 className="font-medium text-destructive">Danger zone</h3>
-        <p className="text-sm text-muted-foreground">
-          Wipe removes this profile's runs, plans, chat history, and settings
-          permanently.
-        </p>
+        <h3 className="font-medium text-destructive">{t('settings.danger')}</h3>
+        <p className="text-sm text-muted-foreground">{t('settings.dangerDesc')}</p>
         <button
           type="button"
           onClick={() => void handleWipe()}
           className="rounded-md border border-destructive/40 px-4 py-2 text-sm font-medium text-destructive"
         >
-          Wipe all data…
+          {t('settings.wipe')}
         </button>
       </div>
     </section>
   );
 
   async function handleWipe() {
-    if (
-      window.confirm(
-        'Export a backup before wiping? (Recommended — this is your last chance.)',
-      )
-    ) {
+    if (window.confirm(t('settings.wipeExportPrompt'))) {
       await handleExport();
     }
-    if (
-      !window.confirm(
-        'Really delete ALL data for this profile — runs, plans, chat, and settings? This cannot be undone.',
-      )
-    ) {
+    if (!window.confirm(t('settings.wipeConfirm'))) {
       return;
     }
     await wipeAllData();
-    setStatus('All data wiped.');
+    setStatus(t('settings.wiped'));
     setTimeout(() => setStatus(undefined), 2500);
   }
 }

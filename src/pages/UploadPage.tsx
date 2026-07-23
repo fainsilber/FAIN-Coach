@@ -4,6 +4,7 @@ import { PostRunForm, type PostRunDetails } from '@/components/PostRunForm';
 import { StatGrid } from '@/components/StatGrid';
 import { db, requestPersistentStorage } from '@/db/db';
 import type { PlannedWorkout } from '@/db/types';
+import { localeOf, useI18n } from '@/i18n';
 import { formatDistance, formatDuration, formatPace } from '@/lib/format';
 import { usePreferences } from '@/lib/usePreferences';
 import { findMatchCandidate } from '@/lib/matching';
@@ -27,13 +28,14 @@ export function UploadPage() {
   const [saving, setSaving] = useState(false);
   const [matchAccepted, setMatchAccepted] = useState(true);
   const { unitSystem } = usePreferences();
+  const { t, language } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   async function handleFile(file: File) {
     setError(undefined);
     if (!file.name.toLowerCase().endsWith('.tcx')) {
-      setError(`"${file.name}" is not a .tcx file.`);
+      setError(t('upload.notTcx', { name: file.name }));
       return;
     }
     try {
@@ -50,8 +52,8 @@ export function UploadPage() {
     } catch (e) {
       setError(
         e instanceof TcxParseError
-          ? `Could not parse ${file.name}: ${e.message}`
-          : `Unexpected error reading ${file.name}.`,
+          ? t('upload.parseFailed', { name: file.name, message: e.message })
+          : t('upload.readFailed', { name: file.name }),
       );
     }
   }
@@ -90,7 +92,7 @@ export function UploadPage() {
       });
       navigate('/chat', { state: { pendingReply: true } });
     } catch {
-      setError('Failed to save the run to local storage.');
+      setError(t('upload.saveFailed'));
       setSaving(false);
     }
   }
@@ -98,40 +100,43 @@ export function UploadPage() {
   if (state.step === 'review') {
     const { run, fileName } = state;
     const stats: Array<[string, string]> = [
-      ['Distance', formatDistance(run.totalDistanceMeters, unitSystem)],
-      ['Time', formatDuration(run.totalDurationSeconds)],
+      [t('stat.distance'), formatDistance(run.totalDistanceMeters, unitSystem)],
+      [t('stat.time'), formatDuration(run.totalDurationSeconds)],
       [
-        'Pace',
+        t('stat.pace'),
         formatPace(run.totalDistanceMeters, run.totalDurationSeconds, unitSystem),
       ],
-      ['Laps', String(run.laps.length)],
+      [t('stat.laps'), String(run.laps.length)],
     ];
     if (run.avgHeartRate !== undefined)
-      stats.push(['Avg HR', `${run.avgHeartRate} bpm`]);
+      stats.push([t('stat.avgHr'), `${run.avgHeartRate} bpm`]);
     if (run.maxHeartRate !== undefined)
-      stats.push(['Max HR', `${run.maxHeartRate} bpm`]);
+      stats.push([t('stat.maxHr'), `${run.maxHeartRate} bpm`]);
     if (run.avgCadence !== undefined)
-      stats.push(['Cadence', `${run.avgCadence} spm`]);
-    if (run.avgPower !== undefined) stats.push(['Power', `${run.avgPower} W`]);
+      stats.push([t('stat.cadence'), `${run.avgCadence} spm`]);
+    if (run.avgPower !== undefined)
+      stats.push([t('stat.power'), `${run.avgPower} W`]);
 
     return (
       <section className="mx-auto max-w-xl space-y-6">
         <div>
-          <h2 className="text-xl font-semibold">How was this run?</h2>
+          <h2 className="text-xl font-semibold">{t('upload.reviewTitle')}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {fileName} · {new Date(run.date).toLocaleString()}
+            <bdi>{fileName}</bdi> ·{' '}
+            <bdi>{new Date(run.date).toLocaleString(localeOf(language))}</bdi>
           </p>
         </div>
         <StatGrid stats={stats} />
         {state.match && (
           <div className="rounded-lg border border-primary/40 p-3">
             <p className="text-sm">
-              Looks like your planned <strong>{state.match.type}</strong> for{' '}
-              {new Date(`${state.match.date}T12:00:00Z`).toLocaleDateString(
-                undefined,
-                { weekday: 'long' },
-              )}
-              : “{state.match.description}” — was it?
+              {t('upload.matchQuestion', {
+                type: t(`type.${state.match.type}`),
+                weekday: new Date(
+                  `${state.match.date}T12:00:00Z`,
+                ).toLocaleDateString(localeOf(language), { weekday: 'long' }),
+                description: state.match.description,
+              })}
             </p>
             <div className="mt-2 flex gap-2">
               <button
@@ -143,7 +148,7 @@ export function UploadPage() {
                   matchAccepted && 'bg-primary text-primary-foreground',
                 )}
               >
-                Yes, that's it
+                {t('upload.matchYes')}
               </button>
               <button
                 type="button"
@@ -154,7 +159,7 @@ export function UploadPage() {
                   !matchAccepted && 'bg-primary text-primary-foreground',
                 )}
               >
-                No, unplanned run
+                {t('upload.matchNo')}
               </button>
             </div>
           </div>
@@ -166,7 +171,7 @@ export function UploadPage() {
           className="text-sm text-muted-foreground underline"
           onClick={() => setState({ step: 'idle' })}
         >
-          Discard and choose another file
+          {t('upload.discard')}
         </button>
       </section>
     );
@@ -174,7 +179,7 @@ export function UploadPage() {
 
   return (
     <section className="mx-auto max-w-xl space-y-4">
-      <h2 className="text-xl font-semibold">Upload Run</h2>
+      <h2 className="text-xl font-semibold">{t('upload.title')}</h2>
       <div
         role="button"
         tabIndex={0}
@@ -198,10 +203,8 @@ export function UploadPage() {
           dragging ? 'border-primary bg-accent' : 'hover:bg-accent/50',
         )}
       >
-        <p className="font-medium">Drop a .tcx file here</p>
-        <p className="text-sm text-muted-foreground">
-          or tap to choose a file exported from your watch
-        </p>
+        <p className="font-medium">{t('upload.dropHere')}</p>
+        <p className="text-sm text-muted-foreground">{t('upload.tapToChoose')}</p>
         <input
           ref={fileInputRef}
           type="file"
@@ -215,10 +218,7 @@ export function UploadPage() {
         />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <p className="text-xs text-muted-foreground">
-        Parsing happens entirely in your browser — the file never leaves this
-        device.
-      </p>
+      <p className="text-xs text-muted-foreground">{t('upload.privacyNote')}</p>
     </section>
   );
 }

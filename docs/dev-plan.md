@@ -332,10 +332,19 @@ AI/Data/Storage groups.
   the same boundaries.
 - Prompts carry the user's unit system and coaching replies use it.
 
-## 9. Sprint 7 — Multi-language (English + Hebrew, RTL)
+## 9. Sprint 7 — Multi-language (English + Hebrew, RTL) ✅ (implemented 2026-07-23)
 
-Implements the language half of PRD §4.5 (FR-5.1 – 5.6, FR-5.11). Depends on
-Sprint 6 only in that the formatting layer should be settled first.
+Implements the language half of PRD §4.5 (FR-5.1 – 5.6, FR-5.11).
+
+**Outcome**: met. Verified in-browser at 375 px: switching to Hebrew flips
+`<html dir="rtl" lang="he">`, the nav mirrors (History at the right edge),
+every audited page renders Hebrew, numeric compounds ("21.29 km · 2:03:38 ·
+5:48 /km") stay in LTR order via `dir="ltr"`/`<bdi>`, the lap table keeps LTR
+column flow with Hebrew headers, and no horizontal scroll appears. The profile
+gate itself renders Hebrew after a full reload via the device-level fallback.
+Adding a language = one catalog file + one entry in `LANGUAGES`.
+**Untested live**: actual Hebrew coach output quality (needs a real key +
+model call — see the §10 risk).
 
 ### 9.1 Language setting & the profile-gate problem
 

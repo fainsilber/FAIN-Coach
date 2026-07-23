@@ -1,7 +1,11 @@
 import type { PlannedWorkout, RunRecord, WorkoutType } from '@/db/types';
 import type { LlmClient } from '@/llm/LlmClient';
 import type { UnitSystem } from '@/lib/units';
-import { buildPlanRequest, type PlanGoalInput } from './prompts';
+import {
+  buildPlanRequest,
+  type PlanGoalInput,
+  type PromptLanguage,
+} from './prompts';
 
 // Reasoning models sometimes wrap JSON in prose or fences, or return a
 // malformed plan — strict validation plus ONE automatic retry with error
@@ -120,6 +124,7 @@ export async function requestPlanWorkouts(
   today: Date = new Date(),
   onProgress?: (progress: PlanProgress) => void,
   unit: UnitSystem = 'metric',
+  language: PromptLanguage = 'en',
 ): Promise<GeneratedPlan> {
   let chars = 0;
   const callbacks = (retrying: boolean) => ({
@@ -133,7 +138,7 @@ export async function requestPlanWorkouts(
     },
   });
 
-  const prompt = buildPlanRequest(goalInput, history, today, unit);
+  const prompt = buildPlanRequest(goalInput, history, today, unit, language);
   const firstCb = callbacks(false);
   const first = await client.chat(
     [{ role: 'user', content: prompt }],

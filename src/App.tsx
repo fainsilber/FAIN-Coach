@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
 import { ProfileGate } from './components/ProfileGate';
+import { useT } from './i18n';
+import type { MessageKey } from './i18n/en';
 import { clearActiveProfile, getActiveProfile } from './lib/profiles';
 import { ChatPage } from './pages/ChatPage';
 import { HistoryPage } from './pages/HistoryPage';
@@ -13,15 +15,16 @@ const RunDetailPage = lazy(() =>
   import('./pages/RunDetailPage').then((m) => ({ default: m.RunDetailPage })),
 );
 
-const navItems = [
-  { to: '/', label: 'History' },
-  { to: '/upload', label: 'Upload' },
-  { to: '/chat', label: 'Coach' },
-  { to: '/plan', label: 'Plan' },
-  { to: '/settings', label: 'Settings' },
+const navItems: Array<{ to: string; labelKey: MessageKey }> = [
+  { to: '/', labelKey: 'nav.history' },
+  { to: '/upload', labelKey: 'nav.upload' },
+  { to: '/chat', labelKey: 'nav.coach' },
+  { to: '/plan', labelKey: 'nav.plan' },
+  { to: '/settings', labelKey: 'nav.settings' },
 ];
 
 export function App() {
+  const t = useT();
   const profile = getActiveProfile();
 
   if (!profile) return <ProfileGate />;
@@ -38,9 +41,9 @@ export function App() {
               window.location.reload();
             }}
             className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent"
-            title="Switch profile"
+            title={t('app.switchProfileTitle')}
           >
-            {profile.name} · switch
+            {t('app.switchProfile', { name: profile.name })}
           </button>
         </header>
         <main className="flex flex-1 flex-col p-4">
@@ -61,7 +64,7 @@ export function App() {
           </Routes>
         </main>
         <nav className="sticky bottom-0 flex border-t bg-background pb-[env(safe-area-inset-bottom)]">
-          {navItems.map(({ to, label }) => (
+          {navItems.map(({ to, labelKey }) => (
             <NavLink
               key={to}
               to={to}
@@ -69,7 +72,7 @@ export function App() {
                 `min-h-11 flex-1 py-3 text-center text-sm ${isActive ? 'font-semibold' : 'text-muted-foreground'}`
               }
             >
-              {label}
+              {t(labelKey)}
             </NavLink>
           ))}
         </nav>

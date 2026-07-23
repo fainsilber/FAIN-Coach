@@ -8,7 +8,9 @@ import { LlmError } from '@/llm/LlmClient';
 import { DEFAULT_PLAN_MODEL, OpenRouterClient } from '@/llm/openrouter';
 import { requestPlanWorkouts, PlanParseError } from '@/prompts/planResponse';
 import { weeksUntil } from '@/prompts/prompts';
-import { formatDistanceShort } from '@/lib/format';
+import { localeOf, useI18n, type Language } from '@/i18n';
+import type { MessageKey } from '@/i18n/en';
+import { formatDate, formatDistanceShort } from '@/lib/format';
 import { usePreferences } from '@/lib/usePreferences';
 import { groupByWeek } from '@/lib/week';
 import { distanceUnitLabel, toMeters, METERS_PER_KM } from '@/lib/units';
@@ -25,15 +27,15 @@ const TYPE_STYLES: Record<PlannedWorkout['type'], string> = {
   rest: 'bg-secondary/50',
 };
 
-function weekHeading(weekStartDate: string): string {
-  const d = new Date(`${weekStartDate}T12:00:00Z`);
-  return `Week of ${d.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  })}`;
+function weekHeadingDate(weekStartDate: string, language: Language): string {
+  return new Date(`${weekStartDate}T12:00:00Z`).toLocaleDateString(
+    localeOf(language),
+    { month: 'short', day: 'numeric' },
+  );
 }
 
 function PlanWizard() {
+  const { t, language } = useI18n();
   const { unitSystem } = usePreferences();
   const [goal, setGoal] = useState('');
   const [raceDate, setRaceDate] = useState('');
@@ -41,7 +43,7 @@ function PlanWizard() {
   const [daysPerWeek, setDaysPerWeek] = useState('4');
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string>();
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<MessageKey>();
 
   const valid =
     goal.trim() &&
@@ -56,7 +58,7 @@ function PlanWizard() {
     try {
       const key = await getSetting(SETTING_KEYS.apiKey);
       if (!key) {
-        setError('Add your OpenRouter API key in Settings first.');
+        setError('plan.needKey');
         return;
       }
       const model =
@@ -76,15 +78,22 @@ function PlanWizard() {
         history,
         new Date(),
         ({ phase, chars }) => {
-          const label =
+          const label = t(
             phase === 'reasoning'
-              ? 'Model is thinking'
+              ? 'plan.progressThinking'
               : phase === 'retrying'
-                ? 'Response was malformed — retrying'
-                : 'Writing your plan';
-          setProgress(`${label}… (${chars.toLocaleString()} characters)`);
+                ? 'plan.progressRetrying'
+                : 'plan.progressWriting',
+          );
+          setProgress(
+            t('plan.progressLine', {
+              label,
+              chars: chars.toLocaleString(localeOf(language)),
+            }),
+          );
         },
         unitSystem,
+        language,
       );
       const planId = (await db.trainingPlans.add({
         createdAt: new Date().toISOString(),
@@ -98,17 +107,17 @@ function PlanWizard() {
       );
     } catch (e) {
       if (e instanceof PlanParseError) {
-        setError(
-          'The model could not produce a valid plan (even after a retry). Try again, or pick a different reasoning model in Settings.',
-        );
+        setError('plan.errMalformed');
       } else if (e instanceof LlmError) {
         setError(
           e.code === 'invalid-key'
-            ? 'OpenRouter rejected the request — check your API key in Settings.'
-            : e.message,
+            ? 'chat.errInvalidKey'
+            : e.code === 'rate-limit'
+              ? 'chat.errRateLimit'
+              : 'chat.errNetwork',
         );
       } else {
-        setError('Plan generation failed unexpectedly.');
+        setError('plan.errGeneric');
       }
     } finally {
       setBusy(false);
@@ -119,23 +128,22 @@ function PlanWizard() {
   return (
     <section className="mx-auto w-full max-w-xl space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">Create a Training Plan</h2>
+        <h2 className="text-xl font-semibold">{t('plan.createTitle')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          The reasoning model builds a week-by-week plan from your goal and
-          recent runs.
+          {t('plan.createSubtitle')}
         </p>
       </div>
       <label className="block">
-        <span className="mb-1 block text-sm">Goal</span>
+        <span className="mb-1 block text-sm">{t('plan.goal')}</span>
         <input
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
-          placeholder="e.g. Sub-50 10k"
+          placeholder={t('plan.goalPlaceholder')}
           className={inputClass}
         />
       </label>
       <label className="block">
-        <span className="mb-1 block text-sm">Race date</span>
+        <span className="mb-1 block text-sm">{t('plan.raceDate')}</span>
         <input
           type="date"
           value={raceDate}
@@ -147,7 +155,7 @@ function PlanWizard() {
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="mb-1 block text-sm">
-            Current {distanceUnitLabel(unitSystem)}/week
+            {t('plan.currentVolume', { unit: distanceUnitLabel(unitSystem) })}
           </span>
           <input
             type="number"
@@ -158,7 +166,7 @@ function PlanWizard() {
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm">Runs per week</span>
+          <span className="mb-1 block text-sm">{t('plan.runsPerWeek')}</span>
           <input
             type="number"
             min="1"
@@ -169,20 +177,18 @@ function PlanWizard() {
           />
         </label>
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-sm text-destructive">{t(error)}</p>}
       <button
         type="button"
         disabled={!valid || busy}
         onClick={() => void handleGenerate()}
         className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
       >
-        {busy ? 'Building your plan…' : 'Generate plan'}
+        {busy ? t('plan.generating') : t('plan.generate')}
       </button>
       {busy && (
         <p className="text-sm text-muted-foreground" aria-live="polite">
-          {progress ?? 'Contacting the model…'} Reasoning models can take
-          several minutes — keep this screen open, as phones pause background
-          tabs. Pick an instruct model in Settings for a result in seconds.
+          {progress ?? t('plan.contacting')} {t('plan.patienceNote')}
         </p>
       )}
     </section>
@@ -190,6 +196,7 @@ function PlanWizard() {
 }
 
 export function PlanPage() {
+  const { t, language } = useI18n();
   const { unitSystem, weekStart } = usePreferences();
   // undefined = still loading; null = no active plan
   const plan = useLiveQuery(async () =>
@@ -210,11 +217,7 @@ export function PlanPage() {
   const weeks = groupByWeek(workouts, (w) => w.date, weekStart);
 
   async function handleArchive() {
-    if (
-      !window.confirm(
-        'Archive this plan and start fresh? The plan and its history stay in your data but are no longer active.',
-      )
-    ) {
+    if (!window.confirm(t('plan.archiveConfirm'))) {
       return;
     }
     if (plan?.id !== undefined) {
@@ -227,7 +230,10 @@ export function PlanPage() {
       <div>
         <h2 className="text-xl font-semibold">{plan.goal}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {plan.weeks}-week plan · created {plan.createdAt.slice(0, 10)}
+          {t('plan.header', {
+            weeks: plan.weeks,
+            date: formatDate(plan.createdAt, localeOf(language)),
+          })}
         </p>
       </div>
 
@@ -235,7 +241,9 @@ export function PlanPage() {
         {weeks.map(({ weekStart: weekStartDate, items }) => (
           <div key={weekStartDate}>
             <h3 className="mb-1.5 text-sm font-medium text-muted-foreground">
-              {weekHeading(weekStartDate)}
+              {t('plan.weekOf', {
+                date: weekHeadingDate(weekStartDate, language),
+              })}
             </h3>
             <ul className="space-y-1.5">
               {items.map((w) => (
@@ -250,16 +258,16 @@ export function PlanPage() {
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium">
                       {new Date(`${w.date}T12:00:00Z`).toLocaleDateString(
-                        undefined,
+                        localeOf(language),
                         { weekday: 'short', month: 'short', day: 'numeric' },
                       )}
                       <span
                         className={cn(
-                          'ml-2 rounded-full px-2 py-0.5 text-xs',
+                          'ms-2 rounded-full px-2 py-0.5 text-xs',
                           TYPE_STYLES[w.type],
                         )}
                       >
-                        {w.type}
+                        {t(`type.${w.type}`)}
                       </span>
                     </span>
                     <select
@@ -274,15 +282,24 @@ export function PlanPage() {
                     >
                       {STATUS_OPTIONS.map((s) => (
                         <option key={s} value={s}>
-                          {s}
+                          {t(`status.${s}`)}
                         </option>
                       ))}
                     </select>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="mt-1 text-sm text-muted-foreground" dir="auto">
                     {w.description}
-                    {w.targetDistanceMeters !== undefined &&
-                      ` · ${formatDistanceShort(w.targetDistanceMeters, unitSystem)}`}
+                    {w.targetDistanceMeters !== undefined && (
+                      <>
+                        {' · '}
+                        <bdi>
+                          {formatDistanceShort(
+                            w.targetDistanceMeters,
+                            unitSystem,
+                          )}
+                        </bdi>
+                      </>
+                    )}
                   </p>
                 </li>
               ))}
@@ -296,7 +313,7 @@ export function PlanPage() {
         onClick={() => void handleArchive()}
         className="rounded-md border px-4 py-2 text-sm text-muted-foreground hover:text-destructive"
       >
-        Archive plan & start a new one
+        {t('plan.archive')}
       </button>
     </section>
   );

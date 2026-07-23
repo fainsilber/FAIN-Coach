@@ -32,9 +32,16 @@ export function LapChart({
   return (
     <figure>
       <figcaption className="mb-1 text-sm font-medium">
-        {title} <span className="font-normal text-muted-foreground">({unit})</span>
+        {title}{' '}
+        <span className="font-normal text-muted-foreground">
+          (<bdi>{unit}</bdi>)
+        </span>
       </figcaption>
-      <ResponsiveContainer width="100%" height={200}>
+      {/* Charts stay LTR in every language: the lap axis is a numeric
+          sequence, and Recharts does not mirror. The caption above follows
+          the UI direction. */}
+      <div dir="ltr">
+        <ResponsiveContainer width="100%" height={200}>
         <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
           <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
           <XAxis
@@ -69,7 +76,8 @@ export function LapChart({
             maxBarSize={24}
           />
         </BarChart>
-      </ResponsiveContainer>
+        </ResponsiveContainer>
+      </div>
     </figure>
   );
 }

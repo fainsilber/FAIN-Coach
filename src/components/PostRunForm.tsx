@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FEEL_TAGS, type FeelTag } from '@/db/types';
+import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 
 export interface PostRunDetails {
@@ -17,6 +18,7 @@ export function PostRunForm({
   onSave: (details: PostRunDetails) => void;
   saving: boolean;
 }) {
+  const t = useT();
   const [rpe, setRpe] = useState<number>();
   const [feelTags, setFeelTags] = useState<FeelTag[]>([]);
   const [notes, setNotes] = useState('');
@@ -36,7 +38,7 @@ export function PostRunForm({
     >
       <fieldset>
         <legend className="mb-2 text-sm font-medium">
-          Effort (RPE 1 = easy · 10 = all-out)
+          {t('form.rpeLegend')}
         </legend>
         <div className="flex flex-wrap gap-1.5">
           {RPE_VALUES.map((value) => (
@@ -59,7 +61,9 @@ export function PostRunForm({
       </fieldset>
 
       <fieldset>
-        <legend className="mb-2 text-sm font-medium">How did it feel?</legend>
+        <legend className="mb-2 text-sm font-medium">
+          {t('form.feelLegend')}
+        </legend>
         <div className="flex flex-wrap gap-1.5">
           {FEEL_TAGS.map((tag) => (
             <button
@@ -74,19 +78,19 @@ export function PostRunForm({
                   : 'bg-background hover:bg-accent',
               )}
             >
-              {tag.replace('-', ' ')}
+              {t(`feel.${tag}`)}
             </button>
           ))}
         </div>
       </fieldset>
 
       <label className="block">
-        <span className="mb-2 block text-sm font-medium">Notes</span>
+        <span className="mb-2 block text-sm font-medium">{t('form.notes')}</span>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
-          placeholder="Anything the coach should know — route, weather, niggles…"
+          placeholder={t('form.notesPlaceholder')}
           className="w-full rounded-md border bg-background p-2 text-sm"
         />
       </label>
@@ -96,7 +100,7 @@ export function PostRunForm({
         disabled={saving}
         className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
       >
-        {saving ? 'Saving…' : 'Save run'}
+        {saving ? t('form.saving') : t('form.save')}
       </button>
     </form>
   );

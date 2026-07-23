@@ -7,27 +7,30 @@ import type { PlannedWorkout } from '@/db/types';
 import { computeAdherence } from '@/lib/matching';
 import { getPreferences } from '@/db/settings';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n';
+import type { MessageKey } from '@/i18n/en';
 import { LlmError } from '@/llm/LlmClient';
 import { DEFAULT_FAST_MODEL, OpenRouterClient } from '@/llm/openrouter';
 import { buildCoachContext, capMessages } from '@/prompts/prompts';
 
-function friendlyError(e: unknown): string {
+function errorKey(e: unknown): MessageKey {
   if (e instanceof LlmError) {
     switch (e.code) {
       case 'invalid-key':
-        return 'OpenRouter rejected the request — check your API key in Settings.';
+        return 'chat.errInvalidKey';
       case 'rate-limit':
-        return 'Rate limited by OpenRouter. Wait a moment and retry.';
+        return 'chat.errRateLimit';
       case 'network':
-        return 'Could not reach OpenRouter — check your connection.';
+        return 'chat.errNetwork';
       default:
-        return e.message;
+        return 'chat.errGeneric';
     }
   }
-  return 'Something went wrong talking to the coach.';
+  return 'chat.errGeneric';
 }
 
 export function ChatPage() {
+  const { t, language } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
   const messages = useLiveQuery(() =>
@@ -40,7 +43,7 @@ export function ChatPage() {
   const [draft, setDraft] = useState('');
   const [streamText, setStreamText] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<MessageKey>();
   const [online, setOnline] = useState(navigator.onLine);
   const autoFired = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -104,6 +107,7 @@ export function ChatPage() {
         adherence,
         upcoming,
         unitSystem,
+        language,
       );
       const outgoing = capMessages(
         system,
@@ -122,10 +126,10 @@ export function ChatPage() {
           content,
         });
       } else {
-        setError('The model returned an empty response. Try again.');
+        setError('chat.errEmpty');
       }
     } catch (e) {
-      setError(friendlyError(e));
+      setError(errorKey(e));
     } finally {
       setBusy(false);
       setStreamText(undefined);
@@ -164,33 +168,35 @@ export function ChatPage() {
     <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
       {!online && (
         <p className="mb-3 rounded-md border bg-secondary/50 p-2 text-center text-sm text-muted-foreground">
-          You're offline — chat needs a network connection. Your run history
-          still works.
+          {t('chat.offline')}
         </p>
       )}
       {online && hasKey === false && (
         <p className="mb-3 rounded-md border bg-secondary/50 p-2 text-center text-sm">
-          Add your OpenRouter API key in{' '}
+          {t('chat.addKeyBefore')}{' '}
           <Link to="/settings" className="underline">
-            Settings
+            {t('chat.addKeyLink')}
           </Link>{' '}
-          to chat with the coach.
+          {t('chat.addKeyAfter')}
         </p>
       )}
 
       <div className="flex-1 space-y-3 overflow-y-auto pb-4">
         {messages.length === 0 && streamText === undefined && (
           <p className="pt-8 text-center text-sm text-muted-foreground">
-            Upload a run or ask a training question to start the conversation.
+            {t('chat.empty')}
           </p>
         )}
         {messages.map((m) => (
           <div
             key={m.id}
+            // dir="auto": message content may be in either language regardless
+            // of the UI language (old messages, user's own writing)
+            dir="auto"
             className={cn(
               'max-w-[85%] whitespace-pre-wrap rounded-lg p-3 text-sm',
               m.role === 'user'
-                ? 'ml-auto bg-primary text-primary-foreground'
+                ? 'ms-auto bg-primary text-primary-foreground'
                 : 'border bg-background',
             )}
           >
@@ -198,22 +204,25 @@ export function ChatPage() {
           </div>
         ))}
         {streamText !== undefined && (
-          <div className="max-w-[85%] whitespace-pre-wrap rounded-lg border p-3 text-sm">
+          <div
+            dir="auto"
+            className="max-w-[85%] whitespace-pre-wrap rounded-lg border p-3 text-sm"
+          >
             {streamText || (
-              <span className="text-muted-foreground">Coach is thinking…</span>
+              <span className="text-muted-foreground">{t('chat.thinking')}</span>
             )}
           </div>
         )}
         {error && (
           <div className="rounded-md border border-destructive/40 p-3 text-sm text-destructive">
-            {error}
+            {t(error)}
             {canRetry && (
               <button
                 type="button"
                 onClick={() => void requestReply()}
-                className="ml-2 underline"
+                className="ms-2 underline"
               >
-                Retry
+                {t('chat.retry')}
               </button>
             )}
           </div>
@@ -231,7 +240,7 @@ export function ChatPage() {
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Ask your coach…"
+          placeholder={t('chat.placeholder')}
           disabled={!online}
           className="flex-1 rounded-md border bg-background p-2 text-sm"
         />
@@ -240,7 +249,7 @@ export function ChatPage() {
           disabled={busy || !online || !draft.trim()}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
         >
-          {busy ? '…' : 'Send'}
+          {busy ? '…' : t('chat.send')}
         </button>
       </form>
     </section>

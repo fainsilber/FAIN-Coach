@@ -209,6 +209,6 @@ breakdown. Status as of 2026-07-22:
 | — | Local profiles (§4.4) | ✅ Complete |
 | — | Deployment to GitHub Pages | ✅ Live |
 | 6 | Units & week start (§4.5, FR-5.7–5.14) | ✅ Complete |
-| 7 | Multi-language: English + Hebrew RTL (§4.5, FR-5.1–5.6) | ▶ Specified, not started |
+| 7 | Multi-language: English + Hebrew RTL (§4.5, FR-5.1–5.6) | ✅ Complete |
 
 ---

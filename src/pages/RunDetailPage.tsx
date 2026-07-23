@@ -3,7 +3,11 @@ import { Link, useParams } from 'react-router-dom';
 import { LapChart, type LapPoint } from '@/components/LapChart';
 import { StatGrid } from '@/components/StatGrid';
 import { db } from '@/db/db';
-import type { LapSplit } from '@/db/types';
+import { FEEL_TAGS, type FeelTag, type LapSplit } from '@/db/types';
+
+function isFeelTag(tag: string): tag is FeelTag {
+  return (FEEL_TAGS as readonly string[]).includes(tag);
+}
 import {
   formatDate,
   formatDistance,
@@ -12,6 +16,7 @@ import {
   formatPace,
   formatPaceValue,
 } from '@/lib/format';
+import { localeOf, useI18n } from '@/i18n';
 import { usePreferences } from '@/lib/usePreferences';
 import {
   distanceUnitLabel,
@@ -51,6 +56,7 @@ function dayGap(a: string, b: string): number {
 }
 
 export function RunDetailPage() {
+  const { t, language } = useI18n();
   const { unitSystem } = usePreferences();
   const { id } = useParams();
   // undefined = still loading; null = looked up and not found
@@ -94,30 +100,31 @@ export function RunDetailPage() {
   if (run === null) {
     return (
       <section className="mx-auto max-w-2xl">
-        <p className="text-muted-foreground">Run not found.</p>
+        <p className="text-muted-foreground">{t('run.notFound')}</p>
         <Link to="/" className="text-sm underline">
-          Back to history
+          {t('run.backToHistory')}
         </Link>
       </section>
     );
   }
 
   const stats: Array<[string, string]> = [
-    ['Distance', formatDistance(run.totalDistanceMeters, unitSystem)],
-    ['Time', formatDuration(run.totalDurationSeconds)],
+    [t('stat.distance'), formatDistance(run.totalDistanceMeters, unitSystem)],
+    [t('stat.time'), formatDuration(run.totalDurationSeconds)],
     [
-      'Pace',
+      t('stat.pace'),
       formatPace(run.totalDistanceMeters, run.totalDurationSeconds, unitSystem),
     ],
   ];
   if (run.avgHeartRate !== undefined)
-    stats.push(['Avg HR', `${run.avgHeartRate} bpm`]);
+    stats.push([t('stat.avgHr'), `${run.avgHeartRate} bpm`]);
   if (run.maxHeartRate !== undefined)
-    stats.push(['Max HR', `${run.maxHeartRate} bpm`]);
+    stats.push([t('stat.maxHr'), `${run.maxHeartRate} bpm`]);
   if (run.avgCadence !== undefined)
-    stats.push(['Cadence', `${run.avgCadence} spm`]);
-  if (run.avgPower !== undefined) stats.push(['Power', `${run.avgPower} W`]);
-  if (run.rpe !== undefined) stats.push(['RPE', String(run.rpe)]);
+    stats.push([t('stat.cadence'), `${run.avgCadence} spm`]);
+  if (run.avgPower !== undefined)
+    stats.push([t('stat.power'), `${run.avgPower} W`]);
+  if (run.rpe !== undefined) stats.push([t('stat.rpe'), String(run.rpe)]);
 
   const pace = points(run.laps, (l) =>
     secondsPerDistanceUnit(l.distanceMeters, l.durationSeconds, unitSystem),
@@ -134,9 +141,11 @@ export function RunDetailPage() {
     <section className="mx-auto max-w-2xl space-y-6">
       <div>
         <Link to="/" className="text-sm text-muted-foreground underline">
-          ← History
+          {t('run.back')}
         </Link>
-        <h2 className="mt-1 text-xl font-semibold">{formatDate(run.date)}</h2>
+        <h2 className="mt-1 text-xl font-semibold">
+          {formatDate(run.date, localeOf(language))}
+        </h2>
         {run.feelTags && run.feelTags.length > 0 && (
           <p className="mt-1 flex flex-wrap gap-1.5">
             {run.feelTags.map((tag) => (
@@ -144,7 +153,7 @@ export function RunDetailPage() {
                 key={tag}
                 className="rounded-full bg-secondary px-2.5 py-0.5 text-xs"
               >
-                {tag.replace('-', ' ')}
+                {isFeelTag(tag) ? t(`feel.${tag}`) : tag.replace('-', ' ')}
               </span>
             ))}
           </p>
@@ -162,17 +171,17 @@ export function RunDetailPage() {
       {linkOptions !== undefined && linkOptions.length > 0 && (
         <label className="block rounded-lg border p-3">
           <span className="mb-1 block text-sm font-medium">
-            Planned workout
+            {t('run.plannedWorkout')}
           </span>
           <select
             value={run.plannedWorkoutId ?? ''}
             onChange={(e) => void handleRelink(e.target.value)}
             className="w-full rounded-md border bg-background p-2 text-sm"
           >
-            <option value="">— not linked (unplanned run) —</option>
+            <option value="">{t('run.notLinked')}</option>
             {linkOptions.map((w) => (
               <option key={w.id} value={w.id}>
-                {w.date} · {w.type} · {w.description.slice(0, 60)}
+                {w.date} · {t(`type.${w.type}`)} · {w.description.slice(0, 60)}
               </option>
             ))}
           </select>
@@ -182,7 +191,7 @@ export function RunDetailPage() {
       <div className="space-y-6">
         {pace.length > 0 && (
           <LapChart
-            title="Pace"
+            title={t('chart.pace')}
             unit={`min${paceUnitLabel(unitSystem)}`}
             color="var(--chart-pace)"
             data={pace}
@@ -191,7 +200,7 @@ export function RunDetailPage() {
         )}
         {hasHr && (
           <LapChart
-            title="Heart rate"
+            title={t('chart.hr')}
             unit="bpm"
             color="var(--chart-hr)"
             data={hr}
@@ -200,7 +209,7 @@ export function RunDetailPage() {
         )}
         {hasCadence && (
           <LapChart
-            title="Cadence"
+            title={t('chart.cadence')}
             unit="spm"
             color="var(--chart-cadence)"
             data={cadence}
@@ -209,7 +218,7 @@ export function RunDetailPage() {
         )}
         {hasPower && (
           <LapChart
-            title="Power"
+            title={t('chart.power')}
             unit="W"
             color="var(--chart-power)"
             data={power}
@@ -218,17 +227,21 @@ export function RunDetailPage() {
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
+      {/* dir="ltr": a numeric grid keeps LTR column flow even in an RTL UI;
+          the translated headers still read correctly per cell */}
+      <div className="overflow-x-auto rounded-lg border" dir="ltr">
         <table className="w-full text-sm tabular-nums">
           <thead>
-            <tr className="border-b bg-secondary/50 text-left text-xs text-muted-foreground">
-              <th className="p-2 font-medium">Lap</th>
+            <tr className="border-b bg-secondary/50 text-start text-xs text-muted-foreground">
+              <th className="p-2 font-medium">{t('table.lap')}</th>
               <th className="p-2 font-medium">{distanceUnitLabel(unitSystem)}</th>
-              <th className="p-2 font-medium">Time</th>
-              <th className="p-2 font-medium">Pace</th>
-              {hasHr && <th className="p-2 font-medium">HR</th>}
-              {hasCadence && <th className="p-2 font-medium">Cad</th>}
-              {hasPower && <th className="p-2 font-medium">W</th>}
+              <th className="p-2 font-medium">{t('table.time')}</th>
+              <th className="p-2 font-medium">{t('table.pace')}</th>
+              {hasHr && <th className="p-2 font-medium">{t('table.hr')}</th>}
+              {hasCadence && (
+                <th className="p-2 font-medium">{t('table.cadence')}</th>
+              )}
+              {hasPower && <th className="p-2 font-medium">{t('table.watts')}</th>}
             </tr>
           </thead>
           <tbody>
