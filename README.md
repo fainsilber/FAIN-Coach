@@ -9,6 +9,7 @@ A local-first AI running coach. Upload `.tcx` files from any GPS watch (Garmin, 
 ## Features
 
 - **TCX upload** — drag-and-drop or file picker, parsed entirely in-browser. Handles missing metrics gracefully and normalizes single-leg cadence. Trackpoints are discarded after lap aggregation, so a 5.5 MB file becomes a ~3 KB record.
+- **Manual entry** — no file? Log the run by hand. Only date, distance and time are required; anything you didn't measure is simply left out, and the coach is told the numbers are self-reported.
 - **Run history & detail** — lap table plus per-lap charts for pace, heart rate, cadence, and power. Charts appear only for metrics your watch actually recorded.
 - **Subjective input** — RPE 1–10, feel tags, and free-text notes, fused with the telemetry when coaching.
 - **AI coach** — one global, plan-aware chat thread. Streaming replies in a fixed 3-part format: the big picture, a telemetry breakdown, and one concrete next step.
@@ -39,7 +40,6 @@ Data is per-device by design — there is no server and no sync. Each device sta
 
 ## Roadmap
 
-- **Manual run entry** — log a run without a `.tcx` file, for a failed watch sync or a treadmill session. [Spec](docs/dev-plan.md)
 - **Design refresh** — planned; direction not yet defined.
 
 Longer-term items live in [docs/dev-plan.md §12](docs/dev-plan.md) — notably a GPX parser for native Apple Watch exports, and validating Hebrew coaching quality across models.
@@ -47,4 +47,4 @@ Longer-term items live in [docs/dev-plan.md §12](docs/dev-plan.md) — notably 
 ## Docs
 
 - [Product Requirements (PRD v1.2)](docs/PRD.md)
-- [Development Plan v1.5](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
+- [Development Plan v1.6](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks

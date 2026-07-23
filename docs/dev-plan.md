@@ -1,18 +1,17 @@
-# FAIN Coach — Development Plan (v1.5)
+# FAIN Coach — Development Plan (v1.6)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
 1–5 as shipped, the GitHub Pages deployment, and the revised model tiering;
-v1.4 recorded Sprints 6–7 as shipped; **v1.5 (2026-07-23)** adds
-**Sprint 8 — Manual Run Entry** (§10, specified) and **Sprint 9 — Design
-Refresh** (§11, placeholder).
+v1.4 recorded Sprints 6–7 as shipped; v1.5 added Sprint 8 and the Sprint 9
+placeholder; **v1.6 (2026-07-23)** records **Sprint 8 — Manual Run Entry**
+as shipped.
 
-**Status:** Sprints 1–7 complete and deployed —
-https://fainsilber.github.io/FAIN-Coach/. 109 tests passing.
+**Status:** Sprints 1–8 complete and deployed —
+https://fainsilber.github.io/FAIN-Coach/. 131 tests passing.
 
-**Next up:** Sprint 8 (§10) is specified and ready to build. Sprint 9 (§11)
-is deliberately unspecified pending a design direction. Ongoing risks are in
-§12 — none blocking.
+**Next up:** Sprint 9 (§11) — design refresh, deliberately unspecified
+pending a design direction. Ongoing risks are in §12 — none blocking.
 
 ---
 
@@ -423,10 +422,26 @@ translators need standard tooling.
 - Type-check fails if a Hebrew string is missing.
 - Language survives a reload and applies to the profile picker itself.
 
-## 10. Sprint 8 — Manual Run Entry (specified, not started)
+## 10. Sprint 8 — Manual Run Entry ✅ (implemented 2026-07-23)
 
 Implements PRD §4.6 (FR-6.1 – 6.8). For runs with no `.tcx` — a failed watch
 sync, a treadmill session, a run logged from memory.
+
+**Outcome**: met. Verified in-browser — a run entered with only date, distance
+and time stores the four optional metrics as **absent keys, not zeros**; the
+date anchors to `2026-07-20T12:00:00.000Z`; 5 miles entered under imperial
+stores as exactly 8046.72 m; auto-match linked the run and flipped the planned
+workout to `completed`, identical to the upload path; and run detail renders
+with **zero tables and zero orphan headers** when there are no laps. The TCX
+path was re-verified after the refactor (22 laps, `source: 'tcx'`).
+
+**Beyond spec** (worth noting, both fell out of the shared-path work):
+- `saveRunAndPromptCoach` now owns the whole write path for *both* entry
+  methods, so the run-save, workout-completion and coach-injection sequence
+  cannot drift between them.
+- The coach message wrapper ("I just finished a run…") had been hard-coded
+  English since Sprint 3 — it is a visible chat bubble, so it is now localized
+  along with the new strings.
 
 **Scope call**: run-level totals only, **no lap entry**. A lap repeater is a
 lot of form for a rare need, and manual runs simply have no lap breakdown —

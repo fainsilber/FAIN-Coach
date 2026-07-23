@@ -78,7 +78,11 @@ export function summarizeRun(
   unit: UnitSystem = 'metric',
 ): string {
   const lines: string[] = [];
-  lines.push(`Run on ${run.date.slice(0, 10)}:`);
+  // FR-6.7: an estimated heart rate deserves less confidence than a measured
+  // one, so say which this is rather than letting the coach assume telemetry.
+  const provenance =
+    run.source === 'manual' ? ' (entered manually, values are self-reported)' : '';
+  lines.push(`Run on ${run.date.slice(0, 10)}${provenance}:`);
   const pace = fmtPace(run.totalDistanceMeters, run.totalDurationSeconds, unit);
   lines.push(
     `- ${fmtDistance(run.totalDistanceMeters, unit)} in ${fmtDuration(run.totalDurationSeconds)}${pace ? ` (avg ${pace})` : ''}`,

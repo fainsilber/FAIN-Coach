@@ -99,6 +99,37 @@ export const en = {
   'table.cadence': 'Cad',
   'table.watts': 'W',
 
+  // Coach message injected after a run is saved
+  'coach.runIntro': 'I just finished a run.',
+  'coach.runQuestion': 'What do you make of it, and what should I do next?',
+  'coach.plannedNote': 'This was my planned workout: "{description}"',
+
+  // Manual run entry
+  'manual.link': 'or enter a run manually',
+  'manual.title': 'Enter a Run',
+  'manual.subtitle':
+    'For a run with no file — a watch that did not sync, a treadmill session, or one logged from memory. Only date, distance and time are required.',
+  'manual.date': 'Date',
+  'manual.distance': 'Distance ({unit})',
+  'manual.duration': 'Time',
+  'manual.hours': 'h',
+  'manual.minutes': 'm',
+  'manual.seconds': 's',
+  'manual.pacePreview': 'Pace: {pace}',
+  'manual.optional': 'Optional — leave blank if you did not measure it',
+  'manual.avgHr': 'Average heart rate (bpm)',
+  'manual.maxHr': 'Maximum heart rate (bpm)',
+  'manual.cadence': 'Average cadence (spm)',
+  'manual.power': 'Average power (W)',
+  'manual.errDistance': 'Enter a distance greater than zero.',
+  'manual.errDuration': 'Enter a time greater than zero.',
+  'manual.errDate': 'Choose a date that is not in the future.',
+  'manual.errHrRange': 'Heart rate should be between 30 and 250 bpm.',
+  'manual.errHrOrder': 'Maximum heart rate cannot be lower than the average.',
+  'manual.errCadence': 'Cadence should be between 0 and 300 spm.',
+  'manual.errPower': 'Power should be between 0 and 2000 W.',
+  'manual.cancel': 'Cancel',
+
   // Chat
   'chat.offline':
     "You're offline — chat needs a network connection. Your run history still works.",

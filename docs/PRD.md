@@ -223,7 +223,7 @@ breakdown. Status as of 2026-07-23:
 | — | Deployment to GitHub Pages | ✅ Live |
 | 6 | Units & week start (§4.5, FR-5.7–5.14) | ✅ Complete |
 | 7 | Multi-language: English + Hebrew RTL (§4.5, FR-5.1–5.6) | ✅ Complete |
-| 8 | Manual run entry (§4.6, FR-6.1–6.8) | ▶ Specified, not started |
+| 8 | Manual run entry (§4.6, FR-6.1–6.8) | ✅ Complete |
 | 9 | Design refresh | ⬜ Placeholder — direction not yet defined |
 
 ---

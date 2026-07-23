@@ -6,6 +6,7 @@ import type { MessageKey } from './i18n/en';
 import { clearActiveProfile, getActiveProfile } from './lib/profiles';
 import { ChatPage } from './pages/ChatPage';
 import { HistoryPage } from './pages/HistoryPage';
+import { ManualRunPage } from './pages/ManualRunPage';
 import { PlanPage } from './pages/PlanPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { UploadPage } from './pages/UploadPage';
@@ -58,6 +59,7 @@ export function App() {
               }
             />
             <Route path="/upload" element={<UploadPage />} />
+            <Route path="/upload/manual" element={<ManualRunPage />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/plan" element={<PlanPage />} />
             <Route path="/settings" element={<SettingsPage />} />

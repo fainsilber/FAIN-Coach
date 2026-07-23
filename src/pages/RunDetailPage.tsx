@@ -227,8 +227,11 @@ export function RunDetailPage() {
         )}
       </div>
 
-      {/* dir="ltr": a numeric grid keeps LTR column flow even in an RTL UI;
+      {/* Manually entered runs have no laps — render nothing rather than a
+          header row over an empty body.
+          dir="ltr": a numeric grid keeps LTR column flow even in an RTL UI;
           the translated headers still read correctly per cell */}
+      {run.laps.length > 0 && (
       <div className="overflow-x-auto rounded-lg border" dir="ltr">
         <table className="w-full text-sm tabular-nums">
           <thead>
@@ -263,6 +266,7 @@ export function RunDetailPage() {
           </tbody>
         </table>
       </div>
+      )}
     </section>
   );
 }

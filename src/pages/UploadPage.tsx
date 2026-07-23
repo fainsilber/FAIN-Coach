@@ -1,16 +1,17 @@
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { MatchConfirm } from '@/components/MatchConfirm';
 import { PostRunForm, type PostRunDetails } from '@/components/PostRunForm';
 import { StatGrid } from '@/components/StatGrid';
-import { db, requestPersistentStorage } from '@/db/db';
 import type { PlannedWorkout } from '@/db/types';
 import { localeOf, useI18n } from '@/i18n';
+import { buildCoachMessage } from '@/lib/coachMessage';
 import { formatDistance, formatDuration, formatPace } from '@/lib/format';
 import { usePreferences } from '@/lib/usePreferences';
 import { findMatchCandidate } from '@/lib/matching';
+import { activePlanWorkouts, saveRunAndPromptCoach } from '@/lib/saveRun';
 import { cn } from '@/lib/utils';
 import { parseTcx, TcxParseError, type ParsedRun } from '@/parser/tcx';
-import { summarizeRun } from '@/prompts/prompts';
 
 type UploadState =
   | { step: 'idle' }
@@ -41,12 +42,7 @@ export function UploadPage() {
     try {
       const run = parseTcx(await file.text());
       // Auto-match against the active plan (confirmed by the user below).
-      const plan = await db.trainingPlans.where('status').equals('active').first();
-      const workouts =
-        plan?.id !== undefined
-          ? await db.plannedWorkouts.where('planId').equals(plan.id).toArray()
-          : [];
-      const match = findMatchCandidate(run, workouts);
+      const match = findMatchCandidate(run, await activePlanWorkouts());
       setMatchAccepted(true);
       setState({ step: 'review', run, fileName: file.name, match });
     } catch (e) {
@@ -62,33 +58,12 @@ export function UploadPage() {
     if (state.step !== 'review') return;
     setSaving(true);
     try {
-      const linked = state.match !== undefined && matchAccepted;
-      const record = {
-        ...state.run,
-        ...details,
-        ...(linked
-          ? {
-              plannedWorkoutId: state.match!.id,
-              matchStatus: 'confirmed' as const,
-            }
-          : { matchStatus: 'unplanned' as const }),
-      };
-      await db.runs.add(record);
-      if (linked) {
-        await db.plannedWorkouts.update(state.match!.id!, {
-          status: 'completed',
-        });
-      }
-      void requestPersistentStorage(); // FR-2.2, fire-and-forget
-      // Hand the run to the coach: inject the macro summary as a user message
-      // and let ChatPage request the coached response.
-      const planNote = linked
-        ? `\n\nThis was my planned workout: "${state.match!.description}"`
-        : '';
-      await db.chatMessages.add({
-        timestamp: new Date().toISOString(),
-        role: 'user',
-        content: `I just finished a run.\n\n${summarizeRun(record, unitSystem)}${planNote}\n\nWhat do you make of it, and what should I do next?`,
+      const run = { ...state.run, ...details, source: 'tcx' as const };
+      const linkedWorkout = matchAccepted ? state.match : undefined;
+      await saveRunAndPromptCoach({
+        run,
+        linkedWorkout,
+        coachMessage: buildCoachMessage({ run, linkedWorkout, unitSystem, t }),
       });
       navigate('/chat', { state: { pendingReply: true } });
     } catch {
@@ -128,41 +103,11 @@ export function UploadPage() {
         </div>
         <StatGrid stats={stats} />
         {state.match && (
-          <div className="rounded-lg border border-primary/40 p-3">
-            <p className="text-sm">
-              {t('upload.matchQuestion', {
-                type: t(`type.${state.match.type}`),
-                weekday: new Date(
-                  `${state.match.date}T12:00:00Z`,
-                ).toLocaleDateString(localeOf(language), { weekday: 'long' }),
-                description: state.match.description,
-              })}
-            </p>
-            <div className="mt-2 flex gap-2">
-              <button
-                type="button"
-                aria-pressed={matchAccepted}
-                onClick={() => setMatchAccepted(true)}
-                className={cn(
-                  'rounded-md border px-3 py-1.5 text-sm',
-                  matchAccepted && 'bg-primary text-primary-foreground',
-                )}
-              >
-                {t('upload.matchYes')}
-              </button>
-              <button
-                type="button"
-                aria-pressed={!matchAccepted}
-                onClick={() => setMatchAccepted(false)}
-                className={cn(
-                  'rounded-md border px-3 py-1.5 text-sm',
-                  !matchAccepted && 'bg-primary text-primary-foreground',
-                )}
-              >
-                {t('upload.matchNo')}
-              </button>
-            </div>
-          </div>
+          <MatchConfirm
+            match={state.match}
+            accepted={matchAccepted}
+            onChange={setMatchAccepted}
+          />
         )}
         {error && <p className="text-sm text-destructive">{error}</p>}
         <PostRunForm onSave={handleSave} saving={saving} />
@@ -218,6 +163,12 @@ export function UploadPage() {
         />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
+      <Link
+        to="/upload/manual"
+        className="block text-center text-sm text-muted-foreground underline"
+      >
+        {t('manual.link')}
+      </Link>
       <p className="text-xs text-muted-foreground">{t('upload.privacyNote')}</p>
     </section>
   );

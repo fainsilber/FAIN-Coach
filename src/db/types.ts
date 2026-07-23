@@ -37,6 +37,13 @@ export interface RunRecord {
   userNotes?: string;
   plannedWorkoutId?: number; // link after user confirmation
   matchStatus: MatchStatus;
+  /**
+   * How the run got here. Absent on every record created before Sprint 8, so
+   * treat `undefined` as 'tcx'. Optional and unindexed — Dexie schemas declare
+   * indexes, not fields, so this needed no version bump or migration.
+   * Manually entered metrics are self-reported, which the coach summary flags.
+   */
+  source?: 'tcx' | 'manual';
 }
 
 export interface TrainingPlan {

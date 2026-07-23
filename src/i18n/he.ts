@@ -100,6 +100,37 @@ export const he: Record<MessageKey, string> = {
   'table.cadence': 'קדנס',
   'table.watts': 'ואט',
 
+  // Coach message injected after a run is saved
+  'coach.runIntro': 'סיימתי עכשיו ריצה.',
+  'coach.runQuestion': 'מה דעתך עליה, ומה כדאי לי לעשות בהמשך?',
+  'coach.plannedNote': 'זה היה האימון המתוכנן שלי: "{description}"',
+
+  // Manual run entry
+  'manual.link': 'או הזינו ריצה ידנית',
+  'manual.title': 'הזנת ריצה',
+  'manual.subtitle':
+    'לריצה ללא קובץ — שעון שלא הסתנכרן, אימון על הליכון, או ריצה שנרשמת מהזיכרון. חובה למלא רק תאריך, מרחק וזמן.',
+  'manual.date': 'תאריך',
+  'manual.distance': 'מרחק ({unit})',
+  'manual.duration': 'זמן',
+  'manual.hours': 'שע׳',
+  'manual.minutes': 'דק׳',
+  'manual.seconds': 'שנ׳',
+  'manual.pacePreview': 'קצב: {pace}',
+  'manual.optional': 'לא חובה — השאירו ריק אם לא נמדד',
+  'manual.avgHr': 'דופק ממוצע (bpm)',
+  'manual.maxHr': 'דופק מרבי (bpm)',
+  'manual.cadence': 'קדנס ממוצע (spm)',
+  'manual.power': 'הספק ממוצע (W)',
+  'manual.errDistance': 'הזינו מרחק גדול מאפס.',
+  'manual.errDuration': 'הזינו זמן גדול מאפס.',
+  'manual.errDate': 'בחרו תאריך שאינו עתידי.',
+  'manual.errHrRange': 'הדופק צריך להיות בין 30 ל-250 פעימות לדקה.',
+  'manual.errHrOrder': 'הדופק המרבי לא יכול להיות נמוך מהממוצע.',
+  'manual.errCadence': 'הקדנס צריך להיות בין 0 ל-300 spm.',
+  'manual.errPower': 'ההספק צריך להיות בין 0 ל-2000 ואט.',
+  'manual.cancel': 'ביטול',
+
   // Chat
   'chat.offline':
     'אין חיבור לרשת — הצ׳אט דורש חיבור. היסטוריית הריצות זמינה גם ללא רשת.',

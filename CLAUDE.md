@@ -4,7 +4,7 @@ Local-first AI running coach PWA. Users upload `.tcx` files from any GPS watch, 
 
 **Live:** https://fainsilber.github.io/FAIN-Coach/ (auto-deploys on push to `main`)
 
-**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v1.5 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
+**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v1.6 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
 
 ## Commands
 
@@ -23,6 +23,8 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 - `src/lib/profiles.ts` — local profile registry (localStorage), salted-PIN hashing, legacy-DB adoption. Data *separation*, not security (PRD §4.4).
 - `src/lib/backup.ts` — versioned JSON export/import over all tables; import replaces the DB, preserving ids and cross-table links.
 - `src/lib/matching.ts` — run↔plan auto-match (±1 day, distance tie-break) and adherence stats.
+- `src/lib/saveRun.ts` — **the single write path for a completed run**, shared by TCX upload and manual entry: persist, complete a matched workout, inject the coach message. Add a new entry point here rather than duplicating the sequence.
+- `src/lib/manualRun.ts` — pure validation/conversion for manual entry (form strings → `NewRun`), so the rules are testable without the form.
 - `src/lib/units.ts`, `src/lib/week.ts`, `src/lib/usePreferences.ts` — unit conversion boundary and week math; see the dedicated section below.
 - `src/i18n/` — translation catalogs and provider; see the dedicated section below.
 - `src/parser/tcx.ts` — defensive TCX parser + fixtures in `src/parser/fixtures/`.
@@ -33,7 +35,8 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 ## Hard rules (from the PRD/dev plan)
 
 - **No trackpoint storage.** The parser aggregates to laps and discards the time series.
-- **Optional metrics stay optional.** HR/cadence/power absent from a file → `undefined`, never 0, and never mentioned in prompts (enforced by only listing present metrics in summaries, not by trusting the model).
+- **Optional metrics stay optional.** HR/cadence/power absent from a file *or left blank in manual entry* → the key is omitted, never 0, and never mentioned in prompts (enforced by only listing present metrics in summaries, not by trusting the model).
+- **Runs record their `source`.** `'manual'` runs are self-reported, and `summarizeRun` says so — an estimated heart rate shouldn't be treated as telemetry. Absent `source` means `'tcx'` (pre-Sprint-8 records).
 - Cadence < 120 in TCX is single-leg → ×2 to get SPM.
 - Post-run chat context ≤ 1,000 tokens (chars/4 heuristic); plan generation ~4k.
 - One global chat thread — no per-run threads.
@@ -64,6 +67,6 @@ Served from the `/FAIN-Coach/` subpath, so Vite `base`, the router `basename` (`
 
 ## Status
 
-Sprints 1–7 complete, local profiles added, deployed to GitHub Pages. 109 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start all shipped.
+Sprints 1–8 complete, local profiles added, deployed to GitHub Pages. 131 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start, and manual run entry all shipped.
 
-**Next:** Sprint 8 — manual run entry ([dev-plan §10](docs/dev-plan.md), specified and ready to build). Sprint 9 — design refresh ([§11](docs/dev-plan.md)) is a deliberate placeholder; **do not invent a design direction**, it will be supplied. Ongoing risks in [§12](docs/dev-plan.md) — Hebrew LLM output quality is the main untested item.
+**Next:** Sprint 9 — design refresh ([dev-plan §11](docs/dev-plan.md)) is a deliberate placeholder; **do not invent a design direction**, it will be supplied. Ongoing risks in [§12](docs/dev-plan.md) — Hebrew LLM output quality is the main untested item.
