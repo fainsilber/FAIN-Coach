@@ -7,6 +7,9 @@ tiering, and specifies **Sprint 6 — Localization & Units** (§9).
 
 **Status:** MVP complete and deployed — https://fainsilber.github.io/FAIN-Coach/
 
+**Next up:** Sprint 6 — Units & Week Start (§8), then Sprint 7 — Multi-language
+with Hebrew/RTL (§9). Both specified, neither started.
+
 ---
 
 ## 1. Locked Decisions
@@ -227,10 +230,17 @@ migrate to **Dexie Cloud** (~2–4 days):
    key must not roam through the sync service.
 4. Test offline conflict scenarios (two devices, archive vs upload).
 
-## 8. Sprint 6 — Localization & Units (specified, not started)
+## 8. Sprint 6 — Units & Week Start (specified, not started)
 
-Implements PRD §4.5. Two independent axes — **language** (with RTL) and
-**measurement system** — both per profile.
+Implements the preference half of PRD §4.5 — **measurement units**
+(FR-5.7 – 5.10) and **week start** (FR-5.12 – 5.14). Language and RTL are
+Sprint 7 (§9).
+
+**Why this splits cleanly from language:** neither depends on any i18n
+infrastructure. Both are per-profile preferences that change formatting and
+week math, so this sprint ships user-visible value without touching a single
+string catalog. Doing it first also means the i18n sprint has a stable
+formatting layer to translate around, rather than both moving at once.
 
 ### 8.1 Settings & schema
 
@@ -238,63 +248,37 @@ No new tables. Two rows in the existing `settings` store, so they ride along in
 backup export/import for free:
 
 ```typescript
-// Settings.key additions
-'language'    // 'en' | 'he'
+// Settings.key additions (Sprint 6)
 'unitSystem'  // 'metric' | 'imperial'        (default 'metric')
 'weekStart'   // 'sunday' | 'monday'          (default 'sunday')
+// 'language' arrives in Sprint 7
 ```
 
-`weekStart` is deliberately **independent of `language`** — running the UI in
-English while keeping a Sunday week is a legitimate combination, so it must not
-be derived from the locale (FR-5.14).
+`weekStart` is deliberately **independent of language** (FR-5.14) — running the
+UI in English while keeping a Sunday week is a legitimate combination. That
+independence is also what lets this sprint land before any language work
+exists.
 
-**Chicken-and-egg:** the profile picker renders *before* any profile is active,
-so it cannot read profile settings. Language therefore needs a device-level
-fallback in `localStorage` (`fain-coach.language`), seeded from
-`navigator.languages` on first run and rewritten whenever a profile's language
-changes. Profile setting wins once a profile is entered.
+UI: a new **Preferences** group on the Settings page, alongside the existing
+AI/Data/Storage groups.
 
-### 8.2 i18n mechanism
+### 8.2 Units
 
-**Decision: a small in-house module, not a framework.** Rationale: ~100 strings,
-an offline-first PWA where every KB is precached, and the browser already
-provides the hard parts — `Intl.NumberFormat`, `Intl.DateTimeFormat`,
-`Intl.PluralRules` (which handles Hebrew's singular/dual/plural correctly).
-Revisit `react-i18next` if the catalog outgrows a few hundred keys or
-translators need standard tooling.
+- Canonical storage stays SI (FR-5.8). Add `src/lib/units.ts` with a single
+  conversion boundary; `src/lib/format.ts` becomes unit-aware
+  (`formatDistance`, `formatPace`, `formatElevation`).
+- Conversions: 1 mi = 1609.344 m; 1 ft = 0.3048 m. Pace inverts with distance
+  (min/km ↔ min/mile) — a frequent source of bugs, so unit-test the round trip.
+- Do **not** convert bpm / spm / watts (FR-5.9).
+- Entry points needing unit awareness: plan wizard weekly volume, chart axis
+  labels and tooltips, lap table headers, stat grids, run history rows.
 
-- `src/i18n/en.ts`, `src/i18n/he.ts` — flat message catalogs.
-- `en` is the source of truth; the `he` catalog is typed as
-  `Record<keyof typeof en, string>` so a missing translation is a **compile
-  error**, not a runtime blank.
-- `useT()` hook returns a `t(key, params?)` with typed keys and `{name}`-style
-  interpolation.
-- Missing-key behaviour: fall back to English, never render a raw key.
-
-### 8.3 RTL
-
-- Set `dir` and `lang` on `<html>` when language changes (also update the PWA
-  manifest `lang`/`dir`).
-- **Audit every physical-direction utility** and replace with logical ones:
-  `ml-auto` → `ms-auto` (chat bubbles), `text-left` → `text-start` (tables),
-  `pl-*`/`pr-*` → `ps-*`/`pe-*`, and directional icons (`←` back links) must
-  flip. Tailwind v4 supports the logical variants natively.
-- **Bidi isolation (FR-5.3)**: numeric strings such as `5:48 /km`, `21.29 km`,
-  and ISO dates get visually reordered when embedded in RTL text. Wrap them in
-  `<bdi>` (or `unicode-bidi: isolate`). This is the single most likely source of
-  "looks subtly wrong" bugs in Hebrew — treat as mandatory, not cosmetic.
-- **Charts**: Recharts does not mirror automatically. Recommendation: keep the
-  time axis left-to-right (time-series convention holds across locales) but move
-  the Y axis to the right and mirror surrounding padding. Flag for a visual
-  decision when implementing.
-- Week start is a user preference, not an RTL concern — see §8.3a.
-
-### 8.3a Week start (FR-5.12 – 5.14)
+### 8.3 Week start (FR-5.12 – 5.14)
 
 **Default changes to Sunday**, with a Settings control to switch to Monday.
 
 - Current code hard-codes Monday: `isoWeekLabel()` in `PlanPage.tsx` computes
-  `d.getUTCDay() + 6) % 7` days back to reach Monday. For a Sunday start that
+  `(d.getUTCDay() + 6) % 7` days back to reach Monday. For a Sunday start that
   becomes simply `d.getUTCDay()`. Generalize to an offset derived from the
   preference rather than branching at each call site.
 - **Rename the helper.** "ISO week" specifically *means* Monday-start
@@ -312,45 +296,107 @@ translators need standard tooling.
 - Note this makes the default non-ISO. That is intentional and user-driven;
   record it so nobody "fixes" it back to Monday later.
 
-### 8.4 Units
+### 8.4 LLM implications (units only)
 
-- Canonical storage stays SI (FR-5.8). Add `src/lib/units.ts` with a single
-  conversion boundary; `src/lib/format.ts` becomes unit-aware
-  (`formatDistance`, `formatPace`, `formatElevation`).
-- Conversions: 1 mi = 1609.344 m; 1 ft = 0.3048 m. Pace inverts with distance
-  (min/km ↔ min/mile) — a frequent source of bugs, so unit-test the round trip.
-- Do **not** convert bpm / spm / watts (FR-5.9).
-- Entry points needing unit awareness: plan wizard weekly volume, chart axis
-  labels and tooltips, lap table headers, stat grids, run history rows.
+- `summarizeRun` must emit distances in the user's units, and
+  `buildCoachContext` / `buildPlanRequest` must state the unit system, so
+  replies come back in the same units (FR-5.10).
+- The plan wizard's weekly-volume field is km under metric and miles under
+  imperial; `buildPlanRequest` must send the value **with its unit** so the
+  model doesn't misread 16 miles as 16 km.
+- Plan JSON keeps `targetDistanceMeters` in metres regardless of display units
+  — the schema is canonical, the UI converts.
 
-### 8.5 LLM implications (the non-obvious part)
+### 8.5 Exit criteria
 
-- `buildCoachContext` and `buildPlanRequest` must state the target language
-  *and* unit system, and `summarizeRun` must emit distances in the user's units
-  so replies come back in them (FR-5.10).
-- The enforced 3-step layout (FR-3.3) needs **localized headings** — the parser
-  of the coach reply is presentational, but plan JSON is validated, so keep
-  JSON **keys and enum values in English** (`"type": "tempo"`) and localize only
-  human-readable `description` text. Translating enum values would break
-  `parsePlanResponse`.
-- **Risk — Hebrew output quality**: Hebrew is comparatively low-resource, and
-  the current default (Llama 3.3 70B) is untested on it. Plan an A/B on Hebrew
-  before defaulting Hebrew users to it; some commercial models are markedly
-  stronger on Hebrew, which may justify a per-language default.
-
-### 8.6 Exit criteria
-
-- Switching to Hebrew flips the whole UI to RTL with no clipped or
-  mis-aligned layout at 375 px, and no reordered numerals.
-- Switching to imperial changes every displayed distance/pace/elevation, and
-  **zero** stored values change (verify by export-diffing before and after).
-- Coach replies arrive in the selected language using the selected units.
-- Type-check fails if a Hebrew string is missing.
+- Switching to imperial changes every displayed distance, pace, and elevation,
+  and **zero** stored values change (verify by export-diffing before and after).
+- Heart rate, cadence, and power are untouched by the unit switch.
+- Pace conversion round-trips in unit tests (min/km ↔ min/mile).
 - Week grouping defaults to Sunday, switches to Monday from Settings, and the
   plan view, weekly totals, and the coach's "coming week" window all agree on
   the same boundaries.
+- Prompts carry the user's unit system and coaching replies use it.
 
-## 9. Risks / Open Questions
+## 9. Sprint 7 — Multi-language (English + Hebrew, RTL)
+
+Implements the language half of PRD §4.5 (FR-5.1 – 5.6, FR-5.11). Depends on
+Sprint 6 only in that the formatting layer should be settled first.
+
+### 9.1 Language setting & the profile-gate problem
+
+```typescript
+'language'    // 'en' | 'he'   (default: detected, else 'en')
+```
+
+**Chicken-and-egg:** the profile picker renders *before* any profile is active,
+so it cannot read profile settings. Language therefore needs a device-level
+fallback in `localStorage` (`fain-coach.language`), seeded from
+`navigator.languages` on first run and rewritten whenever a profile's language
+changes. Profile setting wins once a profile is entered. (Units and week start
+have no such problem — nothing before the gate displays a distance.)
+
+### 9.2 i18n mechanism
+
+**Decision: a small in-house module, not a framework.** Rationale: ~100 strings,
+an offline-first PWA where every KB is precached, and the browser already
+provides the hard parts — `Intl.NumberFormat`, `Intl.DateTimeFormat`,
+`Intl.PluralRules` (which handles Hebrew's singular/dual/plural correctly).
+Revisit `react-i18next` if the catalog outgrows a few hundred keys or
+translators need standard tooling.
+
+- `src/i18n/en.ts`, `src/i18n/he.ts` — flat message catalogs.
+- `en` is the source of truth; the `he` catalog is typed as
+  `Record<keyof typeof en, string>` so a missing translation is a **compile
+  error**, not a runtime blank.
+- `useT()` hook returns a `t(key, params?)` with typed keys and `{name}`-style
+  interpolation.
+- Missing-key behaviour: fall back to English, never render a raw key.
+
+### 9.3 RTL
+
+- Set `dir` and `lang` on `<html>` when language changes (also update the PWA
+  manifest `lang`/`dir`).
+- **Audit every physical-direction utility** and replace with logical ones:
+  `ml-auto` → `ms-auto` (chat bubbles), `text-left` → `text-start` (tables),
+  `pl-*`/`pr-*` → `ps-*`/`pe-*`, and directional icons (`←` back links) must
+  flip. Tailwind v4 supports the logical variants natively.
+- **Bidi isolation (FR-5.3)**: numeric strings such as `5:48 /km`, `21.29 km`,
+  and ISO dates get visually reordered when embedded in RTL text. Wrap them in
+  `<bdi>` (or `unicode-bidi: isolate`). This is the single most likely source of
+  "looks subtly wrong" bugs in Hebrew — treat as mandatory, not cosmetic.
+- **Charts**: Recharts does not mirror automatically. Recommendation: keep the
+  time axis left-to-right (time-series convention holds across locales) but move
+  the Y axis to the right and mirror surrounding padding. Flag for a visual
+  decision when implementing.
+- Week start is a user preference, not an RTL concern — it ships in Sprint 6
+  (§8.3) and needs no revisiting here.
+
+### 9.4 LLM implications (language)
+
+- `buildCoachContext` and `buildPlanRequest` must state the target language, so
+  coaching arrives in it (FR-5.6). The unit half of this was already handled in
+  Sprint 6 (§8.4).
+- The enforced 3-step layout (FR-3.3) needs **localized headings** — the coach
+  reply is presentational, but plan JSON is validated, so keep JSON **keys and
+  enum values in English** (`"type": "tempo"`) and localize only the
+  human-readable `description`. Translating enum values would break
+  `parsePlanResponse`.
+- **Risk — Hebrew output quality**: Hebrew is comparatively low-resource, and
+  the current default (Llama 3.3 70B) is untested on it. A/B Hebrew output
+  before defaulting Hebrew users to it; some commercial models are markedly
+  stronger on Hebrew, which may justify a per-language default model.
+
+### 9.5 Exit criteria
+
+- Switching to Hebrew flips the whole UI to RTL with no clipped or
+  mis-aligned layout at 375 px, and no reordered numerals or paces.
+- Coach replies arrive in the selected language, using the 3-step layout with
+  localized headings, while generated plan JSON still validates.
+- Type-check fails if a Hebrew string is missing.
+- Language survives a reload and applies to the profile picker itself.
+
+## 10. Risks / Open Questions
 
 - ~~Coach context should include the upcoming week's actual planned
   workouts~~ — **resolved in Sprint 5** (2026-07-22): `buildCoachContext`

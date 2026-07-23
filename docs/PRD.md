@@ -115,6 +115,11 @@ model; reasoning models remain user-selectable for richer prose.
 
 ### 4.5 Localization & Measurement Units (added v1.2)
 
+> **Delivery is split across two sprints** (dev plan §8 and §9): units and week
+> start ship first as self-contained preferences (FR-5.7 – 5.14), then language
+> and RTL (FR-5.1 – 5.6). The requirements below are grouped by topic, not by
+> sprint.
+
 **Language**
 
 * **FR-5.1:** The app **must** let the user choose the interface language. Launch languages: **English** and **Hebrew**. The architecture must accept further languages without code changes to feature components.
@@ -203,6 +208,7 @@ breakdown. Status as of 2026-07-22:
 | 5 | PWA polish, offline shell, storage indicator, mobile audit | ✅ Complete |
 | — | Local profiles (§4.4) | ✅ Complete |
 | — | Deployment to GitHub Pages | ✅ Live |
-| 6 | Localization & units (§4.5) | ▶ Specified, not started |
+| 6 | Units & week start (§4.5, FR-5.7–5.14) | ▶ Specified, not started |
+| 7 | Multi-language: English + Hebrew RTL (§4.5, FR-5.1–5.6) | ▶ Specified, not started |
 
 ---

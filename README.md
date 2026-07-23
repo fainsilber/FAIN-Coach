@@ -37,7 +37,8 @@ Data is per-device by design — there is no server and no sync. Each device sta
 
 ## Roadmap
 
-Next up is localization: English and Hebrew with full RTL support, plus metric/imperial units (metric stays the default). Specified in [docs/dev-plan.md §8](docs/dev-plan.md).
+- **Sprint 6 — units & week start**: metric/imperial (metric stays the default) and a configurable first day of the week, defaulting to Sunday. [Spec](docs/dev-plan.md)
+- **Sprint 7 — multi-language**: English and Hebrew with full right-to-left support. [Spec](docs/dev-plan.md)
 
 ## Docs
 

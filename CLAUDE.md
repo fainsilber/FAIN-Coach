@@ -44,10 +44,12 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 
 Served from the `/FAIN-Coach/` subpath, so Vite `base`, the router `basename` (`import.meta.env.BASE_URL`), the PWA `scope`/`start_url`, and `public/404.html` must stay in agreement. `vite preview` runs as `command === 'serve'`, hence the `command === 'build' || isPreview` check in `vite.config.ts` — without it, preview serves at `/` while assets reference `/FAIN-Coach/`.
 
-## Conventions for Sprint 6 (localization — specified, not yet built)
+## Conventions for Sprints 6 & 7 (specified, not yet built)
 
-When implementing [dev-plan §8](docs/dev-plan.md): no user-visible string hard-coded in a component; **logical** Tailwind utilities only (`ms-*`/`ps-*`/`text-start`, never `ml-*`/`pl-*`/`text-left`); wrap numerals and paces in `<bdi>` so RTL doesn't reorder them; keep plan JSON keys and enum values in English (localize only `description`); store SI always and convert at the display boundary. **Week starts Sunday by default** (not ISO 8601) and is user-configurable — derive it from the setting in one shared helper, never hard-code, and make sure the plan view, weekly totals, and the coach's "coming week" window all use it.
+**Sprint 6 — units & week start** ([dev-plan §8](docs/dev-plan.md)): store SI always and convert only at the display boundary, so backups stay portable between metric and imperial users; never convert bpm/spm/watts. **Week starts Sunday by default** (deliberately not ISO 8601) and is user-configurable — derive it from the setting in one shared helper, never hard-code, and make sure the plan view, weekly totals, and the coach's "coming week" window all use the same one.
+
+**Sprint 7 — language & RTL** ([dev-plan §9](docs/dev-plan.md)): no user-visible string hard-coded in a component; **logical** Tailwind utilities only (`ms-*`/`ps-*`/`text-start`, never `ml-*`/`pl-*`/`text-left`); wrap numerals and paces in `<bdi>` so RTL doesn't reorder them; keep plan JSON keys and enum values in English and localize only `description`.
 
 ## Status
 
-Sprints 1–5 complete, local profiles added, deployed to GitHub Pages (2026-07-22). 78 tests passing. Next: Sprint 6 — localization (English/Hebrew RTL) and metric/imperial units, specified in [docs/dev-plan.md §8](docs/dev-plan.md). Open backlog in §9.
+Sprints 1–5 complete, local profiles added, deployed to GitHub Pages (2026-07-22). 78 tests passing. Next: **Sprint 6 — units & week start** ([§8](docs/dev-plan.md)), then **Sprint 7 — English/Hebrew with RTL** ([§9](docs/dev-plan.md)). Open backlog in §10.
