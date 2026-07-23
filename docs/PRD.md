@@ -2,7 +2,7 @@
 
 ## AI Running Coach PWA ("OpenRun Coach")
 
-**Document Version:** 1.2 (2026-07-22: §4.4 Local Profiles, §4.5 Localization & Units, §3 architecture corrected to as-built)
+**Document Version:** 1.3 (2026-07-23: §4.6 Manual Run Entry. Previously: §4.4 Local Profiles, §4.5 Localization & Units, §3 architecture corrected to as-built)
 
 **Target Release:** MVP shipped — live at https://fainsilber.github.io/FAIN-Coach/
 
@@ -143,6 +143,19 @@ model; reasoning models remain user-selectable for richer prose.
 * **FR-5.13:** The week-start preference **must** apply consistently everywhere weeks are derived — the training-plan week grouping, any weekly volume totals, and any week references sent to the AI coach — so that a "week" means the same thing across the whole app.
 * **FR-5.14:** The preference is **per profile** (like language and units) and is independent of the selected language: a user may run the interface in English while keeping a Sunday week, or vice versa.
 
+### 4.6 Manual Run Entry (added v1.3)
+
+For runs with no `.tcx` file — a watch that failed to sync, a treadmill session, a run logged from memory.
+
+* **FR-6.1:** The app **must** let a user record a run by entering its data directly, with no file involved.
+* **FR-6.2:** Every metric the TCX parser can produce **must** be enterable manually: date, distance, duration, average and maximum heart rate, average cadence, average power — plus the existing subjective fields (RPE, feel tags, notes).
+* **FR-6.3:** Only **date, distance, and duration** are mandatory. Every other field is optional.
+* **FR-6.4:** Omitted optional fields **must** be stored as absent (`undefined`), never as zero — identical to how the TCX parser treats metrics a device did not record. The coach must therefore never mention them (FR-3.4).
+* **FR-6.5:** Values **must** be entered in the user's selected unit system and stored canonically in SI (FR-5.8). Pace is **derived** from distance and duration and must not be separately enterable, so the two can never contradict each other.
+* **FR-6.6:** A manually entered run **must** behave identically to an imported one everywhere downstream — run history, run detail, coach context, training-plan auto-matching, and backup export/import.
+* **FR-6.7:** Runs **should** record how they were created, so the app can distinguish device-measured data from self-reported data. Self-reported metrics **should** be marked as such in the coach summary, since an estimated heart rate deserves less confidence than a measured one.
+* **FR-6.8 (scope limitation):** *Editing* an existing run is out of scope for this release. Only creation is in scope.
+
 ---
 
 ## 5. Non-Functional Requirements
@@ -197,7 +210,7 @@ export interface RunRecord {
 ## 7. Development Roadmap
 
 Superseded by [dev-plan.md §5](dev-plan.md), which is the authoritative sprint
-breakdown. Status as of 2026-07-23 — all seven planned sprints are complete:
+breakdown. Status as of 2026-07-23:
 
 | Sprint | Scope | Status |
 |---|---|---|
@@ -210,5 +223,7 @@ breakdown. Status as of 2026-07-23 — all seven planned sprints are complete:
 | — | Deployment to GitHub Pages | ✅ Live |
 | 6 | Units & week start (§4.5, FR-5.7–5.14) | ✅ Complete |
 | 7 | Multi-language: English + Hebrew RTL (§4.5, FR-5.1–5.6) | ✅ Complete |
+| 8 | Manual run entry (§4.6, FR-6.1–6.8) | ▶ Specified, not started |
+| 9 | Design refresh | ⬜ Placeholder — direction not yet defined |
 
 ---

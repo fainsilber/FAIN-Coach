@@ -39,9 +39,12 @@ Data is per-device by design — there is no server and no sync. Each device sta
 
 ## Roadmap
 
-All planned sprints are complete. Open items live in [docs/dev-plan.md §10](docs/dev-plan.md) — notably a GPX parser for native Apple Watch exports, and validating Hebrew coaching quality across models.
+- **Manual run entry** — log a run without a `.tcx` file, for a failed watch sync or a treadmill session. [Spec](docs/dev-plan.md)
+- **Design refresh** — planned; direction not yet defined.
+
+Longer-term items live in [docs/dev-plan.md §12](docs/dev-plan.md) — notably a GPX parser for native Apple Watch exports, and validating Hebrew coaching quality across models.
 
 ## Docs
 
 - [Product Requirements (PRD v1.2)](docs/PRD.md)
-- [Development Plan v1.4](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
+- [Development Plan v1.5](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks

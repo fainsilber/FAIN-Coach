@@ -4,7 +4,7 @@ Local-first AI running coach PWA. Users upload `.tcx` files from any GPS watch, 
 
 **Live:** https://fainsilber.github.io/FAIN-Coach/ (auto-deploys on push to `main`)
 
-**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v1.4 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
+**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v1.5 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
 
 ## Commands
 
@@ -64,4 +64,6 @@ Served from the `/FAIN-Coach/` subpath, so Vite `base`, the router `basename` (`
 
 ## Status
 
-Sprints 1–7 complete, local profiles added, deployed to GitHub Pages. 109 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start all shipped. Open backlog in [dev-plan §10](docs/dev-plan.md) — Hebrew LLM output quality is the main untested item.
+Sprints 1–7 complete, local profiles added, deployed to GitHub Pages. 109 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start all shipped.
+
+**Next:** Sprint 8 — manual run entry ([dev-plan §10](docs/dev-plan.md), specified and ready to build). Sprint 9 — design refresh ([§11](docs/dev-plan.md)) is a deliberate placeholder; **do not invent a design direction**, it will be supplied. Ongoing risks in [§12](docs/dev-plan.md) — Hebrew LLM output quality is the main untested item.

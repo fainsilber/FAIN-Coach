@@ -1,15 +1,18 @@
-# FAIN Coach — Development Plan (v1.4)
+# FAIN Coach — Development Plan (v1.5)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
 1–5 as shipped, the GitHub Pages deployment, and the revised model tiering;
-**v1.4 (2026-07-23)** records **Sprint 6 (Units & Week Start)** and
-**Sprint 7 (Multi-language)** as shipped — all seven planned sprints are now
-complete.
+v1.4 recorded Sprints 6–7 as shipped; **v1.5 (2026-07-23)** adds
+**Sprint 8 — Manual Run Entry** (§10, specified) and **Sprint 9 — Design
+Refresh** (§11, placeholder).
 
-**Status:** All planned work complete and deployed —
-https://fainsilber.github.io/FAIN-Coach/. 109 tests passing. Open items are
-tracked in §10 (Risks / Open Questions) — none are blocking.
+**Status:** Sprints 1–7 complete and deployed —
+https://fainsilber.github.io/FAIN-Coach/. 109 tests passing.
+
+**Next up:** Sprint 8 (§10) is specified and ready to build. Sprint 9 (§11)
+is deliberately unspecified pending a design direction. Ongoing risks are in
+§12 — none blocking.
 
 ---
 
@@ -175,7 +178,7 @@ interface Settings {
   Coach context also gained the upcoming week's actual planned workouts, which
   stopped the model inventing a weekly schedule when asked "what's next?".
 - **Not done**: cross-device TCX compatibility pass beyond Garmin. Apple Watch
-  exports GPX natively (see §10); Coros/Suunto covered only by a synthetic
+  exports GPX natively (see §12); Coros/Suunto covered only by a synthetic
   fixture, not a real export.
 
 ## 5a. Deployment (2026-07-22)
@@ -345,7 +348,7 @@ column flow with Hebrew headers, and no horizontal scroll appears. The profile
 gate itself renders Hebrew after a full reload via the device-level fallback.
 Adding a language = one catalog file + one entry in `LANGUAGES`.
 **Untested live**: actual Hebrew coach output quality (needs a real key +
-model call — see the §10 risk).
+model call — see the §12 risk).
 
 ### 9.1 Language setting & the profile-gate problem
 
@@ -420,7 +423,112 @@ translators need standard tooling.
 - Type-check fails if a Hebrew string is missing.
 - Language survives a reload and applies to the profile picker itself.
 
-## 10. Risks / Open Questions
+## 10. Sprint 8 — Manual Run Entry (specified, not started)
+
+Implements PRD §4.6 (FR-6.1 – 6.8). For runs with no `.tcx` — a failed watch
+sync, a treadmill session, a run logged from memory.
+
+**Scope call**: run-level totals only, **no lap entry**. A lap repeater is a
+lot of form for a rare need, and manual runs simply have no lap breakdown —
+which the app already handles, because charts render per present metric. If
+someone wants splits they have a watch file. Revisit only if asked.
+
+### 10.1 Schema
+
+```typescript
+interface RunRecord {
+  // …existing fields…
+  source?: 'tcx' | 'manual';   // absent = 'tcx' (all pre-Sprint-8 records)
+}
+```
+
+Optional and **not indexed**, so this needs **no Dexie version bump and no
+migration** — Dexie's schema declares indexes, not fields. Existing records
+read as `undefined` and are treated as `'tcx'`.
+
+An empty `laps: []` would *technically* discriminate manual runs (the parser
+throws if a TCX has no laps), but that is an implicit coupling; an explicit
+field is honest and enables FR-6.7.
+
+### 10.2 Form design
+
+New route `/upload/manual`, reached from a secondary action under the Upload
+dropzone ("or enter a run manually"). A separate route rather than a third
+state inside `UploadPage`, which already juggles idle/review — and it makes
+the screen deep-linkable.
+
+- **Mandatory**: date, distance, duration.
+- **Optional**: avg HR, max HR, avg cadence, avg power — plus RPE, feel tags
+  and notes, which come free by **reusing `PostRunForm`**.
+- **Duration**: three numeric inputs (h / m / s), not a single "minutes" box
+  and not a parsed text field. Unambiguous, and mobile shows numeric keypads.
+- **Distance** is entered in the user's units and converted with `toMeters()`
+  on save (FR-5.5/6.5). This is exactly the trap from Sprint 6's plan wizard —
+  a bare number whose meaning changes with a setting.
+- **Pace is never an input** (FR-6.5); it is derived, and showing a live
+  computed pace as the user types is good feedback that the numbers are sane.
+- **Date** stored as ISO. With no time-of-day given, anchor to **noon UTC**
+  (`YYYY-MM-DDT12:00:00.000Z`) — the same trick `week.ts` uses to stop a date
+  shifting across a timezone boundary.
+
+### 10.3 Validation
+
+Reject nonsense, but don't be precious about it:
+
+- distance > 0; duration > 0; date not in the future.
+- If present: HR 30–250, cadence 0–300 spm, power 0–2000 W, RPE 1–10.
+- **Cross-field**: max HR must be ≥ avg HR when both are given. The one check
+  that catches a real transposition mistake.
+- Empty optional field → the key is **omitted entirely**, never `0`
+  (FR-6.4). Same guarantee the parser makes; worth an explicit test.
+
+### 10.4 Reuse & integration
+
+Manual runs must be indistinguishable downstream (FR-6.6):
+
+- **Extract the match-confirm UI** out of `UploadPage` into a shared component
+  so both entry paths use one implementation of "Looks like your planned
+  tempo — was it?". Auto-match runs through the same `findMatchCandidate`.
+- Same post-save flow: inject the run summary into the coach thread and
+  navigate to chat.
+- **`summarizeRun` marks self-reported data** (FR-6.7) — e.g. a
+  "(manually entered)" note — so the coach weights an estimated heart rate
+  appropriately. Consistent with the app's refusal to invent metrics.
+- **Run detail must hide the lap table when `laps` is empty.** Today it would
+  render a header row over an empty body. Charts already no-op correctly.
+- All new strings go in both catalogs; a missing Hebrew entry fails the build.
+
+### 10.5 Exit criteria
+
+- A run with only date + distance + duration saves and appears in history.
+- Omitted optional metrics are absent from the stored record (verify by
+  export) and are never mentioned by the coach.
+- Distance entered under imperial stores the correct metres — check by
+  switching units and confirming the displayed value round-trips.
+- Auto-match, coach injection, and backup export/import behave exactly as
+  they do for an uploaded run.
+- Run detail renders cleanly with no laps: no empty table, no broken charts.
+- Type-check fails if a Hebrew string is missing.
+
+## 11. Sprint 9 — Design Refresh (placeholder — intentionally unspecified)
+
+Requested 2026-07-23. **Direction deliberately left open**: the design will be
+provided when we get to it, rather than guessed at now.
+
+Nothing here should be treated as a decision. Recording only what is already
+true, so whoever picks this up starts informed:
+
+- The UI is stock shadcn/ui "new-york" over Tailwind v4 with the neutral base
+  palette; theme tokens live in `src/index.css` for both light and dark.
+- Chart series colours are a separate, deliberately-chosen accessible palette
+  (also in `src/index.css`) validated for colour-blind separation — those are
+  not arbitrary and shouldn't be swapped casually.
+- Any redesign inherits two hard constraints already met and easy to break:
+  **RTL correctness** (logical properties only, bidi isolation on numerals —
+  see §9.3) and **mobile ergonomics** (44px touch targets, 16px form inputs to
+  stop iOS zoom, safe-area insets).
+
+## 12. Risks / Open Questions
 
 - ~~Coach context should include the upcoming week's actual planned
   workouts~~ — **resolved in Sprint 5** (2026-07-22): `buildCoachContext`
@@ -449,7 +557,7 @@ translators need standard tooling.
 - **Apple Watch exports**: Apple exports GPX natively, TCX only via third-party apps — may need a GPX parser later (P2, design parser interface to allow it). Still open; `parseTcx` returns a `ParsedRun` so a `parseGpx` sibling can slot in behind the same contract.
 - **Token estimation**: no tokenizer in-browser for arbitrary models → use chars/4 heuristic with safety margin. Still in use; measured sends (169–488 tokens) sit far enough under the 1k budget that precision hasn't mattered yet.
 - **Chat history growth**: `capMessages` drops oldest-first to stay in budget. A rolling summary of dropped turns is **still not implemented** — long threads silently lose early context. P2.
-- **Hebrew LLM quality** (new, Sprint 6): the default model is untested on Hebrew output; may need a per-language default. See §8.5.
+- **Hebrew LLM quality** (Sprint 7): the default model is untested on Hebrew output; may need a per-language default. See §9.4.
 - **Node 20 deprecation warning** in the Pages workflow: `actions/checkout@v4`
   and friends target Node 20 and are force-run on Node 24. Cosmetic today,
   will need action-version bumps eventually.
