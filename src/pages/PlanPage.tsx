@@ -8,6 +8,10 @@ import { LlmError } from '@/llm/LlmClient';
 import { DEFAULT_PLAN_MODEL, OpenRouterClient } from '@/llm/openrouter';
 import { requestPlanWorkouts, PlanParseError } from '@/prompts/planResponse';
 import { weeksUntil } from '@/prompts/prompts';
+import { formatDistanceShort } from '@/lib/format';
+import { usePreferences } from '@/lib/usePreferences';
+import { groupByWeek } from '@/lib/week';
+import { distanceUnitLabel, toMeters, METERS_PER_KM } from '@/lib/units';
 
 const inputClass = 'w-full rounded-md border bg-background p-2 text-sm';
 const STATUS_OPTIONS = ['pending', 'completed', 'missed', 'skipped'] as const;
@@ -21,14 +25,16 @@ const TYPE_STYLES: Record<PlannedWorkout['type'], string> = {
   rest: 'bg-secondary/50',
 };
 
-function isoWeekLabel(date: string): string {
-  const d = new Date(`${date}T12:00:00Z`);
-  const monday = new Date(d);
-  monday.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
-  return `Week of ${monday.toISOString().slice(0, 10)}`;
+function weekHeading(weekStartDate: string): string {
+  const d = new Date(`${weekStartDate}T12:00:00Z`);
+  return `Week of ${d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  })}`;
 }
 
 function PlanWizard() {
+  const { unitSystem } = usePreferences();
   const [goal, setGoal] = useState('');
   const [raceDate, setRaceDate] = useState('');
   const [weeklyKm, setWeeklyKm] = useState('');
@@ -59,7 +65,8 @@ function PlanWizard() {
       const goalInput = {
         goal: goal.trim(),
         raceDate,
-        currentWeeklyKm: Number(weeklyKm),
+        // The field is entered in the user's units; PlanGoalInput is canonical km.
+        currentWeeklyKm: toMeters(Number(weeklyKm), unitSystem) / METERS_PER_KM,
         daysPerWeek: Number(daysPerWeek),
       };
       const { workouts, generationContext } = await requestPlanWorkouts(
@@ -77,6 +84,7 @@ function PlanWizard() {
                 : 'Writing your plan';
           setProgress(`${label}… (${chars.toLocaleString()} characters)`);
         },
+        unitSystem,
       );
       const planId = (await db.trainingPlans.add({
         createdAt: new Date().toISOString(),
@@ -138,7 +146,9 @@ function PlanWizard() {
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
-          <span className="mb-1 block text-sm">Current km/week</span>
+          <span className="mb-1 block text-sm">
+            Current {distanceUnitLabel(unitSystem)}/week
+          </span>
           <input
             type="number"
             min="1"
@@ -180,6 +190,7 @@ function PlanWizard() {
 }
 
 export function PlanPage() {
+  const { unitSystem, weekStart } = usePreferences();
   // undefined = still loading; null = no active plan
   const plan = useLiveQuery(async () =>
     (await db.trainingPlans.where('status').equals('active').first()) ?? null,
@@ -196,11 +207,7 @@ export function PlanPage() {
   if (plan === null) return <PlanWizard />;
 
   const todayIso = new Date().toISOString().slice(0, 10);
-  const byWeek = new Map<string, PlannedWorkout[]>();
-  for (const w of workouts) {
-    const label = isoWeekLabel(w.date);
-    byWeek.set(label, [...(byWeek.get(label) ?? []), w]);
-  }
+  const weeks = groupByWeek(workouts, (w) => w.date, weekStart);
 
   async function handleArchive() {
     if (
@@ -225,13 +232,13 @@ export function PlanPage() {
       </div>
 
       <div className="space-y-4">
-        {[...byWeek.entries()].map(([label, weekWorkouts]) => (
-          <div key={label}>
+        {weeks.map(({ weekStart: weekStartDate, items }) => (
+          <div key={weekStartDate}>
             <h3 className="mb-1.5 text-sm font-medium text-muted-foreground">
-              {label}
+              {weekHeading(weekStartDate)}
             </h3>
             <ul className="space-y-1.5">
-              {weekWorkouts.map((w) => (
+              {items.map((w) => (
                 <li
                   key={w.id}
                   className={cn(
@@ -275,7 +282,7 @@ export function PlanPage() {
                   <p className="mt-1 text-sm text-muted-foreground">
                     {w.description}
                     {w.targetDistanceMeters !== undefined &&
-                      ` · ${(w.targetDistanceMeters / 1000).toFixed(1)}km`}
+                      ` · ${formatDistanceShort(w.targetDistanceMeters, unitSystem)}`}
                   </p>
                 </li>
               ))}

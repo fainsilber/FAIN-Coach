@@ -42,7 +42,7 @@ const bareRun: RunRecord = {
 describe('summarizeRun', () => {
   it('includes every present metric', () => {
     const s = summarizeRun(fullRun);
-    expect(s).toContain('21.29 km');
+    expect(s).toContain('21.29km');
     expect(s).toContain('avg 148, max 161 bpm');
     expect(s).toContain('avg 175 spm');
     expect(s).toContain('avg 290 W');
@@ -62,6 +62,23 @@ describe('summarizeRun', () => {
     expect(s).not.toMatch(/\brpe\b/);
     expect(s).not.toContain('undefined');
     expect(s).not.toContain('null');
+  });
+
+  it('defaults to metric and honours imperial when asked (FR-5.10)', () => {
+    const metric = summarizeRun(fullRun);
+    const imperial = summarizeRun(fullRun, 'imperial');
+    expect(metric).toContain('21.29km');
+    expect(metric).toContain('/km');
+    expect(imperial).toContain('13.23mi');
+    expect(imperial).toContain('/mi');
+    expect(imperial).not.toContain('km');
+  });
+
+  it('never converts heart rate, cadence, or power', () => {
+    const imperial = summarizeRun(fullRun, 'imperial');
+    expect(imperial).toContain('avg 148, max 161 bpm');
+    expect(imperial).toContain('avg 175 spm');
+    expect(imperial).toContain('avg 290 W');
   });
 
   it('stays within the 600-token summary budget for a 22-lap run', () => {

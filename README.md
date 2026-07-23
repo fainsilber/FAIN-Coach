@@ -15,6 +15,7 @@ A local-first AI running coach. Upload `.tcx` files from any GPS watch (Garmin, 
 - **Training plans** — generate a multi-week plan from a goal race, then track it. Uploaded runs auto-match to planned workouts (you confirm), and adherence feeds back into the coaching.
 - **Local profiles** — several runners can share one device, each with isolated data and an optional PIN. Note this is data *separation*, not encryption.
 - **Offline** — everything except LLM calls works without a network.
+- **Units & week start** — metric or imperial, and a week that starts Sunday or Monday. Switching only changes what you see: runs are always stored in metres, so backups stay portable between users of either system.
 - **Backups** — versioned JSON export/import to move data between devices.
 
 ## Development
@@ -37,8 +38,8 @@ Data is per-device by design — there is no server and no sync. Each device sta
 
 ## Roadmap
 
-- **Sprint 6 — units & week start**: metric/imperial (metric stays the default) and a configurable first day of the week, defaulting to Sunday. [Spec](docs/dev-plan.md)
-- **Sprint 7 — multi-language**: English and Hebrew with full right-to-left support. [Spec](docs/dev-plan.md)
+- ✅ **Units & week start** — metric or imperial (metric is the default), and a configurable first day of the week, defaulting to Sunday.
+- **Multi-language** — English and Hebrew with full right-to-left support. [Spec](docs/dev-plan.md)
 
 ## Docs
 

@@ -4,7 +4,8 @@ import { PostRunForm, type PostRunDetails } from '@/components/PostRunForm';
 import { StatGrid } from '@/components/StatGrid';
 import { db, requestPersistentStorage } from '@/db/db';
 import type { PlannedWorkout } from '@/db/types';
-import { formatDuration, formatKm, formatPace } from '@/lib/format';
+import { formatDistance, formatDuration, formatPace } from '@/lib/format';
+import { usePreferences } from '@/lib/usePreferences';
 import { findMatchCandidate } from '@/lib/matching';
 import { cn } from '@/lib/utils';
 import { parseTcx, TcxParseError, type ParsedRun } from '@/parser/tcx';
@@ -25,6 +26,7 @@ export function UploadPage() {
   const [dragging, setDragging] = useState(false);
   const [saving, setSaving] = useState(false);
   const [matchAccepted, setMatchAccepted] = useState(true);
+  const { unitSystem } = usePreferences();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -84,7 +86,7 @@ export function UploadPage() {
       await db.chatMessages.add({
         timestamp: new Date().toISOString(),
         role: 'user',
-        content: `I just finished a run.\n\n${summarizeRun(record)}${planNote}\n\nWhat do you make of it, and what should I do next?`,
+        content: `I just finished a run.\n\n${summarizeRun(record, unitSystem)}${planNote}\n\nWhat do you make of it, and what should I do next?`,
       });
       navigate('/chat', { state: { pendingReply: true } });
     } catch {
@@ -96,9 +98,12 @@ export function UploadPage() {
   if (state.step === 'review') {
     const { run, fileName } = state;
     const stats: Array<[string, string]> = [
-      ['Distance', formatKm(run.totalDistanceMeters)],
+      ['Distance', formatDistance(run.totalDistanceMeters, unitSystem)],
       ['Time', formatDuration(run.totalDurationSeconds)],
-      ['Pace', formatPace(run.totalDistanceMeters, run.totalDurationSeconds)],
+      [
+        'Pace',
+        formatPace(run.totalDistanceMeters, run.totalDurationSeconds, unitSystem),
+      ],
       ['Laps', String(run.laps.length)],
     ];
     if (run.avgHeartRate !== undefined)

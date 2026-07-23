@@ -4,17 +4,30 @@ import { LapChart, type LapPoint } from '@/components/LapChart';
 import { StatGrid } from '@/components/StatGrid';
 import { db } from '@/db/db';
 import type { LapSplit } from '@/db/types';
-import { formatDate, formatDuration, formatKm, formatPace } from '@/lib/format';
+import {
+  formatDate,
+  formatDistance,
+  formatDistanceValue,
+  formatDuration,
+  formatPace,
+  formatPaceValue,
+} from '@/lib/format';
+import { usePreferences } from '@/lib/usePreferences';
+import {
+  distanceUnitLabel,
+  paceUnitLabel,
+  secondsPerDistanceUnit,
+  type UnitSystem,
+} from '@/lib/units';
 
-function paceSecPerKm(lap: LapSplit): number | undefined {
-  if (lap.distanceMeters <= 0 || lap.durationSeconds <= 0) return undefined;
-  return lap.durationSeconds / (lap.distanceMeters / 1000);
-}
-
-function formatPaceValue(secPerKm: number): string {
-  const m = Math.floor(secPerKm / 60);
-  const s = Math.round(secPerKm % 60);
-  return s === 60 ? `${m + 1}:00` : `${m}:${String(s).padStart(2, '0')}`;
+/** Bare m:ss — the Pace column header already carries the unit. */
+function lapPace(lap: LapSplit, unit: UnitSystem): string {
+  const perUnit = secondsPerDistanceUnit(
+    lap.distanceMeters,
+    lap.durationSeconds,
+    unit,
+  );
+  return perUnit === undefined ? '—' : formatPaceValue(perUnit);
 }
 
 function points(
@@ -38,6 +51,7 @@ function dayGap(a: string, b: string): number {
 }
 
 export function RunDetailPage() {
+  const { unitSystem } = usePreferences();
   const { id } = useParams();
   // undefined = still loading; null = looked up and not found
   const run = useLiveQuery(
@@ -89,9 +103,12 @@ export function RunDetailPage() {
   }
 
   const stats: Array<[string, string]> = [
-    ['Distance', formatKm(run.totalDistanceMeters)],
+    ['Distance', formatDistance(run.totalDistanceMeters, unitSystem)],
     ['Time', formatDuration(run.totalDurationSeconds)],
-    ['Pace', formatPace(run.totalDistanceMeters, run.totalDurationSeconds)],
+    [
+      'Pace',
+      formatPace(run.totalDistanceMeters, run.totalDurationSeconds, unitSystem),
+    ],
   ];
   if (run.avgHeartRate !== undefined)
     stats.push(['Avg HR', `${run.avgHeartRate} bpm`]);
@@ -102,7 +119,9 @@ export function RunDetailPage() {
   if (run.avgPower !== undefined) stats.push(['Power', `${run.avgPower} W`]);
   if (run.rpe !== undefined) stats.push(['RPE', String(run.rpe)]);
 
-  const pace = points(run.laps, paceSecPerKm);
+  const pace = points(run.laps, (l) =>
+    secondsPerDistanceUnit(l.distanceMeters, l.durationSeconds, unitSystem),
+  );
   const hr = points(run.laps, (l) => l.avgHeartRate);
   const cadence = points(run.laps, (l) => l.avgCadence);
   const power = points(run.laps, (l) => l.avgPower);
@@ -164,7 +183,7 @@ export function RunDetailPage() {
         {pace.length > 0 && (
           <LapChart
             title="Pace"
-            unit="min/km"
+            unit={`min${paceUnitLabel(unitSystem)}`}
             color="var(--chart-pace)"
             data={pace}
             format={formatPaceValue}
@@ -204,7 +223,7 @@ export function RunDetailPage() {
           <thead>
             <tr className="border-b bg-secondary/50 text-left text-xs text-muted-foreground">
               <th className="p-2 font-medium">Lap</th>
-              <th className="p-2 font-medium">km</th>
+              <th className="p-2 font-medium">{distanceUnitLabel(unitSystem)}</th>
               <th className="p-2 font-medium">Time</th>
               <th className="p-2 font-medium">Pace</th>
               {hasHr && <th className="p-2 font-medium">HR</th>}
@@ -216,13 +235,12 @@ export function RunDetailPage() {
             {run.laps.map((lap) => (
               <tr key={lap.lapIndex} className="border-b last:border-0">
                 <td className="p-2">{lap.lapIndex + 1}</td>
-                <td className="p-2">{(lap.distanceMeters / 1000).toFixed(2)}</td>
+                <td className="p-2">
+                  {formatDistanceValue(lap.distanceMeters, unitSystem)}
+                </td>
                 <td className="p-2">{formatDuration(lap.durationSeconds)}</td>
                 <td className="p-2">
-                  {formatPace(lap.distanceMeters, lap.durationSeconds).replace(
-                    ' /km',
-                    '',
-                  )}
+                  {lapPace(lap, unitSystem)}
                 </td>
                 {hasHr && <td className="p-2">{lap.avgHeartRate ?? '—'}</td>}
                 {hasCadence && <td className="p-2">{lap.avgCadence ?? '—'}</td>}

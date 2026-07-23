@@ -230,7 +230,21 @@ migrate to **Dexie Cloud** (~2–4 days):
    key must not roam through the sync service.
 4. Test offline conflict scenarios (two devices, archive vs upload).
 
-## 8. Sprint 6 — Units & Week Start (specified, not started)
+## 8. Sprint 6 — Units & Week Start ✅ (implemented 2026-07-23)
+
+**Outcome**: met. Verified in-browser — switching to imperial turned 21.29 km
+into 13.23 mi, 5:48/km into 9:21/mi, lap 1000 m into 0.62 mi, and the chart
+axis into min/mi, while HR/cadence/power were untouched and
+`totalDistanceMeters` stayed exactly 21290.1. Week grouping splits Sat 25 Jul
+from Sun 26 Jul under Sunday weeks and keeps them together under Monday weeks,
+reacting live to a Settings save without a reload.
+
+**Deviation from spec**: §8.3 said the coach's "coming week" window must use
+`weekStart`. It is instead a rolling **next 7 days**, and the prompt now says
+so explicitly rather than saying "the coming week". A calendar week would tell
+a runner asking on Saturday about one remaining day; a rolling window is the
+right answer to "what's next". Calendar weeks remain authoritative wherever the
+UI says "week" (plan grouping, weekly volume).
 
 Implements the preference half of PRD §4.5 — **measurement units**
 (FR-5.7 – 5.10) and **week start** (FR-5.12 – 5.14). Language and RTL are

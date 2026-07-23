@@ -1,10 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { db } from '@/db/db';
-import { formatDate, formatDuration, formatKm, formatPace } from '@/lib/format';
+import { formatDate, formatDistance, formatDuration, formatPace } from '@/lib/format';
+import { usePreferences } from '@/lib/usePreferences';
 
-// Minimal Sprint 1 list — Sprint 2 adds run detail, lap tables, and charts.
 export function HistoryPage() {
+  const { unitSystem } = usePreferences();
   const runs = useLiveQuery(() =>
     db.runs.orderBy('date').reverse().toArray(),
   );
@@ -39,9 +40,13 @@ export function HistoryPage() {
               <div>
                 <p className="text-sm font-medium">{formatDate(run.date)}</p>
                 <p className="text-sm text-muted-foreground">
-                  {formatKm(run.totalDistanceMeters)} ·{' '}
+                  {formatDistance(run.totalDistanceMeters, unitSystem)} ·{' '}
                   {formatDuration(run.totalDurationSeconds)} ·{' '}
-                  {formatPace(run.totalDistanceMeters, run.totalDurationSeconds)}
+                  {formatPace(
+                    run.totalDistanceMeters,
+                    run.totalDurationSeconds,
+                    unitSystem,
+                  )}
                 </p>
               </div>
               {run.rpe !== undefined && (

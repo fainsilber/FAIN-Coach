@@ -1,5 +1,6 @@
 import type { PlannedWorkout, RunRecord, WorkoutType } from '@/db/types';
 import type { LlmClient } from '@/llm/LlmClient';
+import type { UnitSystem } from '@/lib/units';
 import { buildPlanRequest, type PlanGoalInput } from './prompts';
 
 // Reasoning models sometimes wrap JSON in prose or fences, or return a
@@ -118,6 +119,7 @@ export async function requestPlanWorkouts(
   history: RunRecord[],
   today: Date = new Date(),
   onProgress?: (progress: PlanProgress) => void,
+  unit: UnitSystem = 'metric',
 ): Promise<GeneratedPlan> {
   let chars = 0;
   const callbacks = (retrying: boolean) => ({
@@ -131,7 +133,7 @@ export async function requestPlanWorkouts(
     },
   });
 
-  const prompt = buildPlanRequest(goalInput, history, today);
+  const prompt = buildPlanRequest(goalInput, history, today, unit);
   const firstCb = callbacks(false);
   const first = await client.chat(
     [{ role: 'user', content: prompt }],

@@ -208,7 +208,7 @@ breakdown. Status as of 2026-07-22:
 | 5 | PWA polish, offline shell, storage indicator, mobile audit | ✅ Complete |
 | — | Local profiles (§4.4) | ✅ Complete |
 | — | Deployment to GitHub Pages | ✅ Live |
-| 6 | Units & week start (§4.5, FR-5.7–5.14) | ▶ Specified, not started |
+| 6 | Units & week start (§4.5, FR-5.7–5.14) | ✅ Complete |
 | 7 | Multi-language: English + Hebrew RTL (§4.5, FR-5.1–5.6) | ▶ Specified, not started |
 
 ---

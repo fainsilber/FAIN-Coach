@@ -5,6 +5,7 @@ import { db } from '@/db/db';
 import { getSetting, SETTING_KEYS } from '@/db/settings';
 import type { PlannedWorkout } from '@/db/types';
 import { computeAdherence } from '@/lib/matching';
+import { getPreferences } from '@/db/settings';
 import { cn } from '@/lib/utils';
 import { LlmError } from '@/llm/LlmClient';
 import { DEFAULT_FAST_MODEL, OpenRouterClient } from '@/llm/openrouter';
@@ -96,7 +97,14 @@ export function ChatPage() {
           )
           .sort((a, b) => a.date.localeCompare(b.date));
       }
-      const system = buildCoachContext(plan, recentRuns, adherence, upcoming);
+      const { unitSystem } = await getPreferences();
+      const system = buildCoachContext(
+        plan,
+        recentRuns,
+        adherence,
+        upcoming,
+        unitSystem,
+      );
       const outgoing = capMessages(
         system,
         history.map((m) => ({ role: m.role, content: m.content })),

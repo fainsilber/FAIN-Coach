@@ -11,6 +11,13 @@ import type {
   TrainingPlan,
 } from '@/db/types';
 import type { LlmMessage } from '@/llm/LlmClient';
+import {
+  distanceUnitLabel,
+  paceUnitLabel,
+  secondsPerDistanceUnit,
+  toDisplayDistance,
+  type UnitSystem,
+} from '@/lib/units';
 
 /** chars/4 heuristic with safety margin (dev plan §6). */
 export function estimateTokens(text: string): number {
@@ -29,18 +36,30 @@ function fmtDuration(totalSeconds: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
 }
 
-function fmtPace(meters: number, seconds: number): string | undefined {
-  if (meters <= 0 || seconds <= 0) return undefined;
-  const secPerKm = seconds / (meters / 1000);
-  const m = Math.floor(secPerKm / 60);
-  const s = Math.round(secPerKm % 60);
-  return s === 60 ? `${m + 1}:00/km` : `${m}:${String(s).padStart(2, '0')}/km`;
+function fmtPace(
+  meters: number,
+  seconds: number,
+  unit: UnitSystem,
+): string | undefined {
+  const perUnit = secondsPerDistanceUnit(meters, seconds, unit);
+  if (perUnit === undefined) return undefined;
+  const m = Math.floor(perUnit / 60);
+  const s = Math.round(perUnit % 60);
+  const label = paceUnitLabel(unit);
+  return s === 60
+    ? `${m + 1}:00${label}`
+    : `${m}:${String(s).padStart(2, '0')}${label}`;
 }
 
-function lapLine(lap: LapSplit): string {
+function fmtDistance(meters: number, unit: UnitSystem, digits = 2): string {
+  return `${toDisplayDistance(meters, unit).toFixed(digits)}${distanceUnitLabel(unit)}`;
+}
+
+function lapLine(lap: LapSplit, unit: UnitSystem): string {
   const parts = [
-    `${(lap.distanceMeters / 1000).toFixed(2)}km`,
-    fmtPace(lap.distanceMeters, lap.durationSeconds) ?? fmtDuration(lap.durationSeconds),
+    fmtDistance(lap.distanceMeters, unit),
+    fmtPace(lap.distanceMeters, lap.durationSeconds, unit) ??
+      fmtDuration(lap.durationSeconds),
   ];
   if (lap.avgHeartRate !== undefined) parts.push(`${lap.avgHeartRate}bpm`);
   if (lap.avgCadence !== undefined) parts.push(`${lap.avgCadence}spm`);
@@ -54,12 +73,15 @@ function lapLine(lap: LapSplit): string {
  * FR-3.4 ("never mention absent metrics") is enforced, not by trusting the
  * model.
  */
-export function summarizeRun(run: RunRecord): string {
+export function summarizeRun(
+  run: RunRecord,
+  unit: UnitSystem = 'metric',
+): string {
   const lines: string[] = [];
   lines.push(`Run on ${run.date.slice(0, 10)}:`);
-  const pace = fmtPace(run.totalDistanceMeters, run.totalDurationSeconds);
+  const pace = fmtPace(run.totalDistanceMeters, run.totalDurationSeconds, unit);
   lines.push(
-    `- ${(run.totalDistanceMeters / 1000).toFixed(2)} km in ${fmtDuration(run.totalDurationSeconds)}${pace ? ` (avg ${pace})` : ''}`,
+    `- ${fmtDistance(run.totalDistanceMeters, unit)} in ${fmtDuration(run.totalDurationSeconds)}${pace ? ` (avg ${pace})` : ''}`,
   );
   if (run.avgHeartRate !== undefined || run.maxHeartRate !== undefined) {
     const hr = [
@@ -90,7 +112,7 @@ export function summarizeRun(run: RunRecord): string {
     lines.push(
       `- Lap splits${shown.length < run.laps.length ? ` (first ${shown.length} of ${run.laps.length})` : ''}:`,
     );
-    for (const lap of shown) lines.push(`  ${lapLine(lap)}`);
+    for (const lap of shown) lines.push(`  ${lapLine(lap, unit)}`);
   }
   return lines.join('\n');
 }
@@ -112,10 +134,10 @@ export interface AdherenceStats {
   pending: number;
 }
 
-function runOneLiner(run: RunRecord): string {
-  const pace = fmtPace(run.totalDistanceMeters, run.totalDurationSeconds);
+function runOneLiner(run: RunRecord, unit: UnitSystem): string {
+  const pace = fmtPace(run.totalDistanceMeters, run.totalDurationSeconds, unit);
   const bits = [
-    `${run.date.slice(0, 10)}: ${(run.totalDistanceMeters / 1000).toFixed(1)}km`,
+    `${run.date.slice(0, 10)}: ${fmtDistance(run.totalDistanceMeters, unit, 1)}`,
     pace,
     run.avgHeartRate !== undefined ? `${run.avgHeartRate}bpm` : undefined,
     run.rpe !== undefined ? `RPE ${run.rpe}` : undefined,
@@ -129,8 +151,14 @@ export function buildCoachContext(
   recentRuns: RunRecord[],
   adherence: AdherenceStats | undefined,
   upcomingWorkouts: PlannedWorkout[] = [],
+  unit: UnitSystem = 'metric',
 ): string {
-  const lines: string[] = [COACH_SYSTEM_PROMPT, '', 'Context:'];
+  const lines: string[] = [
+    COACH_SYSTEM_PROMPT,
+    `Use ${unit === 'imperial' ? 'miles and min/mile' : 'kilometres and min/km'} for all distances and paces.`,
+    '',
+    'Context:',
+  ];
   if (plan) {
     lines.push(`- Active training plan: ${plan.goal} (${plan.weeks} weeks).`);
     if (adherence) {
@@ -140,12 +168,12 @@ export function buildCoachContext(
     }
     if (upcomingWorkouts.length > 0) {
       lines.push(
-        '- Planned workouts for the coming week (refer to THESE when discussing what is next, do not invent a schedule):',
+        '- Planned workouts over the next 7 days (refer to THESE when discussing what is next, do not invent a schedule):',
       );
       for (const w of upcomingWorkouts.slice(0, 7)) {
         const target =
           w.targetDistanceMeters !== undefined
-            ? ` (${(w.targetDistanceMeters / 1000).toFixed(1)}km)`
+            ? ` (${fmtDistance(w.targetDistanceMeters, unit, 1)})`
             : '';
         lines.push(`  ${w.date} ${w.type}${target}: ${w.description.slice(0, 90)}`);
       }
@@ -156,7 +184,7 @@ export function buildCoachContext(
   if (recentRuns.length > 0) {
     lines.push('- Recent runs (newest first):');
     for (const run of recentRuns.slice(0, 3)) {
-      lines.push(`  ${runOneLiner(run)}`);
+      lines.push(`  ${runOneLiner(run, unit)}`);
     }
   }
   return lines.join('\n');
@@ -165,6 +193,8 @@ export function buildCoachContext(
 export interface PlanGoalInput {
   goal: string;
   raceDate: string; // YYYY-MM-DD
+  /** Canonical kilometres. The wizard converts from miles on entry so this
+   * field always means the same thing regardless of the user's units. */
   currentWeeklyKm: number;
   daysPerWeek: number;
 }
@@ -181,20 +211,26 @@ export function buildPlanRequest(
   goalInput: PlanGoalInput,
   history: RunRecord[],
   today: Date = new Date(),
+  unit: UnitSystem = 'metric',
 ): string {
   const todayIso = today.toISOString().slice(0, 10);
   const weeks = weeksUntil(goalInput.raceDate, today);
+  // Always state the unit explicitly — a bare "16" read as km when the runner
+  // meant miles would build a plan at ~60% of the intended volume.
+  const volumeMeters = goalInput.currentWeeklyKm * 1000;
   const lines = [
     'You are an experienced running coach. Create a personalized training plan.',
     '',
     `Today is ${todayIso}.`,
     `Goal: ${goalInput.goal}`,
     `Race date: ${goalInput.raceDate} (${weeks} week(s) away).`,
-    `Current volume: about ${goalInput.currentWeeklyKm} km/week across ${goalInput.daysPerWeek} run(s)/week.`,
+    `Current volume: about ${fmtDistance(volumeMeters, unit, 1)} per week across ${goalInput.daysPerWeek} run(s)/week.`,
+    `Express every distance and pace in ${unit === 'imperial' ? 'miles and min/mile' : 'kilometres and min/km'}.`,
   ];
   if (history.length > 0) {
     lines.push('Recent runs (newest first):');
-    for (const run of history.slice(0, 8)) lines.push(`  ${runOneLiner(run)}`);
+    for (const run of history.slice(0, 8))
+      lines.push(`  ${runOneLiner(run, unit)}`);
   }
   lines.push(
     '',
@@ -217,7 +253,9 @@ export function buildPlanRequest(
     '- description: one concrete sentence with a target pace in min/km that MATCHES THE WORKOUT TYPE, not the race goal:',
     '    easy/long = 60-90 sec per km SLOWER than goal race pace; tempo = 10-20 sec slower; intervals = at or slightly faster than goal pace; race = goal pace.',
     '  Never prescribe goal race pace for an easy or long run.',
-    '- targetDistanceMeters required; targetDurationSeconds optional.',
+    // The JSON schema is canonical SI even when prose uses miles; without this
+    // the model happily writes a mile count into a field named "...Meters".
+    '- targetDistanceMeters is ALWAYS in METRES, whatever units the descriptions use. targetDurationSeconds (seconds) optional.',
   );
   return lines.join('\n');
 }

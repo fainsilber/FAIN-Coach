@@ -12,6 +12,8 @@ import {
 import { DEFAULT_FAST_MODEL, DEFAULT_PLAN_MODEL } from '@/llm/openrouter';
 import { ModelSelect } from '@/components/ModelSelect';
 import { CHAT_MODEL_GROUPS, PLAN_MODEL_GROUPS } from '@/llm/models';
+import { DEFAULT_UNIT_SYSTEM, type UnitSystem } from '@/lib/units';
+import { DEFAULT_WEEK_START, type WeekStart } from '@/lib/week';
 
 const inputClass = 'w-full rounded-md border bg-background p-2 text-sm';
 
@@ -25,6 +27,8 @@ export function SettingsPage() {
   const [showKey, setShowKey] = useState(false);
   const [fastModel, setFastModel] = useState('');
   const [reasoningModel, setReasoningModel] = useState('');
+  const [unitSystem, setUnitSystem] = useState<UnitSystem>(DEFAULT_UNIT_SYSTEM);
+  const [weekStart, setWeekStart] = useState<WeekStart>(DEFAULT_WEEK_START);
   const [status, setStatus] = useState<string>();
   const [importError, setImportError] = useState<string>();
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -67,6 +71,16 @@ export function SettingsPage() {
     setApiKey(settings[SETTING_KEYS.apiKey] ?? '');
     setFastModel(settings[SETTING_KEYS.fastModel] ?? '');
     setReasoningModel(settings[SETTING_KEYS.reasoningModel] ?? '');
+    setUnitSystem(
+      settings[SETTING_KEYS.unitSystem] === 'imperial'
+        ? 'imperial'
+        : DEFAULT_UNIT_SYSTEM,
+    );
+    setWeekStart(
+      settings[SETTING_KEYS.weekStart] === 'monday'
+        ? 'monday'
+        : DEFAULT_WEEK_START,
+    );
   }, [loaded]);
 
   if (!loaded) return null;
@@ -75,6 +89,8 @@ export function SettingsPage() {
     await setSetting(SETTING_KEYS.apiKey, apiKey.trim());
     await setSetting(SETTING_KEYS.fastModel, fastModel.trim());
     await setSetting(SETTING_KEYS.reasoningModel, reasoningModel.trim());
+    await setSetting(SETTING_KEYS.unitSystem, unitSystem);
+    await setSetting(SETTING_KEYS.weekStart, weekStart);
     setStatus('Settings saved.');
     setTimeout(() => setStatus(undefined), 2500);
   }
@@ -119,6 +135,41 @@ export function SettingsPage() {
       <div>
         <h2 className="text-xl font-semibold">Settings</h2>
         {status && <p className="mt-1 text-sm text-muted-foreground">{status}</p>}
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="font-medium">Preferences</h3>
+
+        <label className="block">
+          <span className="mb-1 block text-sm">Units</span>
+          <select
+            value={unitSystem}
+            onChange={(e) => setUnitSystem(e.target.value as UnitSystem)}
+            className={inputClass}
+          >
+            <option value="metric">Metric — kilometres, min/km</option>
+            <option value="imperial">Imperial — miles, min/mile</option>
+          </select>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            Changes how values are shown. Your runs are always stored in metres,
+            so switching never alters your data or your backups.
+          </span>
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-sm">Week starts on</span>
+          <select
+            value={weekStart}
+            onChange={(e) => setWeekStart(e.target.value as WeekStart)}
+            className={inputClass}
+          >
+            <option value="sunday">Sunday</option>
+            <option value="monday">Monday</option>
+          </select>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            Used to group your training plan into weeks.
+          </span>
+        </label>
       </div>
 
       <div className="space-y-4">
