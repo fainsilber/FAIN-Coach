@@ -197,7 +197,7 @@ export interface RunRecord {
 ## 7. Development Roadmap
 
 Superseded by [dev-plan.md §5](dev-plan.md), which is the authoritative sprint
-breakdown. Status as of 2026-07-22:
+breakdown. Status as of 2026-07-23 — all seven planned sprints are complete:
 
 | Sprint | Scope | Status |
 |---|---|---|

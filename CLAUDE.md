@@ -4,7 +4,7 @@ Local-first AI running coach PWA. Users upload `.tcx` files from any GPS watch, 
 
 **Live:** https://fainsilber.github.io/FAIN-Coach/ (auto-deploys on push to `main`)
 
-**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v1.3 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
+**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v1.4 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
 
 ## Commands
 
@@ -19,13 +19,15 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 
 ## Layout
 
-- `src/db/` — Dexie schema (`db.ts`), contracts (`types.ts`), settings helpers (`settings.ts`). 5 tables: runs, trainingPlans, plannedWorkouts, chatMessages, settings. Laps are embedded in `RunRecord`, not a table. **One database per profile** — the `db` singleton binds to the active profile at module load, so switching profiles reloads the app.
+- `src/db/` — Dexie schema (`db.ts`), contracts (`types.ts`), settings helpers (`settings.ts`, incl. `getPreferences()`). 5 tables: runs, trainingPlans, plannedWorkouts, chatMessages, settings. Laps are embedded in `RunRecord`, not a table. **One database per profile** — the `db` singleton binds to the active profile at module load, so switching profiles reloads the app.
 - `src/lib/profiles.ts` — local profile registry (localStorage), salted-PIN hashing, legacy-DB adoption. Data *separation*, not security (PRD §4.4).
 - `src/lib/backup.ts` — versioned JSON export/import over all tables; import replaces the DB, preserving ids and cross-table links.
 - `src/lib/matching.ts` — run↔plan auto-match (±1 day, distance tie-break) and adherence stats.
+- `src/lib/units.ts`, `src/lib/week.ts`, `src/lib/usePreferences.ts` — unit conversion boundary and week math; see the dedicated section below.
+- `src/i18n/` — translation catalogs and provider; see the dedicated section below.
 - `src/parser/tcx.ts` — defensive TCX parser + fixtures in `src/parser/fixtures/`.
 - `src/llm/` — `LlmClient` transport interface, `openrouter.ts` (SSE streaming, retry, error mapping), `models.ts` (curated model catalog). **Never call fetch for LLMs outside this layer.**
-- `src/prompts/` — pure prompt-pipeline functions (`summarizeRun`, `buildCoachContext`, `buildPlanRequest`) and `planResponse.ts` (strict JSON validation + one retry). Mandatory unit-test target.
+- `src/prompts/` — pure prompt-pipeline functions (`summarizeRun`, `buildCoachContext`, `buildPlanRequest`, `coachSystemPrompt`) and `planResponse.ts` (strict JSON validation + one retry). All take `unit`/`language` parameters rather than reading context. Mandatory unit-test target.
 - `src/pages/` — one file per route; `src/App.tsx` holds the router shell and profile gate.
 
 ## Hard rules (from the PRD/dev plan)

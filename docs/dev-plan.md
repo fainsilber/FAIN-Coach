@@ -1,14 +1,15 @@
-# FAIN Coach — Development Plan (v1.3)
+# FAIN Coach — Development Plan (v1.4)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
-profiles and the account-migration path; **v1.3 (2026-07-22)** records
-sprints 1–5 as shipped, the GitHub Pages deployment, the revised model
-tiering, and specifies **Sprint 6 — Localization & Units** (§9).
+profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
+1–5 as shipped, the GitHub Pages deployment, and the revised model tiering;
+**v1.4 (2026-07-23)** records **Sprint 6 (Units & Week Start)** and
+**Sprint 7 (Multi-language)** as shipped — all seven planned sprints are now
+complete.
 
-**Status:** MVP complete and deployed — https://fainsilber.github.io/FAIN-Coach/
-
-**Next up:** Sprint 6 — Units & Week Start (§8), then Sprint 7 — Multi-language
-with Hebrew/RTL (§9). Both specified, neither started.
+**Status:** All planned work complete and deployed —
+https://fainsilber.github.io/FAIN-Coach/. 109 tests passing. Open items are
+tracked in §10 (Risks / Open Questions) — none are blocking.
 
 ---
 
@@ -106,18 +107,18 @@ interface Settings {
 
 ## 4. Architecture Notes
 
-- **LLM transport abstraction**: single `LlmClient` interface (`chat(messages, model, stream)`). MVP implementation: direct `fetch` to OpenRouter with local key. Future proxy = second implementation, zero UI changes.
-- **Prompt pipeline** (pure functions, unit-testable):
-  - `summarizeRun(run): string` — macro summary, no trackpoints, ≤ ~600 tokens.
-  - `buildCoachContext(plan, recentRuns, adherence): string` — plan-aware system context.
-  - `buildPlanRequest(goalInput, history): string` — reasoning-tier prompt.
-- **System prompt contract** enforces the 3-step layout (Big Picture / Telemetry Breakdown / Next Step) and "never mention absent metrics" — enforced by listing *only present metrics* in the summary, not by trusting the model.
+- **LLM transport abstraction**: single `LlmClient` interface (`chat(messages, model, onToken?, options?)`). MVP implementation (`OpenRouterClient`): direct `fetch` to OpenRouter with a local key, SSE streaming, connection-phase retry, idle-timeout abort. Future proxy = second implementation, zero UI changes.
+- **Prompt pipeline** (pure functions, unit-testable, all take `unit: UnitSystem` and `language: PromptLanguage` parameters — see §8/§9):
+  - `summarizeRun(run, unit)` — macro summary, no trackpoints, ≤ ~600 tokens.
+  - `buildCoachContext(plan, recentRuns, adherence, upcomingWorkouts, unit, language)` — plan-aware system context; upcoming workouts are a rolling next-7-days window, not a calendar week (see §8 deviation note).
+  - `buildPlanRequest(goalInput, history, today, unit, language)` — plan-generation prompt. "Reasoning-tier" language is retired (§3.1 in the PRD) — the default model is an instruct model; nothing about the prompt requires reasoning specifically.
+- **System prompt contract** (`coachSystemPrompt(language)`) enforces the 3-step layout (Big Picture / Telemetry Breakdown / Next Step, localized headings in Hebrew) and "never mention absent metrics" — enforced by listing *only present metrics* in the summary, not by trusting the model.
 - **Auto-match algorithm**: nearest `PlannedWorkout` within ±1 day of run date, tie-break by type similarity (distance/duration proximity). Always confirmed by user before linking.
 
 ## 5. Sprints
 
-**All of Sprints 1–5 are complete** (2026-07-22). Outcomes and deviations are
-noted per sprint below; the test suite stands at **78 passing**.
+**All of Sprints 1–5 are complete** (2026-07-22; Sprints 6–7 followed on
+2026-07-23, see §8–§9). Outcomes and deviations are noted per sprint below.
 
 ### Sprint 1 — Foundation & Parsing Engine ✅
 - Vite + React + TS scaffold, Tailwind, shadcn/ui, routing shell.

@@ -44,4 +44,4 @@ All planned sprints are complete. Open items live in [docs/dev-plan.md §10](doc
 ## Docs
 
 - [Product Requirements (PRD v1.2)](docs/PRD.md)
-- [Development Plan v1.3](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
+- [Development Plan v1.4](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
