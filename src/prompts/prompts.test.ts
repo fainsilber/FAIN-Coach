@@ -105,13 +105,26 @@ describe('summarizeRun', () => {
 });
 
 describe('buildCoachContext', () => {
-  it('enforces the 3-step layout and absent-metric rule in the system prompt', () => {
+  it('defines the 3-step layout and absent-metric rule in the system prompt', () => {
     const ctx = buildCoachContext(undefined, [], undefined);
     expect(ctx).toContain('The Big Picture');
     expect(ctx).toContain('Telemetry Breakdown');
     expect(ctx).toContain('Next Step');
     expect(ctx).toContain('never mention');
     expect(ctx).toContain('No active training plan');
+  });
+
+  it('scopes the 3-step layout to run reviews and allows conversational replies otherwise', () => {
+    const ctx = buildCoachContext(undefined, [], undefined);
+    // The structure is conditional on the runner sharing a run…
+    expect(ctx).toMatch(/WHEN the runner shares a specific run/);
+    // …and other messages get a natural reply, not the forced format.
+    expect(ctx).toMatch(/Do NOT force the three-section format/);
+    // Injury comments must be handled with care, not pushed through.
+    expect(ctx).toContain('pain, injury, or illness');
+    expect(ctx).toContain('Never diagnose');
+    // The old always-on wording must be gone.
+    expect(ctx).not.toContain('Structure every response');
   });
 
   it('includes plan, adherence, and recent-run one-liners when present', () => {

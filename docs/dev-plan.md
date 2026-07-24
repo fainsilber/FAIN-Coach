@@ -346,8 +346,9 @@ every audited page renders Hebrew, numeric compounds ("21.29 km · 2:03:38 ·
 column flow with Hebrew headers, and no horizontal scroll appears. The profile
 gate itself renders Hebrew after a full reload via the device-level fallback.
 Adding a language = one catalog file + one entry in `LANGUAGES`.
-**Untested live**: actual Hebrew coach output quality (needs a real key +
-model call — see the §12 risk).
+**Live-confirmed (2026-07-23)**: Hebrew plan generation produces a correct,
+fully-Hebrew plan with the user's real key. Chat coaching uses the same
+localized prompt path.
 
 ### 9.1 Language setting & the profile-gate problem
 
@@ -572,7 +573,10 @@ true, so whoever picks this up starts informed:
 - **Apple Watch exports**: Apple exports GPX natively, TCX only via third-party apps — may need a GPX parser later (P2, design parser interface to allow it). Still open; `parseTcx` returns a `ParsedRun` so a `parseGpx` sibling can slot in behind the same contract.
 - **Token estimation**: no tokenizer in-browser for arbitrary models → use chars/4 heuristic with safety margin. Still in use; measured sends (169–488 tokens) sit far enough under the 1k budget that precision hasn't mattered yet.
 - **Chat history growth**: `capMessages` drops oldest-first to stay in budget. A rolling summary of dropped turns is **still not implemented** — long threads silently lose early context. P2.
-- **Hebrew LLM quality** (Sprint 7): the default model is untested on Hebrew output; may need a per-language default. See §9.4.
+- ~~Hebrew LLM quality~~ — **confirmed working 2026-07-23**: Hebrew plan
+  generation produced a correct fully-Hebrew plan with the user's real key.
+  A per-language default model is no longer a prerequisite; revisit only if a
+  specific model disappoints on Hebrew chat.
 - **Node 20 deprecation warning** in the Pages workflow: `actions/checkout@v4`
   and friends target Node 20 and are force-run on Node 24. Cosmetic today,
   will need action-version bumps eventually.

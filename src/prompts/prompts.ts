@@ -126,7 +126,11 @@ export function summarizeRun(
 export type PromptLanguage = 'en' | 'he';
 
 /**
- * System prompt contract (FR-3.3): responses must follow the 3-step layout.
+ * System prompt contract.
+ * FR-3.3: the 3-step layout is required *when reviewing a run the runner
+ * shares* — NOT for every message. A general question or an off-hand comment
+ * ("my knee hurts") gets a natural conversational reply, because forcing the
+ * Big Picture / Telemetry / Next Step structure onto those reads like a robot.
  * FR-5.6: the response language follows the user's setting, with localized
  * section headings. The INSTRUCTIONS stay in English — models follow English
  * instructions most reliably — only the demanded output language changes.
@@ -142,15 +146,18 @@ export function coachSystemPrompt(language: PromptLanguage = 'en'): string {
       : { big: 'The Big Picture', telemetry: 'Telemetry Breakdown', next: 'Next Step' };
   const languageRule =
     language === 'he'
-      ? 'Respond ENTIRELY in Hebrew, using the exact Hebrew section headings below.'
+      ? 'Respond ENTIRELY in Hebrew. When you use the three-section format, use the exact Hebrew section headings below.'
       : '';
-  return `You are FAIN Coach, an experienced running coach.
+  return `You are FAIN Coach, an experienced and encouraging running coach. Talk like a real coach in conversation — warm, direct, concise.
 ${languageRule}
-Structure every response in exactly three sections:
+WHEN the runner shares a specific run for you to review (a message containing a run summary with distance, time and metrics), structure that reply in exactly three sections:
 1. **${headings.big}** — what this workout accomplished.
 2. **${headings.telemetry}** — bullet points about the metrics provided. Discuss ONLY metrics that appear in the summary; never mention, estimate, or comment on metrics that are absent.
 3. **${headings.next}** — one actionable recommendation for the next run.
-Keep responses under 250 words. Be specific and concrete, never generic.`;
+
+For ANY OTHER message — a question, a follow-up, or a comment about how they feel — reply naturally and conversationally. Do NOT force the three-section format onto these; just answer like a coach would in a chat. If they mention pain, injury, or illness, take it seriously: advise caution, suggest rest or backing off rather than pushing through, and recommend seeing a physio or doctor when it sounds like it warrants one. Never diagnose.
+
+Keep replies focused and under ~250 words. Be specific and concrete, never generic.`;
 }
 
 export interface AdherenceStats {

@@ -98,12 +98,13 @@ model; reasoning models remain user-selectable for richer prose.
 
 * **FR-3.1:** The app **must** allow users to input their own OpenRouter API key or choose from available models.
 * **FR-3.2:** Prompts sent to OpenRouter **must** be pre-processed macro summaries (strictly omitting raw per-second trackpoint noise) to keep context windows under 1,000 tokens.
-* **FR-3.3:** The AI Coach system prompt **must** strictly enforce a 3-step response layout:
+* **FR-3.3:** When the runner shares a specific run for review, the AI Coach **must** structure that reply in a 3-step layout:
 1. *The Big Picture* (Workout intention summary)
 2. *Telemetry Breakdown* (Specific bullet points from present metrics only)
 3. *Next Step* (Actionable recommendation for the next run)
 
 
+* **FR-3.3a (revised v1.3):** The 3-step layout applies **only to run reviews**, not to every message. For a general question or an off-hand comment (e.g. "my knee is hurting"), the coach **must** reply naturally and conversationally, without forcing the three-section structure. Comments about pain, injury, or illness must be handled with care — advise caution rather than pushing through, suggest professional help when warranted, and never diagnose.
 * **FR-3.4:** The AI **must never** invent or comment on missing metrics (e.g., power or cadence if omitted from the TCX file).
 
 ### 4.4 Local Profiles & Multi-User (added v1.1)

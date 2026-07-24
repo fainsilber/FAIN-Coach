@@ -40,7 +40,7 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 - Cadence < 120 in TCX is single-leg → ×2 to get SPM.
 - Post-run chat context ≤ 1,000 tokens (chars/4 heuristic); plan generation ~4k.
 - One global chat thread — no per-run threads.
-- Coach responses follow the 3-step layout: Big Picture / Telemetry Breakdown / Next Step.
+- Coach responses use the 3-step layout (Big Picture / Telemetry Breakdown / Next Step) **only when reviewing a shared run**. General questions and comments ("my knee hurts") get a natural conversational reply — don't force the structure. Injury/pain comments: advise caution, suggest professional help, never diagnose.
 - API key is BYO, stored in IndexedDB `settings`, never sent anywhere except OpenRouter.
 - **Prompt rules must be literal.** Weaker instruct models follow instructions exactly: "taper before the race" produced an empty race week, and "derive a pace from the goal" put easy runs at race pace. State constraints explicitly — ambiguity here is a safety issue, not a style one.
 - **LLM retries**: the connection phase retries automatically; never retry after tokens have streamed (duplicates output) and never on 4xx.
@@ -69,4 +69,4 @@ Served from the `/FAIN-Coach/` subpath, so Vite `base`, the router `basename` (`
 
 Sprints 1–8 complete, local profiles added, deployed to GitHub Pages. 131 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start, and manual run entry all shipped.
 
-**Next:** Sprint 9 — design refresh ([dev-plan §11](docs/dev-plan.md)) is a deliberate placeholder; **do not invent a design direction**, it will be supplied. Ongoing risks in [§12](docs/dev-plan.md) — Hebrew LLM output quality is the main untested item.
+**Next:** Sprint 9 — design refresh ([dev-plan §11](docs/dev-plan.md)) is a deliberate placeholder; **do not invent a design direction**, it will be supplied. Ongoing risks in [§12](docs/dev-plan.md) — mostly deferred items (GPX parser, chat-history summary); Hebrew output is confirmed working.
