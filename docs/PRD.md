@@ -2,7 +2,7 @@
 
 ## AI Running Coach PWA ("OpenRun Coach")
 
-**Document Version:** 1.3 (2026-07-23: §4.6 Manual Run Entry. Previously: §4.4 Local Profiles, §4.5 Localization & Units, §3 architecture corrected to as-built)
+**Document Version:** 1.4 (2026-07-23: §4.7 Shoe Tracking. Previously: §4.6 Manual Run Entry + revised FR-3.3, §4.4 Local Profiles, §4.5 Localization & Units, §3 architecture corrected to as-built)
 
 **Target Release:** MVP shipped — live at https://fainsilber.github.io/FAIN-Coach/
 
@@ -157,6 +157,22 @@ For runs with no `.tcx` file — a watch that failed to sync, a treadmill sessio
 * **FR-6.7:** Runs **should** record how they were created, so the app can distinguish device-measured data from self-reported data. Self-reported metrics **should** be marked as such in the coach summary, since an estimated heart rate deserves less confidence than a measured one.
 * **FR-6.8 (scope limitation):** *Editing* an existing run is out of scope for this release. Only creation is in scope.
 
+### 4.7 Shoe Tracking (added v1.4)
+
+Running shoes wear out after a few hundred kilometres, and the mileage is invisible unless something counts it. Worn-out shoes are a genuine injury risk, which makes this a coaching concern and not just bookkeeping.
+
+* **FR-7.1:** The app **must** let a user register running shoes (name at minimum; optionally brand/model, purchase date, and starting mileage for shoes already part-worn when added).
+* **FR-7.2:** A run **may** be assigned to one pair of shoes. The assignment is optional — a run with no shoe recorded is valid and must never block saving.
+* **FR-7.3:** The app **must** show accumulated distance per pair, and the distance remaining before its replacement threshold.
+* **FR-7.4:** Accumulated distance **must be derived** by summing the runs assigned to that pair (plus any starting mileage), never maintained as a separately incremented counter — so deleting or re-assigning a run can never leave a stale total.
+* **FR-7.5:** Each pair **must** have a replacement threshold, defaulting to a sensible distance (≈800 km / 500 mi) and editable per pair, since shoe lifespan varies by model and runner.
+* **FR-7.6:** The app **must** warn as a pair approaches its threshold (e.g. ≥90%) and clearly mark it once exceeded. The warning is advisory — it must never prevent logging a run.
+* **FR-7.7:** A pair **must** be retirable. A retired pair keeps its history and stays attached to its past runs, but is no longer offered when assigning new runs.
+* **FR-7.8:** Distances **must** follow the user's unit system for display and entry, and be stored canonically in SI (FR-5.8) — so the threshold is stored in metres regardless of how it was typed.
+* **FR-7.9:** Shoes **must** be included in backup export/import (FR-2.3), and shoe assignments on runs must survive the round-trip.
+* **FR-7.10:** The coach **should** be told when the active pair is near or past its threshold, so it can raise replacement as a training-health point. It **must not** invent mileage for runs with no shoe assigned (consistent with FR-3.4).
+* **FR-7.11 (scope limitation):** One pair per run. Splitting a single run across two pairs is out of scope.
+
 ---
 
 ## 5. Non-Functional Requirements
@@ -227,5 +243,6 @@ breakdown. Status as of 2026-07-23:
 | 8 | Manual run entry (§4.6, FR-6.1–6.8) | ✅ Complete |
 | 9 | Design refresh | ⬜ Placeholder — direction not yet defined |
 | 10–12 | Paid hosted tier: Cloudflare move, accounts + sync, managed AI + billing (a connected track) | ▶ Specified — see dev-plan §12 & [monetization.md](monetization.md) |
+| 13 | Shoe tracking (§4.7, FR-7.1–7.11) | ▶ Specified, not started — independent of 10–12 |
 
 ---

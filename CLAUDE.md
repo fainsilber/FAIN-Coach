@@ -69,4 +69,9 @@ Served from the `/FAIN-Coach/` subpath, so Vite `base`, the router `basename` (`
 
 Sprints 1–8 complete, local profiles added, deployed to GitHub Pages. 131 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start, and manual run entry all shipped.
 
-**Next (two independent tracks):** Sprint 9 — design refresh ([dev-plan §11](docs/dev-plan.md)) is a deliberate placeholder; **do not invent a design direction**, it will be supplied. Sprints 10–12 — the paid hosted tier (Cloudflare + accounts/sync + managed AI + billing), a connected track specified in [dev-plan §12](docs/dev-plan.md) with economics in [monetization.md](docs/monetization.md). Ongoing risks in [§13](docs/dev-plan.md) — deferred items (GPX parser, chat-history summary); Hebrew output is confirmed working.
+**Next — three independent tracks, any order:**
+- **Sprint 9** — design refresh ([dev-plan §11](docs/dev-plan.md)) is a deliberate placeholder; **do not invent a design direction**, it will be supplied.
+- **Sprints 10–12** — paid hosted tier (Cloudflare + accounts/sync + managed AI + billing). A *connected* track, build in order: [dev-plan §12](docs/dev-plan.md), economics in [monetization.md](docs/monetization.md).
+- **Sprint 13** — shoe tracking ([dev-plan §13](docs/dev-plan.md)). Standalone. Note this one **needs a Dexie version bump** (new table + new index), unlike Sprint 8's field-only change.
+
+Ongoing risks in [§14](docs/dev-plan.md) — deferred items (GPX parser, chat-history summary); Hebrew output is confirmed working.

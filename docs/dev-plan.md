@@ -1,19 +1,22 @@
-# FAIN Coach — Development Plan (v1.7)
+# FAIN Coach — Development Plan (v1.8)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
 1–5 as shipped, the GitHub Pages deployment, and the revised model tiering;
 v1.4 recorded Sprints 6–7 as shipped; v1.5 added Sprint 8 and the Sprint 9
-placeholder; v1.6 recorded Sprint 8 as shipped; **v1.7 (2026-07-23)** specifies
-**Sprints 10–12 — the paid hosted tier** (§12), a connected track, with
-economics in [monetization.md](monetization.md).
+placeholder; v1.6 recorded Sprint 8 as shipped; v1.7 specified Sprints 10–12
+(the paid hosted tier, §12, economics in [monetization.md](monetization.md));
+**v1.8 (2026-07-23)** specifies **Sprint 13 — Shoe Tracking** (§13).
 
 **Status:** Sprints 1–8 complete and deployed —
 https://fainsilber.github.io/FAIN-Coach/. 132 tests passing.
 
-**Next up:** two independent tracks — Sprint 9 (§11) design refresh (awaiting
-direction), and Sprints 10–12 (§12) the paid hosted tier (specified, ready to
-build in order). Ongoing risks are in §13 — none blocking.
+**Next up — three independent tracks**, pick any order:
+- **Sprint 9** (§11) — design refresh. Awaiting a design direction.
+- **Sprints 10–12** (§12) — paid hosted tier. A *connected* track: build in order.
+- **Sprint 13** (§13) — shoe tracking. Standalone feature.
+
+Ongoing risks are in §14 — none blocking.
 
 ---
 
@@ -179,7 +182,7 @@ interface Settings {
   Coach context also gained the upcoming week's actual planned workouts, which
   stopped the model inventing a weekly schedule when asked "what's next?".
 - **Not done**: cross-device TCX compatibility pass beyond Garmin. Apple Watch
-  exports GPX natively (see §13); Coros/Suunto covered only by a synthetic
+  exports GPX natively (see §14); Coros/Suunto covered only by a synthetic
   fixture, not a real export.
 
 ## 5a. Deployment (2026-07-22)
@@ -631,7 +634,113 @@ Confirm before starting 12: current OpenRouter model rates, Dexie Cloud
 pricing, tax approach (MoR vs Stripe), and the chosen usage cap. Pricing
 recommendation: **$4/mo or $40/yr**, annual pushed to beat the Stripe fixed fee.
 
-## 13. Risks / Open Questions
+## 13. Sprint 13 — Shoe Tracking (specified, not started)
+
+Implements PRD §4.7 (FR-7.1 – 7.11). Register shoes, assign runs to them,
+accumulate mileage, warn before the replacement threshold. **Independent of the
+paid track (§12)** — build it whenever; no ordering constraint either way.
+
+### 13.1 Schema — this one DOES need a migration
+
+Unlike Sprint 8's `source` field (unindexed, therefore free), **a new table and
+a new index both require a Dexie version bump.** Declare v2 alongside v1; Dexie
+runs the upgrade automatically and existing data is untouched — there is nothing
+to backfill, since every run simply has no shoe until assigned.
+
+```typescript
+this.version(1).stores({ /* …unchanged, keep it… */ });
+this.version(2).stores({
+  shoes: '++id, retired',
+  runs: '++id, date, matchStatus, plannedWorkoutId, shoeId', // + shoeId index
+});
+
+interface Shoe {
+  id?: number;
+  name: string;                    // "Pegasus 40 — blue"
+  brand?: string;
+  purchasedAt?: string;            // ISO date
+  initialDistanceMeters: number;   // for shoes already part-worn when added; 0 default
+  retirementDistanceMeters: number; // default 800_000 (≈800 km / 500 mi)
+  retired: boolean;
+}
+
+interface RunRecord {
+  // …existing…
+  shoeId?: number;                 // absent = no shoe recorded (valid)
+}
+```
+
+`shoeId` is indexed because "all runs in these shoes" is the core query.
+`retired` is indexed to filter the assignment picker cheaply.
+
+### 13.2 Mileage is derived, never stored (FR-7.4)
+
+`shoeMileage(shoeId) = initialDistanceMeters + Σ(runs where shoeId).totalDistanceMeters`
+
+A stored counter would drift the moment a run is deleted or re-assigned — this is
+the same "one source of truth" reasoning that keeps pace derived from distance
+and time (§10). Put it in `src/lib/shoes.ts` as pure functions over a run list so
+the arithmetic is unit-testable without a database:
+
+- `shoeMileage(shoe, runs)` → metres
+- `shoeStatus(shoe, runs)` → `{ meters, remaining, percent, state: 'ok' | 'warn' | 'over' }`
+  where `warn` is ≥90% and `over` is ≥100% (FR-7.6)
+
+Advisory only — nothing in the save path may block on shoe state.
+
+### 13.3 UI
+
+- **New "Shoes" screen** (reachable from Settings rather than a sixth nav tab —
+  the bottom bar is already full at five on a 375px screen). List each pair with
+  mileage, a progress bar toward the threshold, and its state; add/edit/retire.
+- **Assignment on save**: a shoe picker in the post-run form, used by **both**
+  upload and manual entry (they already share `PostRunForm` and
+  `saveRunAndPromptCoach`, so this lands in one place). **Default to the most
+  recently used non-retired pair** — the common case is wearing the same shoes,
+  and a default that's usually right beats an empty dropdown. Always includes an
+  explicit "no shoes recorded" option (FR-7.2).
+- **Run detail**: show the assigned pair, and allow changing it (the mileage
+  recomputes automatically, which is the payoff of §13.2).
+- **Retired pairs** are excluded from the picker but still shown on their old
+  runs and on the Shoes screen (FR-7.7).
+- **Deleting a pair**: prefer *retire* over delete. If deletion is offered, it
+  must clear `shoeId` on affected runs rather than leaving them pointing at a
+  missing row — never orphan a foreign key.
+- Threshold entry and all distances are unit-aware and stored SI (FR-7.8) —
+  reuse `toMeters()`/`formatDistance()`; the same trap as the plan wizard, where
+  a bare number changes meaning with a setting.
+
+### 13.4 Backup compatibility (FR-7.9)
+
+Adding a table changes the envelope shape, so bump `BACKUP_SCHEMA_VERSION` to 2
+**and keep importing v1 backups** — a v1 file simply has no `shoes` key, which
+should be read as an empty list, not an error. Currently `parseBackup` rejects
+any version ≠ 1; it needs to accept both. (A *new* backup imported into an
+*older* build will still be refused, which is correct.)
+
+### 13.5 Coach context (FR-7.10)
+
+When the assigned pair is at `warn`/`over`, add one line to the coach context —
+worn shoes are an injury-risk factor, so this is legitimate coaching input, not
+trivia. One line only: the ≤1k-token chat budget is tight, and this must not
+crowd out the run summary. Say nothing when no shoe is assigned (FR-3.4's
+never-invent-a-metric rule applies here too).
+
+### 13.6 Exit criteria
+
+- Register a pair, log runs against it, and its mileage equals the sum of those
+  runs plus any starting mileage.
+- Re-assigning a run to a different pair updates **both** totals with no stale
+  values; deleting a run reduces the total.
+- A pair crossing 90% warns and past 100% is clearly marked, and neither blocks
+  saving a run.
+- A retired pair disappears from the picker but keeps its history.
+- Threshold entered under imperial stores the correct metres.
+- Export → wipe → import round-trips shoes *and* run assignments; a pre-Sprint-13
+  (v1) backup still imports.
+- New strings in both catalogs; type-check fails if a Hebrew entry is missing.
+
+## 14. Risks / Open Questions
 
 - ~~Coach context should include the upcoming week's actual planned
   workouts~~ — **resolved in Sprint 5** (2026-07-22): `buildCoachContext`

@@ -42,7 +42,10 @@ Data is per-device by design — there is no server and no sync. Each device sta
 
 - **Design refresh** — planned; direction not yet defined.
 
-A **paid hosted tier** (accounts, cloud sync, and a managed AI key so there's no setup) is planned — see [docs/monetization.md](docs/monetization.md) and dev-plan §12. Longer-term items live in [docs/dev-plan.md §13](docs/dev-plan.md), notably a GPX parser for native Apple Watch exports.
+- **Shoe tracking** — register your shoes, see the mileage on each pair, and get a warning before they're worn out. [Spec](docs/dev-plan.md)
+- A **paid hosted tier** (accounts, cloud sync, and a managed AI key so there's no setup) is planned — see [docs/monetization.md](docs/monetization.md) and dev-plan §12.
+
+Longer-term items live in [docs/dev-plan.md §14](docs/dev-plan.md), notably a GPX parser for native Apple Watch exports.
 
 ## Docs
 
