@@ -242,6 +242,26 @@ export const en = {
     'Really delete ALL data for this profile — runs, plans, chat, and settings? This cannot be undone.',
   'settings.wiped': 'All data wiped.',
 
+  // About & diagnostics (Sprint 14)
+  'settings.about': 'About',
+  'settings.aboutLine': 'v{version} · {sha} · built {built}',
+  'settings.checkUpdate': 'Check for updates',
+  'settings.checkingUpdate': 'Checking…',
+  'settings.updateFound': 'A new version was found — see the banner above.',
+  'settings.upToDate': "You're up to date.",
+  'settings.updateCheckFailed': 'Could not check for updates.',
+  'settings.diagnostics': 'Diagnostics',
+  'settings.diagnosticsDesc':
+    'A local log of errors and notable events, kept on this device to help troubleshoot problems. It never contains your API key, chat messages, or notes.',
+  'settings.logEntries': '{count} entries logged',
+  'settings.exportLog': 'Export log',
+  'settings.clearLog': 'Clear log',
+  'settings.clearLogConfirm':
+    'Delete all logged diagnostic entries? This cannot be undone.',
+  'settings.logCleared': 'Log cleared.',
+  'update.available': 'A new version is ready.',
+  'update.reload': 'Reload',
+
   // Model select
   'model.custom': 'Custom…',
   'model.customHint': 'Any model id from openrouter.ai/models works via Custom.',

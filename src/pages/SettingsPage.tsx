@@ -15,6 +15,9 @@ import { CHAT_MODEL_GROUPS, PLAN_MODEL_GROUPS } from '@/llm/models';
 import { DEFAULT_UNIT_SYSTEM, type UnitSystem } from '@/lib/units';
 import { DEFAULT_WEEK_START, type WeekStart } from '@/lib/week';
 import { LANGUAGES, isLanguage, useI18n } from '@/i18n';
+import { APP_VERSION, formatBuildTime, GIT_SHA } from '@/lib/appInfo';
+import { clearLog, exportLogText, logEvent } from '@/lib/log';
+import { checkForUpdates } from '@/lib/swUpdate';
 
 const inputClass = 'w-full rounded-md border bg-background p-2 text-sm';
 
@@ -34,6 +37,7 @@ export function SettingsPage() {
   const [status, setStatus] = useState<string>();
   const [importError, setImportError] = useState<string>();
   const importInputRef = useRef<HTMLInputElement>(null);
+  const logCount = useLiveQuery(() => db.logs.count());
   const [storage, setStorage] = useState<{
     usageMB: string;
     quotaMB: string;
@@ -63,6 +67,48 @@ export function SettingsPage() {
       granted ? t('settings.persistGranted') : t('settings.persistDeclined'),
     );
     setTimeout(() => setStatus(undefined), 4000);
+  }
+
+  async function handleCheckForUpdates() {
+    setStatus(t('settings.checkingUpdate'));
+    const result = await checkForUpdates();
+    void logEvent('info', `sw.check.${result}`);
+    setStatus(
+      result === 'updated'
+        ? t('settings.updateFound')
+        : result === 'current'
+          ? t('settings.upToDate')
+          : t('settings.updateCheckFailed'),
+    );
+    setTimeout(() => setStatus(undefined), 4000);
+  }
+
+  async function handleExportLog() {
+    const text = await exportLogText();
+    const filename = `fain-coach-log-${new Date().toISOString().slice(0, 10)}.txt`;
+    const file = new File([text], filename, { type: 'text/plain' });
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: filename });
+        return;
+      } catch {
+        // User cancelled or share failed — fall through to download.
+      }
+    }
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleClearLog() {
+    if (!window.confirm(t('settings.clearLogConfirm'))) return;
+    await clearLog();
+    setStatus(t('settings.logCleared'));
+    setTimeout(() => setStatus(undefined), 2500);
   }
 
   // Prefill the form once the DB read resolves.
@@ -128,9 +174,15 @@ export function SettingsPage() {
         return;
       }
       await importBackup(envelope);
+      void logEvent('info', 'backup.imported', `runs=${envelope.tables.runs.length}`);
       setStatus(t('settings.imported'));
       setTimeout(() => setStatus(undefined), 2500);
     } catch (e) {
+      void logEvent(
+        'error',
+        'backup.import.failed',
+        e instanceof BackupError ? e.message : String(e),
+      );
       setImportError(
         e instanceof BackupError ? e.message : t('settings.importFailed'),
       );
@@ -283,6 +335,52 @@ export function SettingsPage() {
         {importError && (
           <p className="text-sm text-destructive">{importError}</p>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="font-medium">{t('settings.about')}</h3>
+        <p className="text-sm text-muted-foreground" dir="ltr">
+          {t('settings.aboutLine', {
+            version: APP_VERSION,
+            sha: GIT_SHA,
+            built: formatBuildTime(),
+          })}
+        </p>
+        <button
+          type="button"
+          onClick={() => void handleCheckForUpdates()}
+          className="rounded-md border px-4 py-2 text-sm font-medium"
+        >
+          {t('settings.checkUpdate')}
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="font-medium">{t('settings.diagnostics')}</h3>
+        <p className="text-sm text-muted-foreground">
+          {t('settings.diagnosticsDesc')}
+        </p>
+        {logCount !== undefined && (
+          <p className="text-sm text-muted-foreground">
+            {t('settings.logEntries', { count: logCount })}
+          </p>
+        )}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => void handleExportLog()}
+            className="rounded-md border px-4 py-2 text-sm font-medium"
+          >
+            {t('settings.exportLog')}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleClearLog()}
+            className="rounded-md border px-4 py-2 text-sm font-medium"
+          >
+            {t('settings.clearLog')}
+          </button>
+        </div>
       </div>
 
       {storage && (

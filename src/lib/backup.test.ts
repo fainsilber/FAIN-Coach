@@ -110,3 +110,13 @@ describe('parseBackup validation', () => {
     ).toThrow(/missing table data/);
   });
 });
+
+describe('diagnostics log exclusion (FR-8.10)', () => {
+  it('never appears in an exported backup, even when entries exist', async () => {
+    const { logEvent } = await import('./log');
+    await logEvent('error', 'test.entry', 'should never be backed up');
+    const envelope = await exportBackup();
+    expect('logs' in envelope.tables).toBe(false);
+    expect(JSON.stringify(envelope)).not.toContain('should never be backed up');
+  });
+});

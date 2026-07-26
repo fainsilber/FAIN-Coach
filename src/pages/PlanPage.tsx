@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { db } from '@/db/db';
 import { getSetting, SETTING_KEYS } from '@/db/settings';
 import type { PlannedWorkout } from '@/db/types';
+import { logEvent } from '@/lib/log';
 import { cn } from '@/lib/utils';
 import { LlmError } from '@/llm/LlmClient';
 import { DEFAULT_PLAN_MODEL, OpenRouterClient } from '@/llm/openrouter';
@@ -105,10 +106,13 @@ function PlanWizard() {
       await db.plannedWorkouts.bulkAdd(
         workouts.map((w) => ({ ...w, planId, status: 'pending' as const })),
       );
+      void logEvent('info', 'plan.generated', `workouts=${workouts.length} model=${model}`);
     } catch (e) {
       if (e instanceof PlanParseError) {
+        void logEvent('error', 'plan.generate.failed', 'malformed-json');
         setError('plan.errMalformed');
       } else if (e instanceof LlmError) {
+        void logEvent('error', 'plan.generate.failed', `code=${e.code}`);
         setError(
           e.code === 'invalid-key'
             ? 'chat.errInvalidKey'
@@ -117,6 +121,7 @@ function PlanWizard() {
               : 'chat.errNetwork',
         );
       } else {
+        void logEvent('error', 'plan.generate.failed', 'unknown');
         setError('plan.errGeneric');
       }
     } finally {

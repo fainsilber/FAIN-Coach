@@ -80,3 +80,19 @@ export interface Settings {
   key: string; // 'openrouterApiKey' | 'fastModel' | 'reasoningModel'
   value: string;
 }
+
+export type LogLevel = 'info' | 'warn' | 'error';
+
+/**
+ * Diagnostics entry (PRD §4.8). Records events and metadata for
+ * troubleshooting — NEVER user content. `detail` is redacted and truncated
+ * by the writer (src/lib/log.ts), not by callers. Deliberately excluded from
+ * backup export/import (FR-8.10) — see backup.ts.
+ */
+export interface LogEntry {
+  id?: number;
+  at: string; // ISO, indexed
+  level: LogLevel;
+  event: string; // stable code, e.g. 'tcx.parse.failed'
+  detail?: string;
+}

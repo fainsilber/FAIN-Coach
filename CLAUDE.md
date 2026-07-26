@@ -4,7 +4,7 @@ Local-first AI running coach PWA. Users upload `.tcx` files from any GPS watch, 
 
 **Live:** https://fainsilber.github.io/FAIN-Coach/ (auto-deploys on push to `main`)
 
-**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v1.6 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
+**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v2.1 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
 
 ## Commands
 
@@ -67,14 +67,14 @@ Served from the `/FAIN-Coach/` subpath, so Vite `base`, the router `basename` (`
 
 ## Status
 
-Sprints 1–8 complete, local profiles added, deployed to GitHub Pages. 131 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start, and manual run entry all shipped.
+Sprints 1–8 and 14 complete, local profiles added, deployed to GitHub Pages. 145 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start, manual run entry, and version/diagnostics all shipped.
 
-**Next — three independent tracks, any order:**
+**Shipped, Sprint 14 — version + diagnostics.** Version display (`src/lib/appInfo.ts`, injected in `vite.config.ts` via `define` from `package.json` + `git rev-parse --short HEAD`) and a bounded diagnostics log (`src/lib/log.ts`, Dexie `logs` table, v2) are live in Settings. `registerType` was switched from `'autoUpdate'` to `'prompt'` (with `injectRegister: false`) — that's the actual fix; autoUpdate never fires `onNeedRefresh`, it just reloads silently. **If you touch the logger, redaction is mandatory** — `logEvent()` enforces it, never bypass it by writing to `db.logs` directly. Never log the API key, chat content, or run notes (PRD FR-8.8) — metadata and event codes only. `saveRunAndPromptCoach` in `src/lib/saveRun.ts` is the single place `run.saved`/`run.save.failed` get logged for both entry paths.
+
+**Next — four independent-ish tracks:**
 - **Sprint 9** — design refresh ([dev-plan §11](docs/dev-plan.md)) is a deliberate placeholder; **do not invent a design direction**, it will be supplied.
+- **Sprint 13** — shoe tracking ([dev-plan §13](docs/dev-plan.md)). Standalone. Needs a Dexie version bump (new table + new index) — **takes v3**, since Sprint 14 already used v2 for `logs`.
 - **Sprints 10–12** — paid hosted tier (Cloudflare + accounts/sync + managed AI + billing). A *connected* track, build in order: [dev-plan §12](docs/dev-plan.md), economics in [monetization.md](docs/monetization.md).
-- **Sprint 13** — shoe tracking ([dev-plan §13](docs/dev-plan.md)). Standalone. Note this one **needs a Dexie version bump** (new table + new index), unlike Sprint 8's field-only change.
-- **Sprint 14** — version visibility + diagnostics log ([dev-plan §14](docs/dev-plan.md)). Standalone, also bumps the Dexie version (`logs` table). Fixes a live annoyance: `registerType: 'autoUpdate'` updates the SW silently, so there's currently no way to tell whether a refresh actually loaded a new build. **If you touch the logger, redaction is mandatory** — never write the API key, chat content, or run notes into a log (PRD FR-8.8).
-
-- **Sprints 15–17** — provider import: Strava, then Garmin, optionally Smashrun ([dev-plan §15](docs/dev-plan.md)). **These require the §12 backend first** — a frontend-only PWA can't do them (Strava's OAuth needs a server-side secret; the Garmin Python client can't run on Workers at all and needs a separate Python service). Provider tokens/passwords **must never** touch browser storage or sync (PRD FR-9.7). Run the **tapiriik spike** (§15.4) before Sprint 16 — it may replace that work, or prove stale.
+- **Sprints 15–17** — provider import: Strava, then Garmin, optionally Smashrun ([dev-plan §15](docs/dev-plan.md)). **Require the §12 backend first** — a frontend-only PWA can't do them (Strava's OAuth needs a server-side secret; the Garmin Python client can't run on Workers at all and needs a separate Python service). Provider tokens/passwords **must never** touch browser storage or sync (PRD FR-9.7). Run the **tapiriik spike** (§15.4) before Sprint 16.
 
 Ongoing risks in [§16](docs/dev-plan.md) — deferred items (GPX parser, chat-history summary); Hebrew output is confirmed working.

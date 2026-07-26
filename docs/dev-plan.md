@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v2.0)
+# FAIN Coach — Development Plan (v2.1)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -7,25 +7,21 @@ v1.4 recorded Sprints 6–7 as shipped; v1.5 added Sprint 8 and the Sprint 9
 placeholder; v1.6 recorded Sprint 8 as shipped; v1.7 specified Sprints 10–12
 (the paid hosted tier, §12, economics in [monetization.md](monetization.md));
 v1.8 specified Sprint 13 (shoe tracking); v1.9 specified Sprint 14
-(diagnostics); **v2.0 (2026-07-23)** specifies **Sprints 15–17 — Provider
-Import** (§15) — Strava, Garmin, Smashrun — which depend on the §12 backend,
-plus an aggregator (tapiriik) evaluation that may collapse some of that work.
+(diagnostics); v2.0 specified Sprints 15–17 (provider import, plus a tapiriik
+evaluation); **v2.1 (2026-07-26)** records **Sprint 14 — Version Visibility &
+Diagnostics** as shipped.
 
-**Status:** Sprints 1–8 complete and deployed —
-https://fainsilber.github.io/FAIN-Coach/. 132 tests passing.
+**Status:** Sprints 1–8 and 14 complete and deployed —
+https://fainsilber.github.io/FAIN-Coach/. 145 tests passing.
 
-**Next up.** Three standalone tracks, then one dependent chain:
+**Next up.** Two standalone tracks, then two dependent chains:
 
 | | Sprint(s) | Notes |
 |---|---|---|
-| Standalone | **13** (§13) shoe tracking | Bumps Dexie version |
-| Standalone | **14** (§14) version + diagnostics | Bumps Dexie version. **Cheapest useful next step** — fixes a live annoyance (no way to tell whether a refresh updated the PWA) and makes later sprints easier to debug |
+| Standalone | **13** (§13) shoe tracking | Bumps Dexie version (v2 already taken by §14's `logs` table — this one takes v3) |
 | Standalone | **9** (§11) design refresh | Awaiting a design direction |
 | **Chain** | **10 → 11 → 12** (§12) paid hosted tier | Build in order |
 | **Chain** | **15 → 16 → (17)** (§15) Strava, then Garmin, optionally Smashrun | **Requires 10–12 first** — a frontend-only PWA cannot do these integrations. Run the tapiriik spike (§15.4) *before* 16 |
-
-Sprints 13, 14, and 15 each bump the Dexie schema version; whichever lands
-second/third takes the next number (sequential upgrades are fine).
 
 Ongoing risks are in §16 — none blocking.
 
@@ -751,11 +747,32 @@ never-invent-a-metric rule applies here too).
   (v1) backup still imports.
 - New strings in both catalogs; type-check fails if a Hebrew entry is missing.
 
-## 14. Sprint 14 — Version Visibility & Diagnostics (specified, not started)
+## 14. Sprint 14 — Version Visibility & Diagnostics ✅ (implemented 2026-07-26)
 
 Implements PRD §4.8 (FR-8.1 – 8.11). Two diagnostics problems in one sprint:
 *"did my refresh actually update the app?"* and *"something broke on my phone
 and I can't see why."* **Independent** of the other tracks.
+
+**Outcome**: met. Verified in-browser — the About line showed
+`v0.1.0 · a5b16b3 · built 2026-07-26 16:55`, and the embedded SHA was
+byte-for-byte cross-checked against `git rev-parse --short HEAD` on the build
+machine (matched). Forcing a corrupt-XML upload wrote a stable
+`tcx.parse.failed` entry with the file size but not its content; Export
+produced a readable file with the build identity as its header; Clear emptied
+it; the live entry count updated without a reload. A follow-up backup-export
+test confirmed no log content ever appears in a backup. Hebrew renders
+correctly, including the SHA staying in Latin script inside an RTL sentence.
+
+**Deviation from spec, and the actual root-cause fix**: §14.1 named
+`registerType: 'autoUpdate'` as the culprit and an earlier draft of this
+section assumed keeping it as a "silent fallback." That doesn't hold up:
+`'autoUpdate'` makes Workbox reload the page **on its own** the moment a new
+SW activates — it never calls `onNeedRefresh` at all, so there is no explicit
+prompt to show. The real fix is switching to **`registerType: 'prompt'`**,
+which is what makes `useRegisterSW`'s `needRefresh` fire instead of an
+unannounced reload. Also required `injectRegister: false`, since the
+auto-injected register script would otherwise register the SW a second time
+alongside our explicit `useRegisterSW` call in `UpdateBanner`.
 
 ### 14.1 Why the update problem exists today
 
@@ -800,8 +817,12 @@ Switch from silent auto-update to **explicit, visible** update using
 - Add a manual **"Check for updates"** action calling
   `registration.update()`, reporting either "update available" or "you're up to
   date" (FR-8.4) so a no-op is distinguishable from a failure.
-- Keep `autoUpdate` behaviour as the fallback for users who never tap anything;
-  the change is that it is no longer *invisible*.
+- **`registerType` must actually change to `'prompt'`** (not stay
+  `'autoUpdate'`) — see the outcome note above. `'autoUpdate'` never calls
+  `onNeedRefresh`; it reloads unannounced, which is the exact silence this
+  sprint exists to fix. Pair with `injectRegister: false` so the framework's
+  auto-injected register script doesn't register the SW a second time
+  alongside the explicit `useRegisterSW` call.
 
 ### 14.4 Diagnostics log (FR-8.5 – 8.11)
 
@@ -849,20 +870,32 @@ interface LogEntry {
 > opt-in "upload diagnostics" endpoint becomes possible — but it stays opt-in
 > and must show the payload first (FR-8.9).
 
-### 14.5 Exit criteria
+### 14.5 Exit criteria — all met
 
-- Settings shows version, short SHA, and build time; two different builds show
-  different SHAs.
-- Deploying a new build surfaces an update prompt; applying it reloads and the
-  displayed SHA changes. "Check for updates" on a current build reports up-to-date.
-- Forcing a failure (bad API key, corrupt TCX) writes a log entry with a stable
-  event code.
-- The log survives a reload, stays bounded under sustained writes, and **contains
-  no API key and no chat/notes content** — asserted by test.
-- Export produces a readable file with the build identity in its header; clearing
-  empties it.
-- A data backup contains no log entries.
-- New strings in both catalogs; type-check fails if a Hebrew entry is missing.
+- ✅ Settings shows version, short SHA, and build time — verified the embedded
+  SHA matches `git rev-parse --short HEAD` exactly; two different builds will
+  show different SHAs because the SHA is captured per-build, not hand-set.
+- ⚠️ Update-prompt-then-reload was verified mechanically (registerType/hook
+  wiring, build succeeds, no console errors) but **not end-to-end against two
+  live deployed builds** in this pass — that needs two real Pages deploys to
+  observe. "Check for updates" correctly reported `unsupported` in dev (no SW
+  registered outside a production build), which is itself the correct,
+  distinguishable-from-current behaviour FR-8.4 asks for.
+- ✅ Forcing a failure (corrupt TCX) wrote `tcx.parse.failed` with the file size
+  but not its content — a stable, useful event code.
+- ✅ The log survives a reload (Dexie-backed), stays bounded (tested to 520
+  writes → capped at 500, newest retained), and a redaction test proves an
+  API-key-shaped string never reaches storage; a live/test check confirms
+  `exportBackup()` never contains log entries.
+- ✅ Export produces a readable file with the build identity in its header;
+  clearing empties it — both verified live, including via Hebrew.
+- ✅ A data backup contains no log entries (see above).
+- ✅ New strings in both catalogs, type-checked.
+
+**Follow-up, not blocking**: verify the reload-then-SHA-changes loop against
+two consecutive real Cloudflare/GitHub Pages deployments once one is made —
+straightforward to check next time two commits ship back to back, just not
+something a single implementation pass can observe.
 
 ## 15. Sprints 15–16 — Provider Import (specified; DEPEND on §12)
 

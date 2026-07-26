@@ -6,6 +6,7 @@ import { getSetting, SETTING_KEYS } from '@/db/settings';
 import type { PlannedWorkout } from '@/db/types';
 import { computeAdherence } from '@/lib/matching';
 import { getPreferences } from '@/db/settings';
+import { logEvent } from '@/lib/log';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
 import type { MessageKey } from '@/i18n/en';
@@ -129,6 +130,11 @@ export function ChatPage() {
         setError('chat.errEmpty');
       }
     } catch (e) {
+      void logEvent(
+        'error',
+        'chat.request.failed',
+        `code=${e instanceof LlmError ? e.code : 'unknown'}`,
+      );
       setError(errorKey(e));
     } finally {
       setBusy(false);

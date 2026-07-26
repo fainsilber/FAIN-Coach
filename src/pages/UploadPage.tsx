@@ -7,6 +7,7 @@ import type { PlannedWorkout } from '@/db/types';
 import { localeOf, useI18n } from '@/i18n';
 import { buildCoachMessage } from '@/lib/coachMessage';
 import { formatDistance, formatDuration, formatPace } from '@/lib/format';
+import { logEvent } from '@/lib/log';
 import { usePreferences } from '@/lib/usePreferences';
 import { findMatchCandidate } from '@/lib/matching';
 import { activePlanWorkouts, saveRunAndPromptCoach } from '@/lib/saveRun';
@@ -46,6 +47,11 @@ export function UploadPage() {
       setMatchAccepted(true);
       setState({ step: 'review', run, fileName: file.name, match });
     } catch (e) {
+      void logEvent(
+        'error',
+        'tcx.parse.failed',
+        `size=${file.size} ${e instanceof Error ? e.message : String(e)}`,
+      );
       setError(
         e instanceof TcxParseError
           ? t('upload.parseFailed', { name: file.name, message: e.message })

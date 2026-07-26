@@ -1,5 +1,6 @@
 import { db, requestPersistentStorage } from '@/db/db';
 import type { PlannedWorkout, RunRecord } from '@/db/types';
+import { logEvent } from './log';
 
 /** A run ready to persist — everything except the id and the plan linkage,
  * which this module derives from the confirmed match. */
@@ -29,17 +30,27 @@ export async function saveRunAndPromptCoach({
       : { matchStatus: 'unplanned' as const }),
   };
 
-  await db.runs.add(record);
-  if (linkedWorkout?.id !== undefined) {
-    await db.plannedWorkouts.update(linkedWorkout.id, { status: 'completed' });
-  }
-  void requestPersistentStorage(); // FR-2.2, fire-and-forget
+  try {
+    await db.runs.add(record);
+    if (linkedWorkout?.id !== undefined) {
+      await db.plannedWorkouts.update(linkedWorkout.id, { status: 'completed' });
+    }
+    void requestPersistentStorage(); // FR-2.2, fire-and-forget
 
-  await db.chatMessages.add({
-    timestamp: new Date().toISOString(),
-    role: 'user',
-    content: coachMessage,
-  });
+    await db.chatMessages.add({
+      timestamp: new Date().toISOString(),
+      role: 'user',
+      content: coachMessage,
+    });
+    void logEvent('info', 'run.saved', `source=${run.source ?? 'tcx'}`);
+  } catch (e) {
+    void logEvent(
+      'error',
+      'run.save.failed',
+      e instanceof Error ? e.message : String(e),
+    );
+    throw e;
+  }
 }
 
 /** Planned workouts of the active plan, for auto-matching a new run. */

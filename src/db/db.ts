@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from 'dexie';
 import { getActiveProfile, LEGACY_DB_NAME } from '@/lib/profiles';
 import type {
   ChatMessage,
+  LogEntry,
   PlannedWorkout,
   RunRecord,
   Settings,
@@ -15,6 +16,7 @@ export class FainCoachDB extends Dexie {
   plannedWorkouts!: EntityTable<PlannedWorkout, 'id'>;
   chatMessages!: EntityTable<ChatMessage, 'id'>;
   settings!: EntityTable<Settings, 'key'>;
+  logs!: EntityTable<LogEntry, 'id'>;
 
   constructor(name: string) {
     super(name);
@@ -24,6 +26,11 @@ export class FainCoachDB extends Dexie {
       plannedWorkouts: '++id, planId, date, status',
       chatMessages: '++id, timestamp, planId',
       settings: 'key',
+    });
+    // Sprint 14: diagnostics log. Only the new table needs stating — Dexie
+    // carries unchanged stores forward from v1 automatically.
+    this.version(2).stores({
+      logs: '++id, at',
     });
   }
 }

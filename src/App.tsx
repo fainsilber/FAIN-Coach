@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
 import { ProfileGate } from './components/ProfileGate';
+import { UpdateBanner } from './components/UpdateBanner';
 import { useT } from './i18n';
 import type { MessageKey } from './i18n/en';
 import { clearActiveProfile, getActiveProfile } from './lib/profiles';
@@ -28,11 +29,21 @@ export function App() {
   const t = useT();
   const profile = getActiveProfile();
 
-  if (!profile) return <ProfileGate />;
+  // Mounted regardless of profile state, so an update can be offered even
+  // before a profile is chosen.
+  if (!profile) {
+    return (
+      <>
+        <UpdateBanner />
+        <ProfileGate />
+      </>
+    );
+  }
 
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <div className="flex min-h-dvh flex-col">
+        <UpdateBanner />
         <header className="flex items-center justify-between border-b px-4 py-3">
           <h1 className="text-lg font-semibold">FAIN Coach</h1>
           <button

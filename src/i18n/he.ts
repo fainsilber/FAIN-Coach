@@ -241,6 +241,25 @@ export const he: Record<MessageKey, string> = {
     'למחוק את כל הנתונים של פרופיל זה — ריצות, תוכניות, צ׳אט והגדרות? פעולה זו אינה הפיכה.',
   'settings.wiped': 'כל הנתונים נמחקו.',
 
+  // About & diagnostics (Sprint 14)
+  'settings.about': 'אודות',
+  'settings.aboutLine': 'גרסה {version} · {sha} · נבנה {built}',
+  'settings.checkUpdate': 'בדיקת עדכונים',
+  'settings.checkingUpdate': 'בודק…',
+  'settings.updateFound': 'נמצאה גרסה חדשה — ראו את ההודעה למעלה.',
+  'settings.upToDate': 'הכל מעודכן.',
+  'settings.updateCheckFailed': 'לא ניתן היה לבדוק עדכונים.',
+  'settings.diagnostics': 'אבחון',
+  'settings.diagnosticsDesc':
+    'יומן מקומי של שגיאות ואירועים חשובים, נשמר במכשיר זה כדי לעזור באיתור תקלות. הוא לעולם לא מכיל את מפתח ה-API, הודעות הצ׳אט או ההערות שלך.',
+  'settings.logEntries': '{count} רשומות ביומן',
+  'settings.exportLog': 'ייצוא יומן',
+  'settings.clearLog': 'ניקוי יומן',
+  'settings.clearLogConfirm': 'למחוק את כל רשומות האבחון ביומן? פעולה זו אינה הפיכה.',
+  'settings.logCleared': 'היומן נוקה.',
+  'update.available': 'גרסה חדשה מוכנה.',
+  'update.reload': 'טעינה מחדש',
+
   // Model select
   'model.custom': 'מותאם אישית…',
   'model.customHint':
