@@ -7,8 +7,9 @@ v1.4 recorded Sprints 6–7 as shipped; v1.5 added Sprint 8 and the Sprint 9
 placeholder; v1.6 recorded Sprint 8 as shipped; v1.7 specified Sprints 10–12
 (the paid hosted tier, §12, economics in [monetization.md](monetization.md));
 v1.8 specified Sprint 13 (shoe tracking); v1.9 specified Sprint 14
-(diagnostics); **v2.0 (2026-07-23)** specifies **Sprints 15–16 — Provider
-Import** (§15), which depend on the §12 backend.
+(diagnostics); **v2.0 (2026-07-23)** specifies **Sprints 15–17 — Provider
+Import** (§15) — Strava, Garmin, Smashrun — which depend on the §12 backend,
+plus an aggregator (tapiriik) evaluation that may collapse some of that work.
 
 **Status:** Sprints 1–8 complete and deployed —
 https://fainsilber.github.io/FAIN-Coach/. 132 tests passing.
@@ -21,7 +22,7 @@ https://fainsilber.github.io/FAIN-Coach/. 132 tests passing.
 | Standalone | **14** (§14) version + diagnostics | Bumps Dexie version. **Cheapest useful next step** — fixes a live annoyance (no way to tell whether a refresh updated the PWA) and makes later sprints easier to debug |
 | Standalone | **9** (§11) design refresh | Awaiting a design direction |
 | **Chain** | **10 → 11 → 12** (§12) paid hosted tier | Build in order |
-| **Chain** | **15 → 16** (§15) Strava, then Garmin | **Requires 10–12 first** — a frontend-only PWA cannot do either integration |
+| **Chain** | **15 → 16 → (17)** (§15) Strava, then Garmin, optionally Smashrun | **Requires 10–12 first** — a frontend-only PWA cannot do these integrations. Run the tapiriik spike (§15.4) *before* 16 |
 
 Sprints 13, 14, and 15 each bump the Dexie schema version; whichever lands
 second/third takes the next number (sequential upgrades are fine).
@@ -941,12 +942,62 @@ must be accepted deliberately, not discovered later:
   entry, no credential or long-lived secret is ever written to browser storage,
   and a Garmin-side auth failure is reported as a recoverable state.
 
-### 15.3 Non-integration alternatives worth mentioning to users
+### 15.3 Sprint 17 — Smashrun (optional, low risk)
 
-Cheaper than either sprint, and worth documenting in-app regardless: Garmin
-Connect can **auto-export to Strava** (making §15.1 sufficient for many people),
-and both Garmin and Strava support bulk export for one-off historical imports
-through the existing file upload.
+Smashrun has an **official OAuth2 REST API** *(verify current terms and whether
+personal-use access is still free)*, so it is the same shape of work as Strava
+and slots behind the same adapter contract — but for a much smaller user base.
+
+- Same Worker-side OAuth pattern as §15.1; no new infrastructure.
+- **Priority: low.** Do it only if there is actual user demand — the adapter
+  contract means it stays cheap to add later, which is the point of §15.0.
+
+### 15.4 Aggregators (tapiriik et al.) — an implementation strategy, not a provider
+
+**[tapiriik](https://github.com/cpfair/tapiriik)** is an open-source Python
+service that syncs workouts *between* fitness platforms (Garmin, Strava,
+Smashrun, Dropbox and others). It is worth evaluating because it already solves
+the multi-provider problem this whole section describes — but it is not a fourth
+provider sprint. There are two distinct ways to use it, with very different costs:
+
+**Option A — recommend it to users (zero engineering).**
+Point users at tapiriik (hosted or self-hosted) to sync Garmin → Strava, then
+import from Strava via §15.1. Costs nothing, ships as a documentation line, and
+sidesteps Garmin credentials entirely. **Strictly better than building §15.2 for
+users willing to set it up.**
+
+**Option B — self-host it as the backend for §15.2 (replaces work).**
+If a Python service is being stood up for Garmin anyway (§15.2 point 3), running
+tapiriik's provider layer there could deliver **Garmin + Smashrun + others at
+once** instead of one adapter per sprint. Potentially collapses Sprints 16–17.
+
+**Before committing to Option B, verify — do not assume:**
+1. **Maintenance status.** The project has seen little recent activity; Garmin has
+   changed its SSO/MFA flow repeatedly and has broken many unofficial clients.
+   **Confirm its Garmin module still works today** before designing around it.
+2. **Licence.** Check the current licence and whether it permits this use
+   (particularly if it ever becomes part of a paid tier).
+3. It still needs Garmin credentials, so **FR-9.9's disclosure applies
+   unchanged** — an aggregator does not make the credential question go away, it
+   relocates it.
+
+**Recommendation:** adopt **Option A immediately** as documentation (it is free
+and helps users today), and treat Option B as a **spike to run before Sprint 16**
+— if tapiriik's Garmin support is alive, it likely beats hand-rolling; if it is
+stale, depending on a dormant project for core functionality is the wrong trade
+and §15.2 proceeds as specced.
+
+### 15.5 Non-integration alternatives worth mentioning to users
+
+Cheapest of all, and worth documenting in-app regardless of what gets built:
+
+- Garmin Connect can **auto-export to Strava** — making §15.1 sufficient for many
+  people with no work on our side.
+- **tapiriik** as above (Option A).
+- Both Garmin and Strava support **bulk export**, which already works through the
+  existing file upload for one-off historical imports.
+- Phone-side sync utilities (RunGap, SyncMyTracks, HealthFit and similar) can
+  bridge platforms without any server involvement.
 
 ## 16. Risks / Open Questions
 
