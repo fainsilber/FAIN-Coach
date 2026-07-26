@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v1.9)
+# FAIN Coach — Development Plan (v2.0)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -6,24 +6,27 @@ profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
 v1.4 recorded Sprints 6–7 as shipped; v1.5 added Sprint 8 and the Sprint 9
 placeholder; v1.6 recorded Sprint 8 as shipped; v1.7 specified Sprints 10–12
 (the paid hosted tier, §12, economics in [monetization.md](monetization.md));
-v1.8 specified Sprint 13 (shoe tracking); **v1.9 (2026-07-23)** specifies
-**Sprint 14 — Version Visibility & Diagnostics** (§14).
+v1.8 specified Sprint 13 (shoe tracking); v1.9 specified Sprint 14
+(diagnostics); **v2.0 (2026-07-23)** specifies **Sprints 15–16 — Provider
+Import** (§15), which depend on the §12 backend.
 
 **Status:** Sprints 1–8 complete and deployed —
 https://fainsilber.github.io/FAIN-Coach/. 132 tests passing.
 
-**Next up — four independent tracks**, pick any order:
-- **Sprint 9** (§11) — design refresh. Awaiting a design direction.
-- **Sprints 10–12** (§12) — paid hosted tier. A *connected* track: build in order.
-- **Sprint 13** (§13) — shoe tracking. Standalone feature.
-- **Sprint 14** (§14) — version visibility + diagnostics log. Standalone; **fixes
-  a live annoyance** (no way to tell whether a refresh actually updated the PWA),
-  so it is the cheapest useful thing to build next.
+**Next up.** Three standalone tracks, then one dependent chain:
 
-Note 13 and 14 both bump the Dexie schema version; whichever lands second takes
-the next number (sequential upgrades are fine).
+| | Sprint(s) | Notes |
+|---|---|---|
+| Standalone | **13** (§13) shoe tracking | Bumps Dexie version |
+| Standalone | **14** (§14) version + diagnostics | Bumps Dexie version. **Cheapest useful next step** — fixes a live annoyance (no way to tell whether a refresh updated the PWA) and makes later sprints easier to debug |
+| Standalone | **9** (§11) design refresh | Awaiting a design direction |
+| **Chain** | **10 → 11 → 12** (§12) paid hosted tier | Build in order |
+| **Chain** | **15 → 16** (§15) Strava, then Garmin | **Requires 10–12 first** — a frontend-only PWA cannot do either integration |
 
-Ongoing risks are in §15 — none blocking.
+Sprints 13, 14, and 15 each bump the Dexie schema version; whichever lands
+second/third takes the next number (sequential upgrades are fine).
+
+Ongoing risks are in §16 — none blocking.
 
 ---
 
@@ -189,7 +192,7 @@ interface Settings {
   Coach context also gained the upcoming week's actual planned workouts, which
   stopped the model inventing a weekly schedule when asked "what's next?".
 - **Not done**: cross-device TCX compatibility pass beyond Garmin. Apple Watch
-  exports GPX natively (see §15); Coros/Suunto covered only by a synthetic
+  exports GPX natively (see §16); Coros/Suunto covered only by a synthetic
   fixture, not a real export.
 
 ## 5a. Deployment (2026-07-22)
@@ -860,7 +863,92 @@ interface LogEntry {
 - A data backup contains no log entries.
 - New strings in both catalogs; type-check fails if a Hebrew entry is missing.
 
-## 15. Risks / Open Questions
+## 15. Sprints 15–16 — Provider Import (specified; DEPEND on §12)
+
+Implements PRD §4.9 (FR-9.1 – 9.10). One provider per sprint, as they share
+almost nothing: different auth, different API shape, very different risk.
+
+> **Hard dependency: these require the backend from Sprints 10–12.** This is a
+> frontend-only PWA today, and neither provider can be integrated from the
+> browser alone (reasons below). They are *not* independent tracks like 13/14.
+
+### 15.0 Shared design
+
+- **A provider adapter contract, not a second parser.** `parseTcx` already
+  returns `ParsedRun`; each provider gets an adapter producing the same shape
+  from JSON instead of XML. Feature code, coaching, and matching stay untouched —
+  the same reasoning that keeps a future GPX parser cheap (§16 risk note).
+- **Dedupe (FR-9.3)** needs schema: extend `RunRecord.source` beyond
+  `'tcx' | 'manual'` to include `'strava' | 'garmin'`, and add
+  `externalId?: string` with a **compound unique index** on `[source+externalId]`
+  so a re-import cannot duplicate. Another Dexie version bump — coordinate with
+  §13/§14.
+- **Tokens live server-side only (FR-9.7).** Nothing provider-secret touches
+  IndexedDB or sync. The app holds only a "provider connected" flag.
+- **Import is explicit (FR-9.4)**: pick a date range, preview the list, choose
+  what to pull. No silent full-history sync.
+
+### 15.1 Sprint 15 — Strava (do this one first)
+
+The clean path: **official, free API**, no password handling, and — because
+Garmin Connect can auto-forward activities to Strava — it covers many Garmin
+users transitively (FR-9.10).
+
+- **Why it still needs the Worker**: OAuth token exchange requires the client
+  secret, which cannot ship in frontend code, and Strava's token endpoint is not
+  browser-CORS-friendly. Worker routes: `/strava/connect`, `/strava/callback`
+  (stores the refresh token against the account), `/strava/activities`.
+- **Data mapping**: build the run from the activity summary plus the laps
+  endpoint. Note Strava's public API does **not** expose the original FIT/TCX
+  file, so there is no file to parse — the adapter maps JSON → lap aggregates.
+  Metrics absent from Strava (often power, sometimes cadence) must stay
+  **absent**, never zero — the existing FR-3.4/FR-6.4 guarantee.
+- **Rate limits** *(verify current figures)*: roughly 100 requests / 15 min and
+  1,000 / day for a default app — so batch, and surface a clear "try again
+  shortly" state rather than failing opaquely (FR-9.8).
+- **Exit**: connect an account, preview a date range, import runs that appear
+  identically to uploaded ones; re-running the import adds nothing; disconnect
+  revokes and stops imports while keeping imported runs.
+
+### 15.2 Sprint 16 — Garmin Connect (unofficial route; read the caveats)
+
+Garmin's official API is a **paid, approval-gated programme**, which is why the
+practical route is an unofficial client (the `garminconnect` / `garth` Python
+libraries). That works consistently in practice, but it carries three costs that
+must be accepted deliberately, not discovered later:
+
+1. **It needs the user's Garmin email and password.** There is no OAuth. That is
+   a materially different security posture from Strava, and it sits awkwardly
+   with this app's privacy positioning. Mitigations: credentials are used
+   server-side only to establish a session, **never stored in the browser or in
+   sync**, ideally exchanged for a session token and the password discarded
+   immediately. Disclose prominently before the user types anything (FR-9.9).
+2. **It is unofficial**: it can break without notice when Garmin changes their
+   SSO flow, and it may conflict with Garmin's terms of service. Ship it marked
+   as unofficial/best-effort.
+3. **It cannot run on Cloudflare Workers.** Workers are JS/WASM; that Python
+   dependency tree isn't viable there. This sprint therefore adds a **second,
+   Python-capable service** (Fly.io / Railway / Cloud Run) — a real infrastructure
+   and cost addition beyond §12, and the main reason Strava should come first.
+   *(A JS reimplementation of garth would avoid the extra service but is less
+   maintained — evaluate before committing.)*
+
+- **Data mapping**: Garmin activity + splits JSON → the same `ParsedRun` shape.
+  Garmin can also serve the original TCX/FIT, so an alternative is to fetch the
+  TCX and reuse the **existing parser unchanged** — likely the least-code path,
+  worth preferring if the download endpoint is reachable.
+- **Exit**: same as Strava, plus: the disclosure appears before any credential
+  entry, no credential or long-lived secret is ever written to browser storage,
+  and a Garmin-side auth failure is reported as a recoverable state.
+
+### 15.3 Non-integration alternatives worth mentioning to users
+
+Cheaper than either sprint, and worth documenting in-app regardless: Garmin
+Connect can **auto-export to Strava** (making §15.1 sufficient for many people),
+and both Garmin and Strava support bulk export for one-off historical imports
+through the existing file upload.
+
+## 16. Risks / Open Questions
 
 - ~~Coach context should include the upcoming week's actual planned
   workouts~~ — **resolved in Sprint 5** (2026-07-22): `buildCoachContext`

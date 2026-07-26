@@ -75,4 +75,6 @@ Sprints 1–8 complete, local profiles added, deployed to GitHub Pages. 131 test
 - **Sprint 13** — shoe tracking ([dev-plan §13](docs/dev-plan.md)). Standalone. Note this one **needs a Dexie version bump** (new table + new index), unlike Sprint 8's field-only change.
 - **Sprint 14** — version visibility + diagnostics log ([dev-plan §14](docs/dev-plan.md)). Standalone, also bumps the Dexie version (`logs` table). Fixes a live annoyance: `registerType: 'autoUpdate'` updates the SW silently, so there's currently no way to tell whether a refresh actually loaded a new build. **If you touch the logger, redaction is mandatory** — never write the API key, chat content, or run notes into a log (PRD FR-8.8).
 
-Ongoing risks in [§15](docs/dev-plan.md) — deferred items (GPX parser, chat-history summary); Hebrew output is confirmed working.
+- **Sprints 15–16** — provider import: Strava, then Garmin ([dev-plan §15](docs/dev-plan.md)). **These require the §12 backend first** — a frontend-only PWA can't do either (Strava's OAuth needs a server-side secret; the Garmin Python client can't run on Workers at all and needs a separate Python service). Provider tokens/passwords **must never** touch browser storage or sync (PRD FR-9.7).
+
+Ongoing risks in [§16](docs/dev-plan.md) — deferred items (GPX parser, chat-history summary); Hebrew output is confirmed working.
