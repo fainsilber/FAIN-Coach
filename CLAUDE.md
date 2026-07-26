@@ -4,7 +4,7 @@ Local-first AI running coach PWA. Users upload `.tcx` files from any GPS watch, 
 
 **Live:** https://fainsilber.github.io/FAIN-Coach/ (auto-deploys on push to `main`)
 
-**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v2.1 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
+**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v2.2 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
 
 ## Commands
 
@@ -19,12 +19,14 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 
 ## Layout
 
-- `src/db/` — Dexie schema (`db.ts`), contracts (`types.ts`), settings helpers (`settings.ts`, incl. `getPreferences()`). 5 tables: runs, trainingPlans, plannedWorkouts, chatMessages, settings. Laps are embedded in `RunRecord`, not a table. **One database per profile** — the `db` singleton binds to the active profile at module load, so switching profiles reloads the app.
+- `src/db/` — Dexie schema (`db.ts`), contracts (`types.ts`), settings helpers (`settings.ts`, incl. `getPreferences()`). 7 tables: runs, trainingPlans, plannedWorkouts, chatMessages, settings, logs, shoes. Laps are embedded in `RunRecord`, not a table. **One database per profile** — the `db` singleton binds to the active profile at module load, so switching profiles reloads the app.
 - `src/lib/profiles.ts` — local profile registry (localStorage), salted-PIN hashing, legacy-DB adoption. Data *separation*, not security (PRD §4.4).
-- `src/lib/backup.ts` — versioned JSON export/import over all tables; import replaces the DB, preserving ids and cross-table links.
+- `src/lib/backup.ts` — versioned JSON export/import over all tables (except `logs`, deliberately); import replaces the DB, preserving ids and cross-table links. Accepts both the current schema version and v1 (pre-Sprint-13, no `shoes` key).
 - `src/lib/matching.ts` — run↔plan auto-match (±1 day, distance tie-break) and adherence stats.
 - `src/lib/saveRun.ts` — **the single write path for a completed run**, shared by TCX upload and manual entry: persist, complete a matched workout, inject the coach message. Add a new entry point here rather than duplicating the sequence.
 - `src/lib/manualRun.ts` — pure validation/conversion for manual entry (form strings → `NewRun`), so the rules are testable without the form.
+- `src/lib/shoes.ts` — pure shoe-mileage functions (`shoeStatus`, `shoeMileage`, `mostRecentShoeId`) over a shoe + run list; mileage is always derived, never stored. `src/pages/ShoesPage.tsx` is the management UI (off Settings, not the bottom nav).
+- `src/lib/log.ts` — bounded (~500 entry) diagnostics log; `logEvent()` enforces redaction, swallows its own errors, never throws.
 - `src/lib/units.ts`, `src/lib/week.ts`, `src/lib/usePreferences.ts` — unit conversion boundary and week math; see the dedicated section below.
 - `src/i18n/` — translation catalogs and provider; see the dedicated section below.
 - `src/parser/tcx.ts` — defensive TCX parser + fixtures in `src/parser/fixtures/`.
@@ -44,6 +46,7 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 - API key is BYO, stored in IndexedDB `settings`, never sent anywhere except OpenRouter.
 - **Prompt rules must be literal.** Weaker instruct models follow instructions exactly: "taper before the race" produced an empty race week, and "derive a pace from the goal" put easy runs at race pace. State constraints explicitly — ambiguity here is a safety issue, not a style one.
 - **LLM retries**: the connection phase retries automatically; never retry after tokens have streamed (duplicates output) and never on 4xx.
+- **Booleans are not a valid IndexedDB index.** Dexie/IndexedDB can't index a boolean field reliably — filter it client-side instead (e.g. `shoes.retired`). Don't repeat this mistake in a future schema change.
 
 ## Deployment gotcha
 
@@ -67,13 +70,14 @@ Served from the `/FAIN-Coach/` subpath, so Vite `base`, the router `basename` (`
 
 ## Status
 
-Sprints 1–8 and 14 complete, local profiles added, deployed to GitHub Pages. 145 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start, manual run entry, and version/diagnostics all shipped.
+Sprints 1–8, 13, and 14 complete, local profiles added, deployed to GitHub Pages. Version 1.5.0, 162 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start, manual run entry, shoe tracking, and version/diagnostics all shipped.
 
 **Shipped, Sprint 14 — version + diagnostics.** Version display (`src/lib/appInfo.ts`, injected in `vite.config.ts` via `define` from `package.json` + `git rev-parse --short HEAD`) and a bounded diagnostics log (`src/lib/log.ts`, Dexie `logs` table, v2) are live in Settings. `registerType` was switched from `'autoUpdate'` to `'prompt'` (with `injectRegister: false`) — that's the actual fix; autoUpdate never fires `onNeedRefresh`, it just reloads silently. **If you touch the logger, redaction is mandatory** — `logEvent()` enforces it, never bypass it by writing to `db.logs` directly. Never log the API key, chat content, or run notes (PRD FR-8.8) — metadata and event codes only. `saveRunAndPromptCoach` in `src/lib/saveRun.ts` is the single place `run.saved`/`run.save.failed` get logged for both entry paths.
 
-**Next — four independent-ish tracks:**
+**Shipped, Sprint 13 — shoe tracking.** `src/lib/shoes.ts` (pure `shoeStatus`/`shoeMileage`/`mostRecentShoeId`) plus `src/pages/ShoesPage.tsx` (reachable from Settings, not the bottom nav — it's already full at five). Mileage is always derived from `initialDistanceMeters + Σ(runs assigned to that shoe)`, never stored — reassigning or deleting a run can't leave a stale total. The shoe picker (shared `PostRunForm`, used by both upload and manual entry) defaults to the most recently worn *active* pair and always offers "not recorded"; retired pairs vanish from the picker but stay visible on their historical runs and on the Shoes screen. Warn at ≥90%, over at ≥100% of `retirementDistanceMeters` — advisory only, never blocks saving. `shoes: '++id'` takes Dexie v3 (no index on `retired` — see the boolean-index hard rule above). `BACKUP_SCHEMA_VERSION` bumped to 2; `parseBackup` still accepts v1 files (no `shoes` key → treated as empty). The coach gets one line in its context when the active pair is at warn/over (FR-7.10) — verified end-to-end by intercepting the OpenRouter `fetch` call and confirming the alert text was present in the system prompt.
+
+**Next — three independent-ish tracks:**
 - **Sprint 9** — design refresh ([dev-plan §11](docs/dev-plan.md)) is a deliberate placeholder; **do not invent a design direction**, it will be supplied.
-- **Sprint 13** — shoe tracking ([dev-plan §13](docs/dev-plan.md)). Standalone. Needs a Dexie version bump (new table + new index) — **takes v3**, since Sprint 14 already used v2 for `logs`.
 - **Sprints 10–12** — paid hosted tier (Cloudflare + accounts/sync + managed AI + billing). A *connected* track, build in order: [dev-plan §12](docs/dev-plan.md), economics in [monetization.md](docs/monetization.md).
 - **Sprints 15–17** — provider import: Strava, then Garmin, optionally Smashrun ([dev-plan §15](docs/dev-plan.md)). **Require the §12 backend first** — a frontend-only PWA can't do them (Strava's OAuth needs a server-side secret; the Garmin Python client can't run on Workers at all and needs a separate Python service). Provider tokens/passwords **must never** touch browser storage or sync (PRD FR-9.7). Run the **tapiriik spike** (§15.4) before Sprint 16.
 

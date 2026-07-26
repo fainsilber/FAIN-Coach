@@ -184,6 +184,20 @@ describe('buildCoachContext', () => {
     const ctx = buildCoachContext(undefined, [], undefined, []);
     expect(ctx).not.toContain('coming week');
   });
+
+  it('includes a shoe alert line only when one is given (FR-7.10)', () => {
+    const withAlert = buildCoachContext(undefined, [], undefined, [], 'metric', 'en', {
+      name: 'Pegasus 40',
+      percent: 92.4,
+    });
+    expect(withAlert).toContain('Pegasus 40');
+    expect(withAlert).toContain('92%');
+    expect(withAlert).toContain('expected life');
+
+    const withoutAlert = buildCoachContext(undefined, [], undefined);
+    expect(withoutAlert).not.toContain('expected life');
+    expect(withoutAlert).not.toContain('running shoes');
+  });
 });
 
 describe('language support (FR-5.6)', () => {

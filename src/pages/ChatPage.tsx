@@ -7,6 +7,7 @@ import type { PlannedWorkout } from '@/db/types';
 import { computeAdherence } from '@/lib/matching';
 import { getPreferences } from '@/db/settings';
 import { logEvent } from '@/lib/log';
+import { mostRecentShoeId, shoeStatus } from '@/lib/shoes';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
 import type { MessageKey } from '@/i18n/en';
@@ -102,6 +103,27 @@ export function ChatPage() {
           .sort((a, b) => a.date.localeCompare(b.date));
       }
       const { unitSystem } = await getPreferences();
+
+      // Shoe alert (FR-7.10): one line, only when the runner's most-recently
+      // worn active pair is near/over its threshold. Needs the full run list
+      // for accurate mileage, not just the 3 recent ones above.
+      const [shoes, allRunsForShoes] = await Promise.all([
+        db.shoes.toArray(),
+        db.runs.toArray(),
+      ]);
+      const activeShoeId = mostRecentShoeId(
+        shoes.filter((s) => !s.retired),
+        allRunsForShoes,
+      );
+      const activeShoe = shoes.find((s) => s.id === activeShoeId);
+      const activeShoeStatus = activeShoe
+        ? shoeStatus(activeShoe, allRunsForShoes)
+        : undefined;
+      const shoeAlert =
+        activeShoe && activeShoeStatus && activeShoeStatus.state !== 'ok'
+          ? { name: activeShoe.name, percent: activeShoeStatus.percent }
+          : undefined;
+
       const system = buildCoachContext(
         plan,
         recentRuns,
@@ -109,6 +131,7 @@ export function ChatPage() {
         upcoming,
         unitSystem,
         language,
+        shoeAlert,
       );
       const outgoing = capMessages(
         system,

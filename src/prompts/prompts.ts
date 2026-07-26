@@ -178,6 +178,13 @@ function runOneLiner(run: RunRecord, unit: UnitSystem): string {
   return bits.filter(Boolean).join(' ');
 }
 
+/** A shoe near/past its replacement threshold — worn shoes are a genuine
+ * injury-risk factor, so this is legitimate coaching input (PRD FR-7.10). */
+export interface ShoeAlert {
+  name: string;
+  percent: number;
+}
+
 /** Plan-aware system context for the single global coach thread. */
 export function buildCoachContext(
   plan: TrainingPlan | undefined,
@@ -186,6 +193,7 @@ export function buildCoachContext(
   upcomingWorkouts: PlannedWorkout[] = [],
   unit: UnitSystem = 'metric',
   language: PromptLanguage = 'en',
+  shoeAlert?: ShoeAlert,
 ): string {
   const lines: string[] = [
     coachSystemPrompt(language),
@@ -220,6 +228,15 @@ export function buildCoachContext(
     for (const run of recentRuns.slice(0, 3)) {
       lines.push(`  ${runOneLiner(run, unit)}`);
     }
+  }
+  // One line only — the chat budget is tight, and the run summary matters
+  // more. Never invented: the caller only passes this when a shoe is
+  // actually assigned and actually near/over its threshold (FR-3.4 applies
+  // here too — never comment on gear that wasn't recorded).
+  if (shoeAlert) {
+    lines.push(
+      `- Note: the runner's "${shoeAlert.name}" running shoes are at ${Math.round(shoeAlert.percent)}% of their expected life — consider raising replacement as a training-health point.`,
+    );
   }
   return lines.join('\n');
 }

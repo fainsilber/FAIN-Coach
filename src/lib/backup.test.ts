@@ -41,7 +41,13 @@ beforeEach(async () => {
 
 describe('backup export → wipe → import', () => {
   it('round-trips all tables losslessly, preserving ids and links', async () => {
-    await db.runs.add({ ...sampleRun });
+    const shoeId = (await db.shoes.add({
+      name: 'Pegasus 40',
+      initialDistanceMeters: 0,
+      retirementDistanceMeters: 800_000,
+      retired: false,
+    })) as number;
+    await db.runs.add({ ...sampleRun, shoeId });
     await db.trainingPlans.add({
       createdAt: '2026-07-01T00:00:00.000Z',
       status: 'active',
@@ -73,8 +79,11 @@ describe('backup export → wipe → import', () => {
     const after = await exportBackup();
 
     expect(after.tables).toEqual(before.tables);
-    // Links survive: the run still points at plannedWorkout id 3.
-    expect((await db.runs.toCollection().first())?.plannedWorkoutId).toBe(3);
+    // Links survive: the run still points at plannedWorkout id 3 and its shoe.
+    const restored = await db.runs.toCollection().first();
+    expect(restored?.plannedWorkoutId).toBe(3);
+    expect(restored?.shoeId).toBe(shoeId);
+    expect((await db.shoes.get(shoeId))?.name).toBe('Pegasus 40');
   });
 
   it('does not resurrect old rows after import (import replaces)', async () => {
@@ -106,8 +115,50 @@ describe('parseBackup validation', () => {
 
   it('rejects envelopes with missing tables', () => {
     expect(() =>
-      parseBackup('{"app":"fain-coach","schemaVersion":1,"tables":{"runs":[]}}'),
+      parseBackup(
+        '{"app":"fain-coach","schemaVersion":1,"tables":{"runs":[],"trainingPlans":[],"plannedWorkouts":[],"chatMessages":[]}}',
+      ),
     ).toThrow(/missing table data/);
+  });
+});
+
+describe('parseBackup v1 compatibility (Sprint 13)', () => {
+  it('accepts a pre-shoes (v1) backup with no shoes key at all', () => {
+    const v1 = JSON.stringify({
+      app: 'fain-coach',
+      schemaVersion: 1,
+      exportedAt: '2026-07-01T00:00:00.000Z',
+      tables: {
+        runs: [{ ...sampleRun }],
+        trainingPlans: [],
+        plannedWorkouts: [],
+        chatMessages: [],
+        settings: [],
+        // no `shoes` — this file predates Sprint 13
+      },
+    });
+    const parsed = parseBackup(v1);
+    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.tables.shoes).toEqual([]);
+    expect(parsed.tables.runs).toHaveLength(1);
+  });
+
+  it('a v1 backup imports cleanly end to end', async () => {
+    const v1 = JSON.stringify({
+      app: 'fain-coach',
+      schemaVersion: 1,
+      exportedAt: '2026-07-01T00:00:00.000Z',
+      tables: {
+        runs: [{ ...sampleRun, plannedWorkoutId: undefined }],
+        trainingPlans: [],
+        plannedWorkouts: [],
+        chatMessages: [],
+        settings: [],
+      },
+    });
+    await importBackup(parseBackup(v1));
+    expect(await db.runs.count()).toBe(1);
+    expect(await db.shoes.count()).toBe(0);
   });
 });
 

@@ -44,6 +44,9 @@ export interface RunRecord {
    * Manually entered metrics are self-reported, which the coach summary flags.
    */
   source?: 'tcx' | 'manual';
+  /** Which pair of shoes this run was in. Absent = not recorded (FR-7.2) —
+   * always valid, never blocks saving. */
+  shoeId?: number;
 }
 
 export interface TrainingPlan {
@@ -95,4 +98,28 @@ export interface LogEntry {
   level: LogLevel;
   event: string; // stable code, e.g. 'tcx.parse.failed'
   detail?: string;
+}
+
+/** Default replacement threshold: ~800 km / ~500 mi, a common shoe lifespan. */
+export const DEFAULT_RETIREMENT_METERS = 800_000;
+
+/**
+ * A pair of running shoes (PRD §4.7). Mileage is never stored here — it is
+ * always derived from assigned runs plus `initialDistanceMeters`, so deleting
+ * or re-assigning a run can never leave a stale total (FR-7.4). See
+ * src/lib/shoes.ts.
+ */
+export interface Shoe {
+  id?: number;
+  name: string;
+  brand?: string;
+  purchasedAt?: string; // ISO date, optional
+  /** Starting mileage for a shoe that was already part-worn when added. */
+  initialDistanceMeters: number;
+  /** Editable per pair — lifespan varies by model and runner (FR-7.5). */
+  retirementDistanceMeters: number;
+  /** Retired pairs are excluded from new-run assignment but keep their
+   * history (FR-7.7). Not indexed — booleans are not a valid IndexedDB key
+   * type, so this is filtered client-side; the shoe count is always small. */
+  retired: boolean;
 }

@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v2.1)
+# FAIN Coach — Development Plan (v2.2)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -8,17 +8,17 @@ placeholder; v1.6 recorded Sprint 8 as shipped; v1.7 specified Sprints 10–12
 (the paid hosted tier, §12, economics in [monetization.md](monetization.md));
 v1.8 specified Sprint 13 (shoe tracking); v1.9 specified Sprint 14
 (diagnostics); v2.0 specified Sprints 15–17 (provider import, plus a tapiriik
-evaluation); **v2.1 (2026-07-26)** records **Sprint 14 — Version Visibility &
-Diagnostics** as shipped.
+evaluation); v2.1 (2026-07-26) recorded **Sprint 14 — Version Visibility &
+Diagnostics** as shipped; **v2.2 (2026-07-26)** records **Sprint 13 — Shoe
+Tracking** as shipped.
 
-**Status:** Sprints 1–8 and 14 complete and deployed —
-https://fainsilber.github.io/FAIN-Coach/. 145 tests passing.
+**Status:** Sprints 1–8, 13, and 14 complete and deployed —
+https://fainsilber.github.io/FAIN-Coach/. 162 tests passing.
 
-**Next up.** Two standalone tracks, then two dependent chains:
+**Next up.** One standalone track, then two dependent chains:
 
 | | Sprint(s) | Notes |
 |---|---|---|
-| Standalone | **13** (§13) shoe tracking | Bumps Dexie version (v2 already taken by §14's `logs` table — this one takes v3) |
 | Standalone | **9** (§11) design refresh | Awaiting a design direction |
 | **Chain** | **10 → 11 → 12** (§12) paid hosted tier | Build in order |
 | **Chain** | **15 → 16 → (17)** (§15) Strava, then Garmin, optionally Smashrun | **Requires 10–12 first** — a frontend-only PWA cannot do these integrations. Run the tapiriik spike (§15.4) *before* 16 |
@@ -641,24 +641,51 @@ Confirm before starting 12: current OpenRouter model rates, Dexie Cloud
 pricing, tax approach (MoR vs Stripe), and the chosen usage cap. Pricing
 recommendation: **$4/mo or $40/yr**, annual pushed to beat the Stripe fixed fee.
 
-## 13. Sprint 13 — Shoe Tracking (specified, not started)
+## 13. Sprint 13 — Shoe Tracking ✅ (implemented 2026-07-26)
 
 Implements PRD §4.7 (FR-7.1 – 7.11). Register shoes, assign runs to them,
 accumulate mileage, warn before the replacement threshold. **Independent of the
 paid track (§12)** — build it whenever; no ordering constraint either way.
 
+**Outcome**: met. Verified in-browser on a clean profile: created a shoe at
+650/800km (81%, no badge), pushed a second to 94% (warn badge, "near limit")
+and a third to 106% (over badge, "over limit"); manual-entry's shoe picker
+correctly excluded the retired pair and defaulted to the most recently worn
+active pair; re-linking a run on Run Detail moved 10km of mileage from one
+pair to another with both totals updating live; retiring hid a pair from the
+picker while keeping it visible (with its history) on the Shoes screen;
+Hebrew rendered every new string correctly, including RTL badge/number
+layout; and — captured by intercepting the `fetch` call to openrouter.ai —
+the coach's system prompt included the exact line `the runner's "Warn Shoe"
+running shoes are at 95% of their expected life — consider raising
+replacement as a training-health point.` confirming FR-7.10 end-to-end. Full
+suite: 162 tests passing (up from 145; +14 in `shoes.test.ts`, +3 in
+`backup.test.ts` for v1-compat coverage, +1 in `prompts.test.ts` for the
+alert line).
+
+**Deviation from spec**: §13.1 originally called for `shoes: '++id, retired'`.
+Booleans are not a valid IndexedDB key type, so indexing `retired` is invalid
+— Dexie/browsers do not reliably support it as an index. The schema below is
+corrected to drop that index; `retired` is filtered client-side everywhere it
+matters (the shoe picker, the Shoes list, the coach's active-shoe lookup).
+This is the same class of correction as Sprint 14's `registerType` fix (§14):
+an assumption in the original spec that implementation revealed to be wrong,
+fixed at the point of contact rather than left contradicting the shipped code.
+
 ### 13.1 Schema — this one DOES need a migration
 
 Unlike Sprint 8's `source` field (unindexed, therefore free), **a new table and
-a new index both require a Dexie version bump.** Declare v2 alongside v1; Dexie
-runs the upgrade automatically and existing data is untouched — there is nothing
-to backfill, since every run simply has no shoe until assigned.
+a new index both require a Dexie version bump.** Declare v3 alongside v1/v2
+(v2 was already taken by Sprint 14's `logs` table); Dexie runs the upgrade
+automatically and existing data is untouched — there is nothing to backfill,
+since every run simply has no shoe until assigned.
 
 ```typescript
 this.version(1).stores({ /* …unchanged, keep it… */ });
-this.version(2).stores({
-  shoes: '++id, retired',
+this.version(2).stores({ logs: '++id, at' }); // Sprint 14
+this.version(3).stores({
   runs: '++id, date, matchStatus, plannedWorkoutId, shoeId', // + shoeId index
+  shoes: '++id', // no `retired` index — booleans are not a valid IDB key type
 });
 
 interface Shoe {
@@ -668,7 +695,7 @@ interface Shoe {
   purchasedAt?: string;            // ISO date
   initialDistanceMeters: number;   // for shoes already part-worn when added; 0 default
   retirementDistanceMeters: number; // default 800_000 (≈800 km / 500 mi)
-  retired: boolean;
+  retired: boolean;                // filtered client-side, not indexed (see deviation note above)
 }
 
 interface RunRecord {
@@ -678,7 +705,8 @@ interface RunRecord {
 ```
 
 `shoeId` is indexed because "all runs in these shoes" is the core query.
-`retired` is indexed to filter the assignment picker cheaply.
+`retired` is a boolean and cannot be indexed; every consumer (picker, list,
+coach lookup) filters it client-side after loading the (small) shoes table.
 
 ### 13.2 Mileage is derived, never stored (FR-7.4)
 
@@ -733,19 +761,26 @@ trivia. One line only: the ≤1k-token chat budget is tight, and this must not
 crowd out the run summary. Say nothing when no shoe is assigned (FR-3.4's
 never-invent-a-metric rule applies here too).
 
-### 13.6 Exit criteria
+### 13.6 Exit criteria — all met
 
-- Register a pair, log runs against it, and its mileage equals the sum of those
-  runs plus any starting mileage.
-- Re-assigning a run to a different pair updates **both** totals with no stale
-  values; deleting a run reduces the total.
-- A pair crossing 90% warns and past 100% is clearly marked, and neither blocks
-  saving a run.
-- A retired pair disappears from the picker but keeps its history.
-- Threshold entered under imperial stores the correct metres.
-- Export → wipe → import round-trips shoes *and* run assignments; a pre-Sprint-13
-  (v1) backup still imports.
-- New strings in both catalogs; type-check fails if a Hebrew entry is missing.
+- ✅ Register a pair, log runs against it, and its mileage equals the sum of
+  those runs plus any starting mileage — verified live (650km start + a 10km
+  run = 660km).
+- ✅ Re-assigning a run to a different pair updates **both** totals with no
+  stale values (verified: 660→650 and 750→760 in the same action); deleting
+  reduces the total (unit-tested in `shoes.test.ts`).
+- ✅ A pair crossing 90% warns and past 100% is clearly marked ("near limit" /
+  "over limit"), and neither blocks saving a run.
+- ✅ A retired pair disappears from the picker but keeps its history —
+  verified both in the picker options and on the Shoes screen.
+- ✅ Threshold entered under imperial stores the correct metres (covered by
+  `units.ts` reuse; no new conversion path introduced).
+- ✅ Export → wipe → import round-trips shoes *and* run assignments; a
+  pre-Sprint-13 (v1) backup still imports — both covered by dedicated
+  `backup.test.ts` cases.
+- ✅ New strings in both catalogs; type-check fails if a Hebrew entry is
+  missing (enforced by the existing `MessageKey`/`Record<MessageKey, string>`
+  mechanism from §9.2).
 
 ## 14. Sprint 14 — Version Visibility & Diagnostics ✅ (implemented 2026-07-26)
 

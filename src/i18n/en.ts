@@ -216,7 +216,7 @@ export const en = {
   'settings.saved': 'Settings saved.',
   'settings.data': 'Data',
   'settings.dataDesc':
-    "Backups contain the current profile's runs, plans, chat history, and settings (including your API key) as a JSON file.",
+    "Backups contain the current profile's runs, plans, chat history, shoes, and settings (including your API key) as a JSON file.",
   'settings.export': 'Export backup',
   'settings.import': 'Import backup…',
   'settings.importCounts': '{runs} runs, {plans} plans, {messages} chat messages',
@@ -261,6 +261,35 @@ export const en = {
   'settings.logCleared': 'Log cleared.',
   'update.available': 'A new version is ready.',
   'update.reload': 'Reload',
+
+  // Shoe tracking (Sprint 13)
+  'shoes.title': 'Shoes',
+  'shoes.subtitle':
+    'Track mileage on your running shoes and get a warning before they wear out.',
+  'shoes.empty': 'No shoes registered yet.',
+  'shoes.addNew': '+ Add a pair',
+  'shoes.add': 'Add shoe',
+  'shoes.name': 'Name',
+  'shoes.brand': 'Brand',
+  'shoes.initialDistance': 'Starting distance ({unit})',
+  'shoes.retirementDistance': 'Replace after ({unit})',
+  'shoes.progressLine': '{used} of {total} ({percent}%)',
+  'shoes.retire': 'Retire',
+  'shoes.unretire': 'Unretire',
+  'shoes.retireConfirm':
+    'Retire "{name}"? It will no longer be offered for new runs, but its history is kept.',
+  'shoes.retiredBadge': 'retired',
+  'shoes.warnBadge': 'near limit',
+  'shoes.overBadge': 'over limit',
+  'shoes.errName': 'Enter a name for the shoe.',
+  'shoes.errThreshold': 'Enter a replacement distance greater than zero.',
+  'shoes.errInitial': 'Starting distance cannot be negative.',
+  'shoes.settingsDesc': 'Track mileage on your running shoes.',
+  'shoes.manage': 'Manage shoes',
+  'form.shoe': 'Shoes worn',
+  'form.noShoe': '— not recorded —',
+  'run.shoe': 'Shoes',
+  'run.noShoe': '— not linked —',
 
   // Model select
   'model.custom': 'Custom…',

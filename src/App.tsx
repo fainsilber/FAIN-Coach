@@ -10,6 +10,7 @@ import { HistoryPage } from './pages/HistoryPage';
 import { ManualRunPage } from './pages/ManualRunPage';
 import { PlanPage } from './pages/PlanPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ShoesPage } from './pages/ShoesPage';
 import { UploadPage } from './pages/UploadPage';
 
 // Recharts lives only in the run detail route — keep it out of the main chunk.
@@ -74,6 +75,7 @@ export function App() {
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/plan" element={<PlanPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/shoes" element={<ShoesPage />} />
           </Routes>
         </main>
         <nav className="sticky bottom-0 flex border-t bg-background pb-[env(safe-area-inset-bottom)]">

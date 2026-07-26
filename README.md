@@ -20,6 +20,7 @@ A local-first AI running coach. Upload `.tcx` files from any GPS watch (Garmin, 
 - **English & Hebrew** — full right-to-left interface in Hebrew, per profile, and the AI coach replies in your language. More languages are a single translation file away.
 - **Backups** — versioned JSON export/import to move data between devices.
 - **Version & diagnostics** — Settings shows exactly which build you're running (version, commit, build time), with an explicit prompt when an update is ready — no more guessing whether a refresh worked. A local, exportable diagnostics log helps troubleshoot problems; it never contains your API key, chat messages, or notes.
+- **Shoe tracking** — register your shoes, assign runs to them, and see mileage accumulate toward a replacement threshold you set. The picker defaults to whichever pair you wore most recently; retire a pair instead of deleting it and its history stays intact. The coach mentions it once a pair is close to worn out.
 
 ## Development
 
@@ -42,7 +43,6 @@ Data is per-device by design — there is no server and no sync. Each device sta
 ## Roadmap
 
 - **Design refresh** — planned; direction not yet defined.
-- **Shoe tracking** — register your shoes, see the mileage on each pair, and get a warning before they're worn out. [Spec](docs/dev-plan.md)
 - **Import from Strava, Garmin and Smashrun** — connect the platform you already sync to instead of exporting files by hand. Needs the hosted backend first. [Spec](docs/dev-plan.md)
 - A **paid hosted tier** (accounts, cloud sync, and a managed AI key so there's no setup) is planned — see [docs/monetization.md](docs/monetization.md) and dev-plan §12.
 
@@ -53,4 +53,4 @@ Longer-term items live in [docs/dev-plan.md §16](docs/dev-plan.md), notably a G
 ## Docs
 
 - [Product Requirements (PRD v1.6)](docs/PRD.md)
-- [Development Plan v2.1](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
+- [Development Plan v2.2](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks

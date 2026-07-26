@@ -77,6 +77,18 @@ export function RunDetailPage() {
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [run?.id, run?.plannedWorkoutId]);
 
+  // Non-retired pairs, plus the currently-assigned one even if retired since
+  // a run's own history should never lose its shoe (FR-7.7).
+  const shoeOptions = useLiveQuery(async () => {
+    const all = await db.shoes.toArray();
+    return all.filter((s) => !s.retired || s.id === run?.shoeId);
+  }, [run?.shoeId]);
+
+  async function handleShoeChange(value: string) {
+    if (!run?.id) return;
+    await db.runs.update(run.id, { shoeId: value ? Number(value) : undefined });
+  }
+
   async function handleRelink(value: string) {
     if (!run?.id) return;
     const newId = value ? Number(value) : undefined;
@@ -182,6 +194,25 @@ export function RunDetailPage() {
             {linkOptions.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.date} · {t(`type.${w.type}`)} · {w.description.slice(0, 60)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {shoeOptions !== undefined && shoeOptions.length > 0 && (
+        <label className="block rounded-lg border p-3">
+          <span className="mb-1 block text-sm font-medium">{t('run.shoe')}</span>
+          <select
+            value={run.shoeId ?? ''}
+            onChange={(e) => void handleShoeChange(e.target.value)}
+            className="w-full rounded-md border bg-background p-2 text-sm"
+          >
+            <option value="">{t('run.noShoe')}</option>
+            {shoeOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+                {s.retired ? ` (${t('shoes.retiredBadge')})` : ''}
               </option>
             ))}
           </select>

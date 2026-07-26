@@ -6,6 +6,7 @@ import type {
   PlannedWorkout,
   RunRecord,
   Settings,
+  Shoe,
   TrainingPlan,
 } from './types';
 
@@ -17,6 +18,7 @@ export class FainCoachDB extends Dexie {
   chatMessages!: EntityTable<ChatMessage, 'id'>;
   settings!: EntityTable<Settings, 'key'>;
   logs!: EntityTable<LogEntry, 'id'>;
+  shoes!: EntityTable<Shoe, 'id'>;
 
   constructor(name: string) {
     super(name);
@@ -31,6 +33,15 @@ export class FainCoachDB extends Dexie {
     // carries unchanged stores forward from v1 automatically.
     this.version(2).stores({
       logs: '++id, at',
+    });
+    // Sprint 13: shoe tracking. `runs` gains a shoeId index, which means
+    // restating its full index list (Dexie requires that when a table's own
+    // indexes change, unlike adding a wholly new table). `shoes` has no
+    // secondary index — `retired` is a boolean, and booleans are not a valid
+    // IndexedDB key type, so filtering it happens client-side instead.
+    this.version(3).stores({
+      runs: '++id, date, matchStatus, plannedWorkoutId, shoeId',
+      shoes: '++id',
     });
   }
 }

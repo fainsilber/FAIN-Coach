@@ -215,7 +215,7 @@ export const he: Record<MessageKey, string> = {
   'settings.saved': 'ההגדרות נשמרו.',
   'settings.data': 'נתונים',
   'settings.dataDesc':
-    'הגיבוי כולל את הריצות, התוכניות, הצ׳אט וההגדרות של הפרופיל הנוכחי (כולל מפתח ה-API) כקובץ JSON.',
+    'הגיבוי כולל את הריצות, התוכניות, הצ׳אט, הנעליים וההגדרות של הפרופיל הנוכחי (כולל מפתח ה-API) כקובץ JSON.',
   'settings.export': 'ייצוא גיבוי',
   'settings.import': 'ייבוא גיבוי…',
   'settings.importCounts': '{runs} ריצות, {plans} תוכניות, {messages} הודעות צ׳אט',
@@ -259,6 +259,35 @@ export const he: Record<MessageKey, string> = {
   'settings.logCleared': 'היומן נוקה.',
   'update.available': 'גרסה חדשה מוכנה.',
   'update.reload': 'טעינה מחדש',
+
+  // Shoe tracking (Sprint 13)
+  'shoes.title': 'נעליים',
+  'shoes.subtitle':
+    'עקבו אחר המרחק שרצתם בנעלי הריצה שלכם וקבלו אזהרה לפני שהן מתבלות.',
+  'shoes.empty': 'עדיין לא נרשמו נעליים.',
+  'shoes.addNew': '+ הוספת זוג',
+  'shoes.add': 'הוספת נעליים',
+  'shoes.name': 'שם',
+  'shoes.brand': 'מותג',
+  'shoes.initialDistance': 'מרחק התחלתי ({unit})',
+  'shoes.retirementDistance': 'להחליף לאחר ({unit})',
+  'shoes.progressLine': '{used} מתוך {total} ({percent}%)',
+  'shoes.retire': 'הוצאה משימוש',
+  'shoes.unretire': 'החזרה לשימוש',
+  'shoes.retireConfirm':
+    'להוציא את "{name}" משימוש? הן לא יוצעו לריצות חדשות, אך ההיסטוריה שלהן תישמר.',
+  'shoes.retiredBadge': 'לא בשימוש',
+  'shoes.warnBadge': 'מתקרב לסוף החיים',
+  'shoes.overBadge': 'מעל התוחלת',
+  'shoes.errName': 'הזינו שם לנעליים.',
+  'shoes.errThreshold': 'הזינו מרחק החלפה גדול מאפס.',
+  'shoes.errInitial': 'המרחק ההתחלתי לא יכול להיות שלילי.',
+  'shoes.settingsDesc': 'עקבו אחר המרחק שרצתם בנעלי הריצה שלכם.',
+  'shoes.manage': 'ניהול נעליים',
+  'form.shoe': 'נעליים בהן רצתם',
+  'form.noShoe': '— לא נרשם —',
+  'run.shoe': 'נעליים',
+  'run.noShoe': '— לא מקושר —',
 
   // Model select
   'model.custom': 'מותאם אישית…',

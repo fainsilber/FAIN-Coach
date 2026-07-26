@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { db, requestPersistentStorage } from '@/db/db';
 import { SETTING_KEYS, setSetting } from '@/db/settings';
 import {
@@ -246,6 +247,17 @@ export function SettingsPage() {
             {t('settings.weekStartHint')}
           </span>
         </label>
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="font-medium">{t('shoes.title')}</h3>
+        <p className="text-sm text-muted-foreground">{t('shoes.settingsDesc')}</p>
+        <Link
+          to="/shoes"
+          className="inline-block rounded-md border px-4 py-2 text-sm font-medium"
+        >
+          {t('shoes.manage')}
+        </Link>
       </div>
 
       <div className="space-y-4">
