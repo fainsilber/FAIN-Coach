@@ -2,7 +2,7 @@
 
 ## AI Running Coach PWA ("OpenRun Coach")
 
-**Document Version:** 1.4 (2026-07-23: §4.7 Shoe Tracking. Previously: §4.6 Manual Run Entry + revised FR-3.3, §4.4 Local Profiles, §4.5 Localization & Units, §3 architecture corrected to as-built)
+**Document Version:** 1.5 (2026-07-23: §4.8 Version Visibility & Diagnostics. Previously: §4.7 Shoe Tracking, §4.6 Manual Run Entry + revised FR-3.3, §4.4 Local Profiles, §4.5 Localization & Units, §3 architecture corrected to as-built)
 
 **Target Release:** MVP shipped — live at https://fainsilber.github.io/FAIN-Coach/
 
@@ -173,6 +173,27 @@ Running shoes wear out after a few hundred kilometres, and the mileage is invisi
 * **FR-7.10:** The coach **should** be told when the active pair is near or past its threshold, so it can raise replacement as a training-health point. It **must not** invent mileage for runs with no shoe assigned (consistent with FR-3.4).
 * **FR-7.11 (scope limitation):** One pair per run. Splitting a single run across two pairs is out of scope.
 
+### 4.8 Version Visibility & Diagnostics (added v1.5)
+
+An installed PWA caches aggressively, so "I refreshed — am I actually running the new build?" is currently unanswerable. And when something misbehaves on a phone there is no way to see what happened.
+
+**Version**
+
+* **FR-8.1:** The app **must** display its build identity somewhere the user can find it (Settings): a version number, the build's short commit hash, and the build timestamp. The hash is what makes two builds distinguishable at a glance.
+* **FR-8.2:** The build identity **must** be injected at build time from the actual source revision — never hand-maintained, which would silently go stale.
+* **FR-8.3:** When a newer version has been downloaded and is waiting, the app **must** tell the user and offer an explicit action to activate it, rather than updating silently on some future reload. After activating, the displayed build identity must change — this is the user-facing proof that the update landed.
+* **FR-8.4:** The app **should** indicate when it has checked for updates and is already current, so "nothing happened" is distinguishable from "the check failed".
+
+**Diagnostics log**
+
+* **FR-8.5:** The app **must** keep a rolling diagnostic log of notable events — errors, failed uploads/parses, LLM failures with their error codes, save/import failures — bounded in size so it can never grow without limit.
+* **FR-8.6:** The log **must** survive a reload or crash, since the most valuable log is the one describing what just went wrong.
+* **FR-8.7:** The user **must** be able to export the log (download and/or share) to send it for troubleshooting, and **must** be able to clear it.
+* **FR-8.8 (privacy — mandatory):** The log **must never** contain the OpenRouter API key, and **must not** contain chat message content, run notes, or other personal free text. It records events and metadata (what failed, error code, counts, timings), not the user's data. Any value that could carry a secret must be redacted before it is written.
+* **FR-8.9:** The user **must** be able to see what the log contains before sending it — the exported artifact must be human-readable, not opaque.
+* **FR-8.10:** The log **must not** be bundled into the normal data backup (FR-2.3); it is a separate, deliberately-exported artifact.
+* **FR-8.11:** Logging **must** be resilient: a failure inside the logger must never break the feature it was observing.
+
 ---
 
 ## 5. Non-Functional Requirements
@@ -244,5 +265,6 @@ breakdown. Status as of 2026-07-23:
 | 9 | Design refresh | ⬜ Placeholder — direction not yet defined |
 | 10–12 | Paid hosted tier: Cloudflare move, accounts + sync, managed AI + billing (a connected track) | ▶ Specified — see dev-plan §12 & [monetization.md](monetization.md) |
 | 13 | Shoe tracking (§4.7, FR-7.1–7.11) | ▶ Specified, not started — independent of 10–12 |
+| 14 | Version visibility & diagnostics (§4.8, FR-8.1–8.11) | ▶ Specified, not started — independent |
 
 ---

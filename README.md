@@ -43,9 +43,10 @@ Data is per-device by design — there is no server and no sync. Each device sta
 - **Design refresh** — planned; direction not yet defined.
 
 - **Shoe tracking** — register your shoes, see the mileage on each pair, and get a warning before they're worn out. [Spec](docs/dev-plan.md)
+- **Version display & diagnostics** — see which build you're running (so you can tell whether a refresh updated the app), plus an exportable troubleshooting log. [Spec](docs/dev-plan.md)
 - A **paid hosted tier** (accounts, cloud sync, and a managed AI key so there's no setup) is planned — see [docs/monetization.md](docs/monetization.md) and dev-plan §12.
 
-Longer-term items live in [docs/dev-plan.md §14](docs/dev-plan.md), notably a GPX parser for native Apple Watch exports.
+Longer-term items live in [docs/dev-plan.md §15](docs/dev-plan.md), notably a GPX parser for native Apple Watch exports.
 
 ## Docs
 

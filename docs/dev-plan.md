@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v1.8)
+# FAIN Coach — Development Plan (v1.9)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -6,17 +6,24 @@ profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
 v1.4 recorded Sprints 6–7 as shipped; v1.5 added Sprint 8 and the Sprint 9
 placeholder; v1.6 recorded Sprint 8 as shipped; v1.7 specified Sprints 10–12
 (the paid hosted tier, §12, economics in [monetization.md](monetization.md));
-**v1.8 (2026-07-23)** specifies **Sprint 13 — Shoe Tracking** (§13).
+v1.8 specified Sprint 13 (shoe tracking); **v1.9 (2026-07-23)** specifies
+**Sprint 14 — Version Visibility & Diagnostics** (§14).
 
 **Status:** Sprints 1–8 complete and deployed —
 https://fainsilber.github.io/FAIN-Coach/. 132 tests passing.
 
-**Next up — three independent tracks**, pick any order:
+**Next up — four independent tracks**, pick any order:
 - **Sprint 9** (§11) — design refresh. Awaiting a design direction.
 - **Sprints 10–12** (§12) — paid hosted tier. A *connected* track: build in order.
 - **Sprint 13** (§13) — shoe tracking. Standalone feature.
+- **Sprint 14** (§14) — version visibility + diagnostics log. Standalone; **fixes
+  a live annoyance** (no way to tell whether a refresh actually updated the PWA),
+  so it is the cheapest useful thing to build next.
 
-Ongoing risks are in §14 — none blocking.
+Note 13 and 14 both bump the Dexie schema version; whichever lands second takes
+the next number (sequential upgrades are fine).
+
+Ongoing risks are in §15 — none blocking.
 
 ---
 
@@ -182,7 +189,7 @@ interface Settings {
   Coach context also gained the upcoming week's actual planned workouts, which
   stopped the model inventing a weekly schedule when asked "what's next?".
 - **Not done**: cross-device TCX compatibility pass beyond Garmin. Apple Watch
-  exports GPX natively (see §14); Coros/Suunto covered only by a synthetic
+  exports GPX natively (see §15); Coros/Suunto covered only by a synthetic
   fixture, not a real export.
 
 ## 5a. Deployment (2026-07-22)
@@ -740,7 +747,120 @@ never-invent-a-metric rule applies here too).
   (v1) backup still imports.
 - New strings in both catalogs; type-check fails if a Hebrew entry is missing.
 
-## 14. Risks / Open Questions
+## 14. Sprint 14 — Version Visibility & Diagnostics (specified, not started)
+
+Implements PRD §4.8 (FR-8.1 – 8.11). Two diagnostics problems in one sprint:
+*"did my refresh actually update the app?"* and *"something broke on my phone
+and I can't see why."* **Independent** of the other tracks.
+
+### 14.1 Why the update problem exists today
+
+`vite.config.ts` sets `registerType: 'autoUpdate'`. Workbox fetches the new
+service worker and activates it, **but the already-loaded page keeps running the
+old JS until a reload** — and nothing tells the user either way. So a refresh
+that *looks* like it did nothing may have updated, and one that *feels* updated
+may not have. There is currently no build identity displayed anywhere, so the
+question is unanswerable from inside the app. That is the whole bug.
+
+### 14.2 Build identity (FR-8.1 – 8.2)
+
+Inject at build time via Vite `define` — never hand-maintained:
+
+```typescript
+// vite.config.ts
+define: {
+  __APP_VERSION__: JSON.stringify(pkg.version),        // from package.json
+  __GIT_SHA__: JSON.stringify(shortSha()),             // git rev-parse --short HEAD
+  __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+}
+```
+
+- `shortSha()` must **not** break the build when git is unavailable (a clean
+  tarball, some CI images) — fall back to `'unknown'` in a try/catch. In GitHub
+  Actions the checkout provides git; `GITHUB_SHA` is also available.
+- Declare the constants in `src/vite-env.d.ts` so TypeScript knows them.
+- The **short SHA is the field that matters** — semver rarely changes per build,
+  so it is the hash that tells two builds apart.
+- Surface in Settings as a new **About** group: `v0.1.0 · a05753e ·
+  built 2026-07-23 14:22`. Selectable text so it can be pasted into a bug report.
+
+### 14.3 Update detection (FR-8.3 – 8.4)
+
+Switch from silent auto-update to **explicit, visible** update using
+`useRegisterSW` from `virtual:pwa-register/react`:
+
+- `needRefresh` true → show a banner/button ("A new version is ready — reload").
+- Calling `updateServiceWorker(true)` activates the waiting worker and reloads.
+- **The proof loop**: after reload, the About line shows a different SHA. That is
+  the answer to "did it actually update?", and it's why §14.2 must ship with this.
+- Add a manual **"Check for updates"** action calling
+  `registration.update()`, reporting either "update available" or "you're up to
+  date" (FR-8.4) so a no-op is distinguishable from a failure.
+- Keep `autoUpdate` behaviour as the fallback for users who never tap anything;
+  the change is that it is no longer *invisible*.
+
+### 14.4 Diagnostics log (FR-8.5 – 8.11)
+
+**Storage**: a bounded Dexie table, because a log that dies on reload is useless
+for the crash that just happened (FR-8.6).
+
+```typescript
+// Dexie version bump — coordinate with Sprint 13 (§13.1), which also bumps.
+// Sequential versions are fine; whichever lands second takes the next number.
+this.version(N).stores({ logs: '++id, at' });
+
+interface LogEntry {
+  id?: number;
+  at: string;                 // ISO
+  level: 'info' | 'warn' | 'error';
+  event: string;              // stable code, e.g. 'tcx.parse.failed'
+  detail?: string;            // REDACTED metadata only — never user content
+}
+```
+
+- **Bounded**: after each write, trim to the newest N (≈500 entries). Cheap, and
+  it can never eat the storage quota the app warns about elsewhere.
+- **What to log**: TCX parse failures (error message, file size — not contents),
+  LLM failures (`LlmError.code`, model id, retry count), plan JSON validation
+  failures, save/import failures, SW update events, unhandled errors and
+  rejections. Successes worth one line each: run saved, plan generated (token
+  count), update applied.
+- **Redaction is mandatory and must be enforced in the writer** (FR-8.8), not
+  left to each call site: strip anything matching an API-key shape (`sk-...`),
+  and never pass chat content, run notes, or goal text. Log *metadata* — "chat
+  request failed, code=rate-limit, model=llama-3.3-70b" — not the conversation.
+  A redaction unit test is a required deliverable, not optional.
+- **Never let the logger break the app** (FR-8.11): every write is fire-and-forget
+  and swallows its own errors.
+- **Export** (FR-8.7, 8.9): a plain-text/JSON download named
+  `fain-coach-log-<date>.txt`, with the build identity from §14.2 as a header —
+  a log without a version is much less useful. Offer the Web Share API on mobile
+  where available (nicer than a download on a phone), falling back to download
+  and copy-to-clipboard. Plus a **Clear log** action.
+- **Not in backups** (FR-8.10): `exportBackup` must ignore the `logs` table, or a
+  backup becomes a privacy liability and an import replays stale noise.
+
+> **No auto-upload, by design.** There is no backend today, so "send" means the
+> user exports and sends it deliberately. Once Sprint 12's Worker exists, an
+> opt-in "upload diagnostics" endpoint becomes possible — but it stays opt-in
+> and must show the payload first (FR-8.9).
+
+### 14.5 Exit criteria
+
+- Settings shows version, short SHA, and build time; two different builds show
+  different SHAs.
+- Deploying a new build surfaces an update prompt; applying it reloads and the
+  displayed SHA changes. "Check for updates" on a current build reports up-to-date.
+- Forcing a failure (bad API key, corrupt TCX) writes a log entry with a stable
+  event code.
+- The log survives a reload, stays bounded under sustained writes, and **contains
+  no API key and no chat/notes content** — asserted by test.
+- Export produces a readable file with the build identity in its header; clearing
+  empties it.
+- A data backup contains no log entries.
+- New strings in both catalogs; type-check fails if a Hebrew entry is missing.
+
+## 15. Risks / Open Questions
 
 - ~~Coach context should include the upcoming week's actual planned
   workouts~~ — **resolved in Sprint 5** (2026-07-22): `buildCoachContext`

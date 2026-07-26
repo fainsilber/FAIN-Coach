@@ -73,5 +73,6 @@ Sprints 1–8 complete, local profiles added, deployed to GitHub Pages. 131 test
 - **Sprint 9** — design refresh ([dev-plan §11](docs/dev-plan.md)) is a deliberate placeholder; **do not invent a design direction**, it will be supplied.
 - **Sprints 10–12** — paid hosted tier (Cloudflare + accounts/sync + managed AI + billing). A *connected* track, build in order: [dev-plan §12](docs/dev-plan.md), economics in [monetization.md](docs/monetization.md).
 - **Sprint 13** — shoe tracking ([dev-plan §13](docs/dev-plan.md)). Standalone. Note this one **needs a Dexie version bump** (new table + new index), unlike Sprint 8's field-only change.
+- **Sprint 14** — version visibility + diagnostics log ([dev-plan §14](docs/dev-plan.md)). Standalone, also bumps the Dexie version (`logs` table). Fixes a live annoyance: `registerType: 'autoUpdate'` updates the SW silently, so there's currently no way to tell whether a refresh actually loaded a new build. **If you touch the logger, redaction is mandatory** — never write the API key, chat content, or run notes into a log (PRD FR-8.8).
 
-Ongoing risks in [§14](docs/dev-plan.md) — deferred items (GPX parser, chat-history summary); Hebrew output is confirmed working.
+Ongoing risks in [§15](docs/dev-plan.md) — deferred items (GPX parser, chat-history summary); Hebrew output is confirmed working.
