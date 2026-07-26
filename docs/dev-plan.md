@@ -1,17 +1,19 @@
-# FAIN Coach — Development Plan (v1.6)
+# FAIN Coach — Development Plan (v1.7)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
 1–5 as shipped, the GitHub Pages deployment, and the revised model tiering;
 v1.4 recorded Sprints 6–7 as shipped; v1.5 added Sprint 8 and the Sprint 9
-placeholder; **v1.6 (2026-07-23)** records **Sprint 8 — Manual Run Entry**
-as shipped.
+placeholder; v1.6 recorded Sprint 8 as shipped; **v1.7 (2026-07-23)** specifies
+**Sprints 10–12 — the paid hosted tier** (§12), a connected track, with
+economics in [monetization.md](monetization.md).
 
 **Status:** Sprints 1–8 complete and deployed —
-https://fainsilber.github.io/FAIN-Coach/. 131 tests passing.
+https://fainsilber.github.io/FAIN-Coach/. 132 tests passing.
 
-**Next up:** Sprint 9 (§11) — design refresh, deliberately unspecified
-pending a design direction. Ongoing risks are in §12 — none blocking.
+**Next up:** two independent tracks — Sprint 9 (§11) design refresh (awaiting
+direction), and Sprints 10–12 (§12) the paid hosted tier (specified, ready to
+build in order). Ongoing risks are in §13 — none blocking.
 
 ---
 
@@ -177,7 +179,7 @@ interface Settings {
   Coach context also gained the upcoming week's actual planned workouts, which
   stopped the model inventing a weekly schedule when asked "what's next?".
 - **Not done**: cross-device TCX compatibility pass beyond Garmin. Apple Watch
-  exports GPX natively (see §12); Coros/Suunto covered only by a synthetic
+  exports GPX natively (see §13); Coros/Suunto covered only by a synthetic
   fixture, not a real export.
 
 ## 5a. Deployment (2026-07-22)
@@ -544,7 +546,92 @@ true, so whoever picks this up starts informed:
   see §9.3) and **mobile ergonomics** (44px touch targets, 16px form inputs to
   stop iOS zoom, safe-area insets).
 
-## 12. Risks / Open Questions
+## 12. Sprints 10–12 — Paid Hosted Tier (a CONNECTED track, specified)
+
+Requested 2026-07-23. Adds a paid "just works" tier — accounts + managed AI key
++ cloud backup + multi-device sync — alongside the unchanged free local tier.
+Economics, pricing, and the abuse-cost analysis live in
+[monetization.md](monetization.md).
+
+**These three sprints are one deliverable split for shippability — do them in
+order.** 10 unblocks 11 and 12 (they need a backend host and a root domain that
+GitHub Pages can't give); 11 provides the accounts that 12's billing and
+managed-key gating attach to. None of them is independently *useful* to a user
+until 12 lands, but each is independently *shippable and testable*. Sprint 9
+(design) is orthogonal and can happen any time.
+
+**Architecture** (the payoff of two earlier decisions):
+- The `LlmClient` interface (Sprint 3) means the paid transport is a new
+  `ProxyClient` calling the Worker with a session token — **zero UI changes**.
+- One database per profile (Sprint "Profiles") maps cleanly onto per-account
+  Dexie Cloud databases.
+
+```
+Cloudflare Pages ── static frontend (root domain, no /FAIN-Coach/ base)
+      ├─► Dexie Cloud ── email-OTP accounts + sync + cloud backup + isolation
+      └─► Cloudflare Worker (the backend you own):
+            /ai      → holds OpenRouter key; checks session + active sub;
+                        enforces the per-user usage cap; proxies + streams
+            /billing → checkout + webhook → marks subscription active/inactive
+```
+
+### 12.1 Sprint 10 — Move hosting to Cloudflare Pages
+
+Low-risk, useful regardless, and unblocks 11–12.
+
+- Migrate deploy from GitHub Pages Actions to Cloudflare Pages (build from the
+  same repo). Root domain, so **revert the `/FAIN-Coach/` base** to `/`: Vite
+  `base`, router `basename`, PWA `scope`/`start_url`, and delete the `404.html`
+  SPA hack (Cloudflare Pages has native SPA fallback via `_redirects`).
+- The repo can go **back to private** — Cloudflare builds private repos on the
+  free tier (the reason it went public no longer applies).
+- **Exit**: live on Cloudflare at a root URL; SW scope/deep-links/RTL all
+  re-verified; old GitHub Pages URL redirected or retired.
+
+### 12.2 Sprint 11 — Accounts + Sync + Cloud Backup (Dexie Cloud)
+
+Delivers three of the four paid features; can ship **free at first** to prove
+sync before any billing exists.
+
+- Add `dexie-cloud-addon`; the profile picker becomes a login screen (email
+  OTP). Local profiles remain for the free/offline tier.
+- **Id remap** (the main cost, dev plan §7): local auto-increment ids → Dexie
+  Cloud's global string ids; rewrite `run.plannedWorkoutId`,
+  `plannedWorkout.planId`, `chatMessage.planId` during a one-time per-account
+  import (reuses the backup/import machinery).
+- **The API key must never sync** — free-tier BYO key stays device-local; paid
+  users have no key locally at all (it lives only in the Worker). Mark
+  `settings` (or just the key row) as an unsynced/local table.
+- **Exit**: sign in on two devices, a run logged on one appears on the other;
+  offline edits reconcile; the free local tier is untouched.
+
+### 12.3 Sprint 12 — Managed AI Proxy + Billing + Gating
+
+The tier people actually pay for.
+
+- **Worker `/ai`**: authenticates the Dexie Cloud session, checks an active
+  subscription, **enforces the per-user token cap** (monetization.md §3.2),
+  forwards to OpenRouter with the server-held key, streams SSE back. Restrict to
+  the **cheap managed model set** (§3.3) — premium models stay BYO-key only.
+- **`ProxyClient implements LlmClient`**: the app picks transport by tier — BYO
+  `OpenRouterClient` for free, `ProxyClient` for Pro. No component changes.
+- **Billing**: subscription checkout + webhook marks the account active. Prefer
+  a **Merchant of Record** (Lemon Squeezy/Paddle) over raw Stripe for tax
+  reasons (monetization.md §6). **Credentials (OpenRouter key, billing keys,
+  Dexie Cloud) are configured by the owner as Cloudflare secrets — never handled
+  in code or committed.**
+- **Gating + honesty**: show quota remaining; be explicit in-UI that Pro syncs
+  through the cloud while Free stays fully local (monetization.md §7).
+- **Exit**: a paid account chats/generates with no OpenRouter key of its own;
+  the cap blocks a runaway; cancelling billing reverts the account to free.
+
+### Pre-build checklist (from monetization.md §8)
+
+Confirm before starting 12: current OpenRouter model rates, Dexie Cloud
+pricing, tax approach (MoR vs Stripe), and the chosen usage cap. Pricing
+recommendation: **$4/mo or $40/yr**, annual pushed to beat the Stripe fixed fee.
+
+## 13. Risks / Open Questions
 
 - ~~Coach context should include the upcoming week's actual planned
   workouts~~ — **resolved in Sprint 5** (2026-07-22): `buildCoachContext`

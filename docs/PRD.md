@@ -226,5 +226,6 @@ breakdown. Status as of 2026-07-23:
 | 7 | Multi-language: English + Hebrew RTL (§4.5, FR-5.1–5.6) | ✅ Complete |
 | 8 | Manual run entry (§4.6, FR-6.1–6.8) | ✅ Complete |
 | 9 | Design refresh | ⬜ Placeholder — direction not yet defined |
+| 10–12 | Paid hosted tier: Cloudflare move, accounts + sync, managed AI + billing (a connected track) | ▶ Specified — see dev-plan §12 & [monetization.md](monetization.md) |
 
 ---
