@@ -1,15 +1,80 @@
 /// <reference types="vitest/config" />
 import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const pkg = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf-8'),
 ) as { version: string };
+
+// Deploy target (dev plan §12.1). Two deployments are live at once and CI
+// builds each separately — they are different origins, so they share code but
+// never share data (IndexedDB is per-origin).
+//
+// `base` is the single switch: the router basename
+// (`import.meta.env.BASE_URL`), the PWA scope/start_url, and the precache
+// manifest all derive from it. Never hard-code the subpath anywhere else.
+type DeployTarget = 'cloudflare' | 'pages';
+
+const BASE_BY_TARGET: Record<DeployTarget, string> = {
+  cloudflare: '/', // root domain
+  pages: '/FAIN-Coach/', // GitHub Pages project subpath
+};
+
+// Files in public/ that belong to exactly one target. Vite copies all of
+// public/ into every build, so the ones that don't belong are deleted after
+// the write: a Cloudflare build must not ship the GitHub Pages redirect shim
+// (404.html hard-codes pathSegmentsToKeep=1, which is wrong at a root domain,
+// and Cloudflare would otherwise serve it as the not-found page), and a Pages
+// build has no use for Cloudflare's _redirects.
+const TARGET_ONLY_FILES: Record<DeployTarget, readonly string[]> = {
+  pages: ['404.html'],
+  cloudflare: ['_redirects'],
+};
+
+function resolveTarget(): DeployTarget {
+  const raw = process.env.DEPLOY_TARGET ?? 'cloudflare';
+  // hasOwnProperty, not `in` — `in` walks the prototype chain, so a
+  // DEPLOY_TARGET of "toString" would otherwise pass validation.
+  if (!Object.prototype.hasOwnProperty.call(BASE_BY_TARGET, raw)) {
+    throw new Error(
+      `Unknown DEPLOY_TARGET "${raw}". Expected one of: ` +
+        `${Object.keys(BASE_BY_TARGET).join(', ')}.`,
+    );
+  }
+  return raw as DeployTarget;
+}
+
+/**
+ * Removes the public/ files that belong to a *different* deploy target.
+ *
+ * `order: 'pre'` is load-bearing, not decoration: vite-plugin-pwa globs the
+ * output directory to build its precache manifest in its own closeBundle. If
+ * this ran after, the Cloudflare service worker would precache a 404.html that
+ * no longer exists on disk, and SW installation fails outright on a missing
+ * precache entry. Strip first, generate the manifest second.
+ */
+function stripForeignTargetFiles(target: DeployTarget, outDir: string): Plugin {
+  return {
+    name: 'strip-foreign-target-files',
+    apply: 'build',
+    closeBundle: {
+      order: 'pre',
+      handler() {
+        for (const [candidate, files] of Object.entries(TARGET_ONLY_FILES)) {
+          if (candidate === target) continue;
+          for (const file of files) {
+            rmSync(path.resolve(outDir, file), { force: true });
+          }
+        }
+      },
+    },
+  };
+}
 
 // Build identity (dev plan §14.2): injected at build time, never
 // hand-maintained. Falls back gracefully when git is unavailable (a clean
@@ -22,12 +87,13 @@ function shortSha(): string {
   }
 }
 
-// Served from a GitHub Pages project subpath in production
-// (https://fainsilber.github.io/FAIN-Coach/); root in dev.
 export default defineConfig(({ command, isPreview }) => {
-  // Subpath for the deployed build and for `vite preview` (which faithfully
-  // serves the built artifact); root only for the `vite dev` workflow.
-  const base = command === 'build' || isPreview ? '/FAIN-Coach/' : '/';
+  const target = resolveTarget();
+  const outDir = path.resolve(__dirname, 'dist');
+  // The dev server is not a deployment — it always serves at '/'. `vite
+  // preview` serves the built artifact, so it must match the build's base.
+  const isDevServer = command === 'serve' && !isPreview;
+  const base = isDevServer ? '/' : BASE_BY_TARGET[target];
   return {
     base,
     define: {
@@ -74,6 +140,7 @@ export default defineConfig(({ command, isPreview }) => {
           ],
         },
       }),
+      stripForeignTargetFiles(target, outDir),
     ],
     resolve: {
       alias: {

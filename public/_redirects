@@ -1,0 +1,7 @@
+# Cloudflare Pages SPA fallback. Serves index.html (status 200, not a
+# redirect) for any path that isn't a real file, so client-side routes like
+# /shoes survive a refresh or a deep link.
+#
+# Cloudflare-only: the Vite build strips this file from the GitHub Pages
+# build, which uses public/404.html for the same job instead.
+/*    /index.html   200

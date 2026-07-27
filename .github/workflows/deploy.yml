@@ -26,7 +26,10 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run build
+      # build:pages pins DEPLOY_TARGET=pages, so this artifact keeps the
+      # /FAIN-Coach/ base. The Cloudflare deployment builds the same repo with
+      # build:cloudflare (root base) — see dev-plan §12.1.
+      - run: npm run build:pages
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

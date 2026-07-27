@@ -279,7 +279,8 @@ breakdown. Status as of 2026-07-26:
 | 7 | Multi-language: English + Hebrew RTL (§4.5, FR-5.1–5.6) | ✅ Complete |
 | 8 | Manual run entry (§4.6, FR-6.1–6.8) | ✅ Complete |
 | 9 | Design refresh | ⬜ Placeholder — direction not yet defined |
-| 10–12 | Paid hosted tier: Cloudflare move, accounts + sync, managed AI + billing (a connected track) | ▶ Specified — see dev-plan §12 & [monetization.md](monetization.md) |
+| 10 | Cloudflare Pages hosting (first link of the paid-tier chain) | ◐ Build config done — dual-target `/` + `/FAIN-Coach/`, both deployments kept. Awaiting the Cloudflare project (owner setup) — dev-plan §12.1 |
+| 11–12 | Paid hosted tier: accounts + sync, managed AI + billing (a connected track) | ▶ Specified — see dev-plan §12 & [monetization.md](monetization.md) |
 | 13 | Shoe tracking (§4.7, FR-7.1–7.11) | ✅ Complete |
 | 14 | Version visibility & diagnostics (§4.8, FR-8.1–8.11) | ✅ Complete |
 | 15–16 | Provider import: Strava, then Garmin (§4.9, FR-9.1–9.11) | ▶ Specified — **requires sprints 10–12 first** (see dev-plan §15) |

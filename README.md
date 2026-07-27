@@ -26,15 +26,25 @@ A local-first AI running coach. Upload `.tcx` files from any GPS watch (Garmin, 
 
 ```bash
 npm install
-npm run dev        # dev server at /
-npm test           # unit tests (Vitest)
-npm run build      # typecheck + production build
-npm run preview    # serve the build at /FAIN-Coach/, as in production
+npm run dev              # dev server at /
+npm test                 # unit tests (Vitest)
+npm run build:pages      # production build for GitHub Pages (/FAIN-Coach/)
+npm run build:cloudflare # production build for a root domain (/)
+npm run preview:pages    # serve that build as it is served in production
 ```
 
 ## Deployment
 
-Pushing to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which builds with the `/FAIN-Coach/` base path and publishes to GitHub Pages.
+The app is built for one of two targets, selected by the `DEPLOY_TARGET` environment variable. It sets the base path, and the router basename, PWA scope, and precache manifest all follow from it:
+
+| Target | Base path | SPA fallback |
+|---|---|---|
+| `cloudflare` | `/` (root domain) | `public/_redirects` |
+| `pages` | `/FAIN-Coach/` | `public/404.html` |
+
+Pushing to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which runs `build:pages` and publishes to GitHub Pages. A Cloudflare Pages project builds the same repo with `build:cloudflare`.
+
+**The two deployments share code but not data.** They are different origins, so IndexedDB — profiles, runs, plans, chat history — is entirely separate between them. Use **Settings → Export backup** and **Import** to move data across.
 
 ## Using it on more than one device
 

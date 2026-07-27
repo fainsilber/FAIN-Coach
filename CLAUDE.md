@@ -10,7 +10,8 @@ Local-first AI running coach PWA. Users upload `.tcx` files from any GPS watch, 
 
 - `npm run dev` — Vite dev server (serves at `/`, not the deploy subpath)
 - `npm run build` — typecheck (`tsc -b`) + production build
-- `npm run preview` — serve the built app at `/FAIN-Coach/`, matching production
+- `npm run build:cloudflare` / `npm run build:pages` — build for a specific deploy target (see Deployment below)
+- `npm run preview:cloudflare` / `npm run preview:pages` — serve the built app at that target's base
 - `npm test` — Vitest, single run (`npm run test:watch` for watch mode)
 
 ## Stack (locked decisions — do not swap without discussion)
@@ -48,9 +49,19 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 - **LLM retries**: the connection phase retries automatically; never retry after tokens have streamed (duplicates output) and never on 4xx.
 - **Booleans are not a valid IndexedDB index.** Dexie/IndexedDB can't index a boolean field reliably — filter it client-side instead (e.g. `shoes.retired`). Don't repeat this mistake in a future schema change.
 
-## Deployment gotcha
+## Deployment — two targets, one codebase
 
-Served from the `/FAIN-Coach/` subpath, so Vite `base`, the router `basename` (`import.meta.env.BASE_URL`), the PWA `scope`/`start_url`, and `public/404.html` must stay in agreement. `vite preview` runs as `command === 'serve'`, hence the `command === 'build' || isPreview` check in `vite.config.ts` — without it, preview serves at `/` while assets reference `/FAIN-Coach/`.
+Two deployments are live and CI builds each separately. `DEPLOY_TARGET` in `vite.config.ts` is the **only** switch:
+
+| Target | Base | SPA fallback | Build |
+|---|---|---|---|
+| `cloudflare` (default) | `/` | `public/_redirects` | `npm run build:cloudflare` |
+| `pages` | `/FAIN-Coach/` | `public/404.html` | `npm run build:pages` |
+
+- **Never hard-code the subpath.** The router `basename` (`import.meta.env.BASE_URL`), PWA `scope`/`start_url`, and precache manifest all derive from `base`. An unknown `DEPLOY_TARGET` throws — a wrong base builds fine and then 404s on every asset, so failing loudly is deliberate.
+- Target-only files in `public/` are stripped from the other target's build (`404.html` is Pages-only — its `pathSegmentsToKeep=1` is wrong at a root domain; `_redirects` is Cloudflare-only). The strip runs before SW generation, so a precache manifest never references a file that isn't shipped. If you add a target-specific file, add it to `TARGET_ONLY_FILES`.
+- The dev server always serves at `/` regardless of target; `vite preview` matches the build, hence the `isDevServer` check.
+- **The two deployments share code, never data** — different origins mean separate IndexedDB. Don't assume a user's profiles/runs exist on both.
 
 ## Units & week start (built — Sprint 6)
 

@@ -589,14 +589,48 @@ Cloudflare Pages ── static frontend (root domain, no /FAIN-Coach/ base)
 
 Low-risk, useful regardless, and unblocks 11–12.
 
-- Migrate deploy from GitHub Pages Actions to Cloudflare Pages (build from the
-  same repo). Root domain, so **revert the `/FAIN-Coach/` base** to `/`: Vite
-  `base`, router `basename`, PWA `scope`/`start_url`, and delete the `404.html`
-  SPA hack (Cloudflare Pages has native SPA fallback via `_redirects`).
+**Revised 2026-07-27 (owner's call): keep BOTH deployments alive** rather than
+retiring GitHub Pages. The base path therefore can't be a constant — the build
+config branches on a `DEPLOY_TARGET` env var and CI produces two artifacts, each
+with its own correct base/scope/manifest.
+
+- `vite.config.ts` owns the switch: `DEPLOY_TARGET=cloudflare` → base `/`,
+  `DEPLOY_TARGET=pages` → base `/FAIN-Coach/`. Everything downstream (router
+  `basename` via `import.meta.env.BASE_URL`, PWA `scope`/`start_url`, precache
+  manifest) derives from `base` — **never hard-code the subpath elsewhere.** An
+  unrecognised value throws rather than silently defaulting, since a wrong base
+  produces a build that looks fine and 404s on every asset.
+- Per-target files in `public/` are stripped from the other target's build:
+  `404.html` (the GitHub Pages SPA shim, whose `pathSegmentsToKeep=1` is wrong at
+  a root domain) is Pages-only; `_redirects` (Cloudflare's native SPA fallback)
+  is Cloudflare-only. The strip runs before the service worker is generated, so
+  neither precache manifest ever references a file that isn't shipped.
+- Scripts: `build:pages` / `build:cloudflare` (and matching `preview:*`), via
+  `cross-env` so they work in PowerShell as well as bash.
 - The repo can go **back to private** — Cloudflare builds private repos on the
   free tier (the reason it went public no longer applies).
-- **Exit**: live on Cloudflare at a root URL; SW scope/deep-links/RTL all
-  re-verified; old GitHub Pages URL redirected or retired.
+
+> **The two deployments never share data.** They are different origins, so
+> IndexedDB — profiles, runs, plans, chat — is separate per origin. They share
+> code, not state. Crossing over means a manual backup export/import, or, once
+> §12.2 lands, signing into the same account (opt-in, per account).
+
+**Owner-configured, not in code** (Cloudflare project settings): build command
+`npm run build:cloudflare`, output directory `dist`, Node 20. Credentials and
+the Pages project itself are set up in the Cloudflare dashboard — nothing about
+them is committed.
+
+- **Exit**: both targets build clean with correct base/scope/manifest and no
+  cross-contamination of target-only files; Pages deploy unaffected; Cloudflare
+  live at a root URL with SW scope/deep-links/RTL re-verified.
+
+**Status 2026-07-27**: build plumbing done and verified — Pages bundle registers
+`/FAIN-Coach/sw.js` with `scope:"/FAIN-Coach/"`, Cloudflare bundle contains zero
+occurrences of the subpath, each precache manifest matches what's on disk, a bad
+`DEPLOY_TARGET` fails the build, 162 tests green, dev server unchanged at `/`.
+**Remaining: the owner must create the Cloudflare Pages project** (account +
+repo connection + DNS), which is the only step that can't be done from the repo.
+The Cloudflare half of the exit criteria stays open until then.
 
 ### 12.2 Sprint 11 — Accounts + Sync + Cloud Backup (Dexie Cloud)
 

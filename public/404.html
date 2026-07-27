@@ -8,6 +8,10 @@
       Pages serves this file for any unknown path under the site; it rewrites
       the URL into a query the app decodes on load, so deep links / refreshes
       on client-side routes work. pathSegmentsToKeep = 1 preserves /FAIN-Coach.
+
+      GitHub Pages ONLY — pathSegmentsToKeep assumes the project subpath, so
+      this file is wrong at a root domain. The Vite build strips it from the
+      Cloudflare build, which uses public/_redirects instead.
     -->
     <script type="text/javascript">
       var pathSegmentsToKeep = 1;
