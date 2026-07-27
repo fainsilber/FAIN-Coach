@@ -29,12 +29,24 @@ const BASE_BY_TARGET: Record<DeployTarget, string> = {
 // public/ into every build, so the ones that don't belong are deleted after
 // the write: a Cloudflare build must not ship the GitHub Pages redirect shim
 // (404.html hard-codes pathSegmentsToKeep=1, which is wrong at a root domain,
-// and Cloudflare would otherwise serve it as the not-found page), and a Pages
-// build has no use for Cloudflare's _redirects.
+// and Cloudflare would otherwise serve it as the not-found page). Cloudflare
+// itself needs no equivalent file here — see the note below.
 const TARGET_ONLY_FILES: Record<DeployTarget, readonly string[]> = {
   pages: ['404.html'],
-  cloudflare: ['_redirects'],
+  cloudflare: [],
 };
+
+// No public/_redirects for the Cloudflare target: an earlier version of this
+// file shipped one (`/* /index.html 200`, the classic Pages SPA-fallback
+// idiom) and it broke the deploy outright. Cloudflare's current import flow
+// provisions a Worker with static assets (`wrangler deploy`, an
+// auto-generated wrangler.jsonc with `assets.not_found_handling:
+// "single-page-application"`), which already does SPA fallback natively.
+// The custom _redirects rule collided with that platform's own URL
+// normalization (which strips `.html`/`/index` and redirects) and Cloudflare's
+// deploy-time validator correctly refused it as an infinite loop. Don't
+// re-add a _redirects file without checking which deploy product is
+// actually in use.
 
 function resolveTarget(): DeployTarget {
   const raw = process.env.DEPLOY_TARGET ?? 'cloudflare';

@@ -51,15 +51,16 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 
 ## Deployment — two targets, one codebase
 
-Two deployments are live and CI builds each separately. `DEPLOY_TARGET` in `vite.config.ts` is the **only** switch:
+GitHub Pages is live; Cloudflare is being brought up (dev-plan §12.1). CI builds each target separately. `DEPLOY_TARGET` in `vite.config.ts` is the **only** switch:
 
 | Target | Base | SPA fallback | Build |
 |---|---|---|---|
-| `cloudflare` (default) | `/` | `public/_redirects` | `npm run build:cloudflare` |
+| `cloudflare` (default) | `/` | native — see below | `npm run build:cloudflare` |
 | `pages` | `/FAIN-Coach/` | `public/404.html` | `npm run build:pages` |
 
 - **Never hard-code the subpath.** The router `basename` (`import.meta.env.BASE_URL`), PWA `scope`/`start_url`, and precache manifest all derive from `base`. An unknown `DEPLOY_TARGET` throws — a wrong base builds fine and then 404s on every asset, so failing loudly is deliberate.
-- Target-only files in `public/` are stripped from the other target's build (`404.html` is Pages-only — its `pathSegmentsToKeep=1` is wrong at a root domain; `_redirects` is Cloudflare-only). The strip runs before SW generation, so a precache manifest never references a file that isn't shipped. If you add a target-specific file, add it to `TARGET_ONLY_FILES`.
+- Target-only files in `public/` are stripped from the other target's build (`404.html` is Pages-only — its `pathSegmentsToKeep=1` is wrong at a root domain). The strip runs before SW generation, so a precache manifest never references a file that isn't shipped. If you add a target-specific file, add it to `TARGET_ONLY_FILES`.
+- **Don't add a `public/_redirects` file for Cloudflare.** Cloudflare's current import flow provisions a Worker with static assets (`wrangler deploy`, an auto-generated `wrangler.jsonc` with `assets.not_found_handling: "single-page-application"`), which already does SPA fallback natively. An earlier version of this repo shipped a classic-Pages-style `_redirects` catch-all and it broke the deploy outright — Cloudflare's validator detects a redirect loop against that platform's own `.html`/`/index` normalization.
 - The dev server always serves at `/` regardless of target; `vite preview` matches the build, hence the `isDevServer` check.
 - **The two deployments share code, never data** — different origins mean separate IndexedDB. Don't assume a user's profiles/runs exist on both.
 

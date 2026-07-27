@@ -39,10 +39,10 @@ The app is built for one of two targets, selected by the `DEPLOY_TARGET` environ
 
 | Target | Base path | SPA fallback |
 |---|---|---|
-| `cloudflare` | `/` (root domain) | `public/_redirects` |
+| `cloudflare` | `/` (root domain) | native (Cloudflare Workers static-assets SPA mode) |
 | `pages` | `/FAIN-Coach/` | `public/404.html` |
 
-Pushing to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which runs `build:pages` and publishes to GitHub Pages. A Cloudflare Pages project builds the same repo with `build:cloudflare`.
+Pushing to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which runs `build:pages` and publishes to GitHub Pages. A Cloudflare project builds the same repo with `build:cloudflare`.
 
 **The two deployments share code but not data.** They are different origins, so IndexedDB — profiles, runs, plans, chat history — is entirely separate between them. Use **Settings → Export backup** and **Import** to move data across.
 

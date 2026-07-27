@@ -602,9 +602,9 @@ with its own correct base/scope/manifest.
   produces a build that looks fine and 404s on every asset.
 - Per-target files in `public/` are stripped from the other target's build:
   `404.html` (the GitHub Pages SPA shim, whose `pathSegmentsToKeep=1` is wrong at
-  a root domain) is Pages-only; `_redirects` (Cloudflare's native SPA fallback)
-  is Cloudflare-only. The strip runs before the service worker is generated, so
-  neither precache manifest ever references a file that isn't shipped.
+  a root domain) is Pages-only. The strip runs before the service worker is
+  generated, so the Pages precache manifest never references a file that isn't
+  shipped.
 - Scripts: `build:pages` / `build:cloudflare` (and matching `preview:*`), via
   `cross-env` so they work in PowerShell as well as bash.
 - The repo can go **back to private** — Cloudflare builds private repos on the
@@ -617,8 +617,16 @@ with its own correct base/scope/manifest.
 
 **Owner-configured, not in code** (Cloudflare project settings): build command
 `npm run build:cloudflare`, output directory `dist`, Node 20. Credentials and
-the Pages project itself are set up in the Cloudflare dashboard — nothing about
-them is committed.
+the project itself are set up in the Cloudflare dashboard — nothing about them
+is committed.
+
+**Cloudflare's own import flow, not classic Pages.** Connecting the repo through
+the current dashboard ("Workers & Pages" → Import a repository) provisions a
+**Worker with static assets** — `wrangler deploy`, an auto-generated
+`wrangler.jsonc` with `"assets": { "not_found_handling": "single-page-application" }`
+— not the older Pages-specific product the rest of this section was written
+against. That setting is the SPA fallback; **no `public/_redirects` file is
+needed, and shipping one breaks the deploy outright.**
 
 - **Exit**: both targets build clean with correct base/scope/manifest and no
   cross-contamination of target-only files; Pages deploy unaffected; Cloudflare
@@ -628,9 +636,31 @@ them is committed.
 `/FAIN-Coach/sw.js` with `scope:"/FAIN-Coach/"`, Cloudflare bundle contains zero
 occurrences of the subpath, each precache manifest matches what's on disk, a bad
 `DEPLOY_TARGET` fails the build, 162 tests green, dev server unchanged at `/`.
-**Remaining: the owner must create the Cloudflare Pages project** (account +
-repo connection + DNS), which is the only step that can't be done from the repo.
-The Cloudflare half of the exit criteria stays open until then.
+
+**First deploy attempt failed** — the owner created the Cloudflare project (a
+Worker with static assets, per the note above) and the build failed:
+
+```
+Invalid _redirects configuration:
+Line 7: Infinite loop detected in this rule. This would cause a redirect to
+strip `.html` or `/index` and end up triggering this rule again. [code: 100324]
+```
+
+The `public/_redirects` catch-all (`/* /index.html 200`, the classic-Pages SPA
+idiom) collided with the platform's own URL normalization under the newer
+Workers-with-assets model, which already provides SPA fallback via
+`not_found_handling`. Removed the file and the `cloudflare` entry from
+`TARGET_ONLY_FILES` entirely — fixed, not yet re-verified against a live
+deploy. Also note the Cloudflare build log showed `Build command: npm run
+build` rather than `build:cloudflare` (the dashboard field wasn't set as
+instructed) — harmless here only because `resolveTarget()` defaults to
+`cloudflare` when `DEPLOY_TARGET` is unset, but the dashboard field should
+still be corrected to `npm run build:cloudflare` so that default isn't load-
+bearing.
+
+**Remaining: retry the Cloudflare build, and confirm the site is actually
+live** — the only steps that can't be done from the repo. The Cloudflare half
+of the exit criteria stays open until then.
 
 ### 12.2 Sprint 11 — Accounts + Sync + Cloud Backup (Dexie Cloud)
 
