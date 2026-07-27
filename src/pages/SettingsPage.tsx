@@ -197,6 +197,24 @@ export function SettingsPage() {
         {status && <p className="mt-1 text-sm text-muted-foreground">{status}</p>}
       </div>
 
+      <div className="space-y-2">
+        <h3 className="font-medium">{t('settings.about')}</h3>
+        <p className="text-sm text-muted-foreground" dir="ltr">
+          {t('settings.aboutLine', {
+            version: APP_VERSION,
+            sha: GIT_SHA,
+            built: formatBuildTime(),
+          })}
+        </p>
+        <button
+          type="button"
+          onClick={() => void handleCheckForUpdates()}
+          className="rounded-md border px-4 py-2 text-sm font-medium"
+        >
+          {t('settings.checkUpdate')}
+        </button>
+      </div>
+
       <div className="space-y-4">
         <h3 className="font-medium">{t('settings.preferences')}</h3>
 
@@ -347,24 +365,6 @@ export function SettingsPage() {
         {importError && (
           <p className="text-sm text-destructive">{importError}</p>
         )}
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="font-medium">{t('settings.about')}</h3>
-        <p className="text-sm text-muted-foreground" dir="ltr">
-          {t('settings.aboutLine', {
-            version: APP_VERSION,
-            sha: GIT_SHA,
-            built: formatBuildTime(),
-          })}
-        </p>
-        <button
-          type="button"
-          onClick={() => void handleCheckForUpdates()}
-          className="rounded-md border px-4 py-2 text-sm font-medium"
-        >
-          {t('settings.checkUpdate')}
-        </button>
       </div>
 
       <div className="space-y-2">
