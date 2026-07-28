@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v2.2)
+# FAIN Coach — Development Plan (v2.3)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -9,19 +9,22 @@ placeholder; v1.6 recorded Sprint 8 as shipped; v1.7 specified Sprints 10–12
 v1.8 specified Sprint 13 (shoe tracking); v1.9 specified Sprint 14
 (diagnostics); v2.0 specified Sprints 15–17 (provider import, plus a tapiriik
 evaluation); v2.1 (2026-07-26) recorded **Sprint 14 — Version Visibility &
-Diagnostics** as shipped; **v2.2 (2026-07-26)** records **Sprint 13 — Shoe
-Tracking** as shipped.
+Diagnostics** as shipped; v2.2 (2026-07-26) recorded **Sprint 13 — Shoe
+Tracking** as shipped; **v2.3 (2026-07-28)** records **Sprint 10 — Cloudflare
+hosting** as shipped.
 
-**Status:** Sprints 1–8, 13, and 14 complete and deployed —
-https://fainsilber.github.io/FAIN-Coach/. 162 tests passing.
+**Status:** Sprints 1–8, 10, 13, and 14 complete. Live on both
+https://fainsilber.github.io/FAIN-Coach/ and
+https://fain-coach.fainsilber.workers.dev/. 162 tests passing.
 
-**Next up.** One standalone track, then two dependent chains:
+**Next up.** One standalone track, then two dependent chains — 11 is next in
+the paid-tier chain now that 10 has unblocked it:
 
 | | Sprint(s) | Notes |
 |---|---|---|
 | Standalone | **9** (§11) design refresh | Awaiting a design direction |
-| **Chain** | **10 → 11 → 12** (§12) paid hosted tier | Build in order |
-| **Chain** | **15 → 16 → (17)** (§15) Strava, then Garmin, optionally Smashrun | **Requires 10–12 first** — a frontend-only PWA cannot do these integrations. Run the tapiriik spike (§15.4) *before* 16 |
+| **Chain** | **11 → 12** (§12) paid hosted tier | 10 done; build 11 then 12 |
+| **Chain** | **15 → 16 → (17)** (§15) Strava, then Garmin, optionally Smashrun | **Requires 11–12 first** — a frontend-only PWA cannot do these integrations. Run the tapiriik spike (§15.4) *before* 16 |
 
 Ongoing risks are in §16 — none blocking.
 
@@ -585,9 +588,24 @@ Cloudflare Pages ── static frontend (root domain, no /FAIN-Coach/ base)
             /billing → checkout + webhook → marks subscription active/inactive
 ```
 
-### 12.1 Sprint 10 — Move hosting to Cloudflare Pages
+### 12.1 Sprint 10 — Move hosting to Cloudflare Pages ✅ (implemented 2026-07-28)
 
 Low-risk, useful regardless, and unblocks 11–12.
+
+**Outcome**: met. Both deployments are live: GitHub Pages at
+https://fainsilber.github.io/FAIN-Coach/ (`/FAIN-Coach/` base, browser-
+verified) and Cloudflare at https://fain-coach.fainsilber.workers.dev/ (root
+base). The Cloudflare bundle was checked via curl (the browser tooling was
+unavailable when this needed verifying) and confirmed: `v1.5.2`/`7b8c8d8`
+embedded in the deployed JS, zero occurrences of `FAIN-Coach` anywhere
+including the service worker, manifest `scope`/`start_url` both `/`, a deep
+link (`/shoes`) returning `200` with the app shell (SPA fallback working),
+and `/404.html` — which isn't shipped for this target — correctly falling
+through to the app shell rather than 404ing or leaking the GitHub Pages
+redirect shim. **Not independently re-checked on Cloudflare**: Hebrew/RTL
+rendering and PWA installability — curl can't exercise either. Low risk,
+since neither is target-specific code, but flagging rather than claiming a
+check that didn't happen.
 
 **Revised 2026-07-27 (owner's call): keep BOTH deployments alive** rather than
 retiring GitHub Pages. The base path therefore can't be a constant — the build
@@ -630,15 +648,11 @@ needed, and shipping one breaks the deploy outright.**
 
 - **Exit**: both targets build clean with correct base/scope/manifest and no
   cross-contamination of target-only files; Pages deploy unaffected; Cloudflare
-  live at a root URL with SW scope/deep-links/RTL re-verified.
+  live at a root URL with SW scope/deep-links re-verified. Met — see Outcome.
 
-**Status 2026-07-27**: build plumbing done and verified — Pages bundle registers
-`/FAIN-Coach/sw.js` with `scope:"/FAIN-Coach/"`, Cloudflare bundle contains zero
-occurrences of the subpath, each precache manifest matches what's on disk, a bad
-`DEPLOY_TARGET` fails the build, 162 tests green, dev server unchanged at `/`.
-
-**First deploy attempt failed** — the owner created the Cloudflare project (a
-Worker with static assets, per the note above) and the build failed:
+**First deploy attempt failed**, and the fix is worth keeping on record since
+it corrects a wrong assumption baked into the rest of this section. The
+Cloudflare project the owner created failed its first build:
 
 ```
 Invalid _redirects configuration:
@@ -649,18 +663,12 @@ strip `.html` or `/index` and end up triggering this rule again. [code: 100324]
 The `public/_redirects` catch-all (`/* /index.html 200`, the classic-Pages SPA
 idiom) collided with the platform's own URL normalization under the newer
 Workers-with-assets model, which already provides SPA fallback via
-`not_found_handling`. Removed the file and the `cloudflare` entry from
-`TARGET_ONLY_FILES` entirely — fixed, not yet re-verified against a live
-deploy. Also note the Cloudflare build log showed `Build command: npm run
-build` rather than `build:cloudflare` (the dashboard field wasn't set as
-instructed) — harmless here only because `resolveTarget()` defaults to
-`cloudflare` when `DEPLOY_TARGET` is unset, but the dashboard field should
-still be corrected to `npm run build:cloudflare` so that default isn't load-
-bearing.
-
-**Remaining: retry the Cloudflare build, and confirm the site is actually
-live** — the only steps that can't be done from the repo. The Cloudflare half
-of the exit criteria stays open until then.
+`not_found_handling`. Deleted the file and the `cloudflare` entry from
+`TARGET_ONLY_FILES`; the retry deployed cleanly (§ outcome above). Separately,
+the build log showed `Build command: npm run build` rather than
+`build:cloudflare` — harmless here only because `resolveTarget()` defaults to
+`cloudflare` when `DEPLOY_TARGET` is unset, but worth correcting in the
+dashboard so that default isn't load-bearing.
 
 ### 12.2 Sprint 11 — Accounts + Sync + Cloud Backup (Dexie Cloud)
 

@@ -1,6 +1,6 @@
 # FAIN Coach
 
-**Live app: https://fainsilber.github.io/FAIN-Coach/** — installable PWA ("Add to Home Screen" on mobile)
+**Live app:** https://fainsilber.github.io/FAIN-Coach/ or https://fain-coach.fainsilber.workers.dev/ — installable PWA ("Add to Home Screen" on mobile). The two are separate deployments with separate data (see Deployment below) — pick one and stick with it, or use backup export/import to move between them.
 
 A local-first AI running coach. Upload `.tcx` files from any GPS watch (Garmin, Coros, Suunto), record how the run felt, and get structured coaching plus multi-week training plans powered by open-weights models via [OpenRouter](https://openrouter.ai) — bring your own API key.
 
@@ -42,7 +42,7 @@ The app is built for one of two targets, selected by the `DEPLOY_TARGET` environ
 | `cloudflare` | `/` (root domain) | native (Cloudflare Workers static-assets SPA mode) |
 | `pages` | `/FAIN-Coach/` | `public/404.html` |
 
-Pushing to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which runs `build:pages` and publishes to GitHub Pages. A Cloudflare project builds the same repo with `build:cloudflare`.
+Pushing to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which runs `build:pages` and publishes to GitHub Pages. A Cloudflare Worker (static assets, connected via Cloudflare's Git integration — build command `npm run build:cloudflare`) builds and deploys the same repo automatically.
 
 **The two deployments share code but not data.** They are different origins, so IndexedDB — profiles, runs, plans, chat history — is entirely separate between them. Use **Settings → Export backup** and **Import** to move data across.
 
@@ -54,7 +54,7 @@ Data is per-device by design — there is no server and no sync. Each device sta
 
 - **Design refresh** — planned; direction not yet defined.
 - **Import from Strava, Garmin and Smashrun** — connect the platform you already sync to instead of exporting files by hand. Needs the hosted backend first. [Spec](docs/dev-plan.md)
-- A **paid hosted tier** (accounts, cloud sync, and a managed AI key so there's no setup) is planned — see [docs/monetization.md](docs/monetization.md) and dev-plan §12.
+- A **paid hosted tier** (accounts, cloud sync, and a managed AI key so there's no setup) is planned — see [docs/monetization.md](docs/monetization.md) and dev-plan §12. Cloudflare hosting (the first step) is done; accounts/sync and billing are next.
 
 In the meantime, if your watch already syncs to Strava (Garmin can forward automatically, and tools like [tapiriik](https://github.com/cpfair/tapiriik) bridge other platforms), a bulk export from there imports fine through the existing file upload.
 
@@ -63,4 +63,4 @@ Longer-term items live in [docs/dev-plan.md §16](docs/dev-plan.md), notably a G
 ## Docs
 
 - [Product Requirements (PRD v1.6)](docs/PRD.md)
-- [Development Plan v2.2](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
+- [Development Plan v2.3](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks

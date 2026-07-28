@@ -2,9 +2,9 @@
 
 Local-first AI running coach PWA. Users upload `.tcx` files from any GPS watch, add subjective feedback (RPE, feel tags, notes), and chat with an AI coach via OpenRouter. All telemetry stays in the browser (IndexedDB) — only compact macro summaries are ever sent to the LLM.
 
-**Live:** https://fainsilber.github.io/FAIN-Coach/ (auto-deploys on push to `main`)
+**Live:** https://fainsilber.github.io/FAIN-Coach/ and https://fain-coach.fainsilber.workers.dev/ (both auto-deploy on push to `main` — see Deployment below)
 
-**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v2.2 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
+**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v2.3 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
 
 ## Commands
 
@@ -51,7 +51,7 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 
 ## Deployment — two targets, one codebase
 
-GitHub Pages is live; Cloudflare is being brought up (dev-plan §12.1). CI builds each target separately. `DEPLOY_TARGET` in `vite.config.ts` is the **only** switch:
+Both GitHub Pages and Cloudflare are live (dev-plan §12.1). CI builds each target separately. `DEPLOY_TARGET` in `vite.config.ts` is the **only** switch:
 
 | Target | Base | SPA fallback | Build |
 |---|---|---|---|
@@ -82,7 +82,9 @@ GitHub Pages is live; Cloudflare is being brought up (dev-plan §12.1). CI build
 
 ## Status
 
-Sprints 1–8, 13, and 14 complete, local profiles added, deployed to GitHub Pages. Version 1.5.0, 162 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start, manual run entry, shoe tracking, and version/diagnostics all shipped.
+Sprints 1–8, 10, 13, and 14 complete, local profiles added, deployed to both GitHub Pages and Cloudflare. Version 1.5.2, 162 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start, manual run entry, shoe tracking, and version/diagnostics all shipped.
+
+**Shipped, Sprint 10 — Cloudflare hosting.** See the Deployment section above for the mechanics. First deploy attempt failed on a `public/_redirects` file that conflicted with Cloudflare's own SPA handling — removed, not re-added; don't reintroduce one without re-reading the note above. Verified via curl (build identity, base path, SW, deep link, `/404.html` fallthrough) since browser tooling wasn't available at verification time — Hebrew/RTL and PWA installability were not independently re-checked on Cloudflare specifically, only inferred from the shared codebase already verified on Pages.
 
 **Shipped, Sprint 14 — version + diagnostics.** Version display (`src/lib/appInfo.ts`, injected in `vite.config.ts` via `define` from `package.json` + `git rev-parse --short HEAD`) and a bounded diagnostics log (`src/lib/log.ts`, Dexie `logs` table, v2) are live in Settings. `registerType` was switched from `'autoUpdate'` to `'prompt'` (with `injectRegister: false`) — that's the actual fix; autoUpdate never fires `onNeedRefresh`, it just reloads silently. **If you touch the logger, redaction is mandatory** — `logEvent()` enforces it, never bypass it by writing to `db.logs` directly. Never log the API key, chat content, or run notes (PRD FR-8.8) — metadata and event codes only. `saveRunAndPromptCoach` in `src/lib/saveRun.ts` is the single place `run.saved`/`run.save.failed` get logged for both entry paths.
 
@@ -90,7 +92,7 @@ Sprints 1–8, 13, and 14 complete, local profiles added, deployed to GitHub Pag
 
 **Next — three independent-ish tracks:**
 - **Sprint 9** — design refresh ([dev-plan §11](docs/dev-plan.md)) is a deliberate placeholder; **do not invent a design direction**, it will be supplied.
-- **Sprints 10–12** — paid hosted tier (Cloudflare + accounts/sync + managed AI + billing). A *connected* track, build in order: [dev-plan §12](docs/dev-plan.md), economics in [monetization.md](docs/monetization.md).
+- **Sprints 11–12** — paid hosted tier (accounts/sync + managed AI + billing), now that 10 has unblocked them. A *connected* track, build in order: [dev-plan §12](docs/dev-plan.md), economics in [monetization.md](docs/monetization.md).
 - **Sprints 15–17** — provider import: Strava, then Garmin, optionally Smashrun ([dev-plan §15](docs/dev-plan.md)). **Require the §12 backend first** — a frontend-only PWA can't do them (Strava's OAuth needs a server-side secret; the Garmin Python client can't run on Workers at all and needs a separate Python service). Provider tokens/passwords **must never** touch browser storage or sync (PRD FR-9.7). Run the **tapiriik spike** (§15.4) before Sprint 16.
 
 Ongoing risks in [§16](docs/dev-plan.md) — deferred items (GPX parser, chat-history summary); Hebrew output is confirmed working.
