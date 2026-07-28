@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { db } from '@/db/db';
 import { getSetting, SETTING_KEYS } from '@/db/settings';
 import type { PlannedWorkout } from '@/db/types';
@@ -38,6 +39,9 @@ function weekHeadingDate(weekStartDate: string, language: Language): string {
 function PlanWizard() {
   const { t, language } = useI18n();
   const { unitSystem } = usePreferences();
+  const hasKey = useLiveQuery(async () =>
+    Boolean(await getSetting(SETTING_KEYS.apiKey)),
+  );
   const [goal, setGoal] = useState('');
   const [raceDate, setRaceDate] = useState('');
   const [weeklyKm, setWeeklyKm] = useState('');
@@ -157,6 +161,15 @@ function PlanWizard() {
           className={inputClass}
         />
       </label>
+      {hasKey === false && (
+        <p className="rounded-md border bg-secondary/50 p-2 text-center text-sm">
+          {t('plan.addKeyBefore')}{' '}
+          <Link to="/settings" className="underline">
+            {t('plan.addKeyLink')}
+          </Link>{' '}
+          {t('plan.addKeyAfter')}
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="mb-1 block text-sm">
@@ -185,7 +198,7 @@ function PlanWizard() {
       {error && <p className="text-sm text-destructive">{t(error)}</p>}
       <button
         type="button"
-        disabled={!valid || busy}
+        disabled={!valid || busy || hasKey !== true}
         onClick={() => void handleGenerate()}
         className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
       >

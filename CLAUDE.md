@@ -48,6 +48,7 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 - **Prompt rules must be literal.** Weaker instruct models follow instructions exactly: "taper before the race" produced an empty race week, and "derive a pace from the goal" put easy runs at race pace. State constraints explicitly — ambiguity here is a safety issue, not a style one.
 - **LLM retries**: the connection phase retries automatically; never retry after tokens have streamed (duplicates output) and never on 4xx.
 - **Booleans are not a valid IndexedDB index.** Dexie/IndexedDB can't index a boolean field reliably — filter it client-side instead (e.g. `shoes.retired`). Don't repeat this mistake in a future schema change.
+- **Every AI-dependent action must be gated on a live `hasKey` check, not just error handling after the fact.** ChatPage and PlanPage both `useLiveQuery` the API key's presence and disable the actual submit control (Send / Generate) while it's `!== true`, with a persistent banner linking to Settings explaining why — never let the user fill out a form or type a message only to discover on submit that there's no key. This applies to any future AI-dependent feature too, including Sprint 12's managed-key `ProxyClient` path once BYO isn't the only option.
 
 ## Deployment — two targets, one codebase
 
@@ -82,7 +83,7 @@ Both GitHub Pages and Cloudflare are live (dev-plan §12.1). CI builds each targ
 
 ## Status
 
-Sprints 1–8, 10, 13, and 14 complete, local profiles added, deployed to both GitHub Pages and Cloudflare. Version 1.5.2, 162 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start, manual run entry, shoe tracking, and version/diagnostics all shipped.
+Sprints 1–8, 10, 13, and 14 complete, local profiles added, deployed to both GitHub Pages and Cloudflare. Version 1.5.3, 162 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start, manual run entry, shoe tracking, version/diagnostics, and up-front API-key gating on both AI features all shipped.
 
 **Shipped, Sprint 10 — Cloudflare hosting.** See the Deployment section above for the mechanics. First deploy attempt failed on a `public/_redirects` file that conflicted with Cloudflare's own SPA handling — removed, not re-added; don't reintroduce one without re-reading the note above. Verified via curl (build identity, base path, SW, deep link, `/404.html` fallthrough) since browser tooling wasn't available at verification time — Hebrew/RTL and PWA installability were not independently re-checked on Cloudflare specifically, only inferred from the shared codebase already verified on Pages.
 

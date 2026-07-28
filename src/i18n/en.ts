@@ -159,6 +159,9 @@ export const en = {
   'plan.currentVolume': 'Current {unit}/week',
   'plan.runsPerWeek': 'Runs per week',
   'plan.needKey': 'Add your OpenRouter API key in Settings first.',
+  'plan.addKeyBefore': 'Add your OpenRouter API key in',
+  'plan.addKeyLink': 'Settings',
+  'plan.addKeyAfter': 'to generate a plan.',
   'plan.errMalformed':
     'The model could not produce a valid plan (even after a retry). Try again, or pick a different plan model in Settings.',
   'plan.errGeneric': 'Plan generation failed unexpectedly.',

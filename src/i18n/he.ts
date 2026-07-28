@@ -158,6 +158,9 @@ export const he: Record<MessageKey, string> = {
   'plan.currentVolume': '{unit} בשבוע כיום',
   'plan.runsPerWeek': 'ריצות בשבוע',
   'plan.needKey': 'הוסיפו קודם מפתח API של OpenRouter בהגדרות.',
+  'plan.addKeyBefore': 'הוסיפו מפתח API של OpenRouter במסך',
+  'plan.addKeyLink': 'הגדרות',
+  'plan.addKeyAfter': 'כדי ליצור תוכנית.',
   'plan.errMalformed':
     'המודל לא הצליח להפיק תוכנית תקינה (גם לאחר ניסיון חוזר). נסו שוב, או בחרו מודל תוכניות אחר בהגדרות.',
   'plan.errGeneric': 'יצירת התוכנית נכשלה באופן בלתי צפוי.',

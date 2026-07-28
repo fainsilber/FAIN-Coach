@@ -168,13 +168,20 @@ export function ChatPage() {
   // Upload flow lands here with a freshly injected run summary to answer.
   useEffect(() => {
     const state = location.state as { pendingReply?: boolean } | null;
-    if (!state?.pendingReply || autoFired.current || messages === undefined)
+    if (
+      !state?.pendingReply ||
+      autoFired.current ||
+      messages === undefined ||
+      hasKey === undefined
+    )
       return;
     autoFired.current = true;
     navigate(location.pathname, { replace: true });
     const last = messages[messages.length - 1];
-    if (last?.role === 'user' && !busy) void requestReply();
-  }, [messages, location.state]);
+    // Without a key, leave the injected run summary unanswered rather than
+    // firing a request that can only fail — the banner above explains why.
+    if (last?.role === 'user' && !busy && hasKey) void requestReply();
+  }, [messages, location.state, hasKey]);
 
   async function handleSend() {
     const text = draft.trim();
@@ -275,7 +282,7 @@ export function ChatPage() {
         />
         <button
           type="submit"
-          disabled={busy || !online || !draft.trim()}
+          disabled={busy || !online || !draft.trim() || hasKey !== true}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
         >
           {busy ? '…' : t('chat.send')}
