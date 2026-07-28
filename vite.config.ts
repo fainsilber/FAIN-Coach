@@ -7,6 +7,8 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 const pkg = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf-8'),
 ) as { version: string };
@@ -113,47 +115,42 @@ export default defineConfig(({ command, isPreview }) => {
       __GIT_SHA__: JSON.stringify(shortSha()),
       __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
     },
-    plugins: [
-      react(),
-      tailwindcss(),
-      VitePWA({
-        // 'prompt' (not 'autoUpdate'): autoUpdate reloads the page silently
-        // the moment a new SW activates, with no user-visible signal either
-        // way — that silence was the root cause of "did my refresh actually
-        // update the app?" (dev plan §14.1). 'prompt' instead surfaces
-        // needRefresh via useRegisterSW, so the update is explicit.
-        registerType: 'prompt',
-        // We register the SW ourselves via virtual:pwa-register/react
-        // (UpdateBanner) — disable the auto-injected register script to
-        // avoid a second, competing registration.
-        injectRegister: false,
-        // scope/start_url must match the deploy base so the installed PWA
-        // and the service worker are scoped to the subpath.
+    plugins: [react(), tailwindcss(), VitePWA({
+      // 'prompt' (not 'autoUpdate'): autoUpdate reloads the page silently
+      // the moment a new SW activates, with no user-visible signal either
+      // way — that silence was the root cause of "did my refresh actually
+      // update the app?" (dev plan §14.1). 'prompt' instead surfaces
+      // needRefresh via useRegisterSW, so the update is explicit.
+      registerType: 'prompt',
+      // We register the SW ourselves via virtual:pwa-register/react
+      // (UpdateBanner) — disable the auto-injected register script to
+      // avoid a second, competing registration.
+      injectRegister: false,
+      // scope/start_url must match the deploy base so the installed PWA
+      // and the service worker are scoped to the subpath.
+      scope: base,
+      manifest: {
+        name: 'FAIN Coach',
+        short_name: 'FAIN Coach',
+        description:
+          'Local-first AI running coach. Upload TCX files, get coaching feedback via OpenRouter.',
+        theme_color: '#0a0a0a',
+        background_color: '#0a0a0a',
+        display: 'standalone',
         scope: base,
-        manifest: {
-          name: 'FAIN Coach',
-          short_name: 'FAIN Coach',
-          description:
-            'Local-first AI running coach. Upload TCX files, get coaching feedback via OpenRouter.',
-          theme_color: '#0a0a0a',
-          background_color: '#0a0a0a',
-          display: 'standalone',
-          scope: base,
-          start_url: base,
-          icons: [
-            { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
-            { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
-            {
-              src: 'pwa-512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'maskable',
-            },
-          ],
-        },
-      }),
-      stripForeignTargetFiles(target, outDir),
-    ],
+        start_url: base,
+        icons: [
+          { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
+          {
+            src: 'pwa-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      },
+    }), stripForeignTargetFiles(target, outDir), cloudflare()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
