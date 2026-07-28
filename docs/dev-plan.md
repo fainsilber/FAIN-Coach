@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v2.4)
+# FAIN Coach — Development Plan (v2.5)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -11,8 +11,11 @@ v1.8 specified Sprint 13 (shoe tracking); v1.9 specified Sprint 14
 evaluation); v2.1 (2026-07-26) recorded **Sprint 14 — Version Visibility &
 Diagnostics** as shipped; v2.2 (2026-07-26) recorded **Sprint 13 — Shoe
 Tracking** as shipped; v2.3 (2026-07-28) recorded **Sprint 10 — Cloudflare
-hosting** as shipped; **v2.4 (2026-07-28)** records **Spanish (Mexico)** as a
-third supported language (§9.6) and the AI-feature API-key gating fix.
+hosting** as shipped; v2.4 (2026-07-28) records **Spanish (Mexico)** as a
+third supported language (§9.6) and the AI-feature API-key gating fix;
+**v2.5 (2026-07-28)** reflects monetization.md v2's tier split — Sprint 11's
+output is now its own sellable **Sync** tier, not just a stepping stone to 12
+(§12 intro).
 
 **Status:** Sprints 1–8, 10, 13, and 14 complete. Live on both
 https://fainsilber.github.io/FAIN-Coach/ and
@@ -25,7 +28,7 @@ the paid-tier chain now that 10 has unblocked it:
 | | Sprint(s) | Notes |
 |---|---|---|
 | Standalone | **9** (§11) design refresh | Awaiting a design direction |
-| **Chain** | **11 → 12** (§12) paid hosted tier | 10 done; build 11 then 12 |
+| **Chain** | **11 → 12** (§12) paid hosted tier | 10 done; build 11 then 12. 11 alone ships the **Sync** tier ($2/mo — monetization.md §4.2); 12 adds **Pro** ($4/mo, managed AI) on top |
 | **Chain** | **15 → 16 → (17)** (§15) Strava, then Garmin, optionally Smashrun | **Requires 11–12 first** — a frontend-only PWA cannot do these integrations. Run the tapiriik spike (§15.4) *before* 16 |
 
 Ongoing risks are in §16 — none blocking.
@@ -599,17 +602,22 @@ true, so whoever picks this up starts informed:
 
 ## 12. Sprints 10–12 — Paid Hosted Tier (a CONNECTED track, specified)
 
-Requested 2026-07-23. Adds a paid "just works" tier — accounts + managed AI key
-+ cloud backup + multi-device sync — alongside the unchanged free local tier.
-Economics, pricing, and the abuse-cost analysis live in
-[monetization.md](monetization.md).
+Requested 2026-07-23. Adds paid tiers alongside the unchanged free local
+tier — accounts + cloud backup + multi-device sync (Sprint 11), then a
+managed AI key on top of that (Sprint 12). Economics, pricing, and the
+abuse-cost analysis live in [monetization.md](monetization.md) — **v2
+(2026-07-28) split what was one "Pro" bundle into two purchasable tiers,
+Sync and Pro, that map directly onto Sprints 11 and 12.**
 
-**These three sprints are one deliverable split for shippability — do them in
-order.** 10 unblocks 11 and 12 (they need a backend host and a root domain that
-GitHub Pages can't give); 11 provides the accounts that 12's billing and
-managed-key gating attach to. None of them is independently *useful* to a user
-until 12 lands, but each is independently *shippable and testable*. Sprint 9
-(design) is orthogonal and can happen any time.
+**Build in order, but revised 2026-07-28: Sprint 11's output is independently
+sellable, not just independently shippable.** 10 unblocks 11 and 12 (they
+need a backend host and a root domain that GitHub Pages can't give); 11
+provides the accounts that 12's billing and managed-key gating attach to —
+that dependency is unchanged. What's revised: 11 no longer has to wait for
+12 to be *useful to a user* — accounts + sync + cloud backup, still BYO
+OpenRouter key, is the **Sync** tier (monetization.md §4.2) and can go live
+and start earning the moment 11 ships. Sprint 9 (design) is orthogonal and
+can happen any time.
 
 **Architecture** (the payoff of two earlier decisions):
 - The `LlmClient` interface (Sprint 3) means the paid transport is a new
@@ -710,8 +718,10 @@ dashboard so that default isn't load-bearing.
 
 ### 12.2 Sprint 11 — Accounts + Sync + Cloud Backup (Dexie Cloud)
 
-Delivers three of the four paid features; can ship **free at first** to prove
-sync before any billing exists.
+Delivers accounts, sync, and cloud backup — this **is** the Sync tier
+(monetization.md §4.2), sellable on its own the moment it ships. Can also
+launch free-first, with billing added later, to prove sync works before
+charging for it — that's a sequencing choice, not a requirement.
 
 - Add `dexie-cloud-addon`; the profile picker becomes a login screen (email
   OTP). Local profiles remain for the free/offline tier.
@@ -719,15 +729,19 @@ sync before any billing exists.
   Cloud's global string ids; rewrite `run.plannedWorkoutId`,
   `plannedWorkout.planId`, `chatMessage.planId` during a one-time per-account
   import (reuses the backup/import machinery).
-- **The API key must never sync** — free-tier BYO key stays device-local; paid
-  users have no key locally at all (it lives only in the Worker). Mark
-  `settings` (or just the key row) as an unsynced/local table.
+- **The API key must never sync** — BYO key stays device-local for Free *and*
+  Sync tier alike (Sync ships accounts/sync/backup only, still BYO key —
+  monetization.md §4.2). Only once Sprint 12's managed key exists does a Pro
+  account have no local key at all (it lives only in the Worker). Mark
+  `settings` (or just the key row) as an unsynced/local table regardless of
+  tier.
 - **Exit**: sign in on two devices, a run logged on one appears on the other;
   offline edits reconcile; the free local tier is untouched.
 
 ### 12.3 Sprint 12 — Managed AI Proxy + Billing + Gating
 
-The tier people actually pay for.
+Adds the **Pro** tier (managed AI on top of Sync — monetization.md §4.1) and
+the billing plumbing both paid tiers need.
 
 - **Worker `/ai`**: authenticates the Dexie Cloud session, checks an active
   subscription, **enforces the per-user token cap** (monetization.md §3.2),
@@ -740,8 +754,10 @@ The tier people actually pay for.
   reasons (monetization.md §6). **Credentials (OpenRouter key, billing keys,
   Dexie Cloud) are configured by the owner as Cloudflare secrets — never handled
   in code or committed.**
-- **Gating + honesty**: show quota remaining; be explicit in-UI that Pro syncs
-  through the cloud while Free stays fully local (monetization.md §7).
+- **Gating + honesty**: show quota remaining; be explicit in-UI about what
+  each tier actually does with your data — Free is fully local; Sync and Pro
+  both sync through the cloud; only Pro additionally routes coaching through
+  a managed key instead of yours (monetization.md §7).
 - **Exit**: a paid account chats/generates with no OpenRouter key of its own;
   the cap blocks a runaway; cancelling billing reverts the account to free.
 

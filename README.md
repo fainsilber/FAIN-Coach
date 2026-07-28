@@ -54,7 +54,7 @@ Data is per-device by design — there is no server and no sync. Each device sta
 
 - **Design refresh** — planned; direction not yet defined.
 - **Import from Strava, Garmin and Smashrun** — connect the platform you already sync to instead of exporting files by hand. Needs the hosted backend first. [Spec](docs/dev-plan.md)
-- A **paid hosted tier** (accounts, cloud sync, and a managed AI key so there's no setup) is planned — see [docs/monetization.md](docs/monetization.md) and dev-plan §12. Cloudflare hosting (the first step) is done; accounts/sync and billing are next.
+- **Paid tiers** are planned in two steps — see [docs/monetization.md](docs/monetization.md) and dev-plan §12. Cloudflare hosting (the first step) is done. Next: **Sync** (accounts + cloud sync + backup, still bring-your-own key), then **Pro** on top of it (a managed AI key so there's no setup required).
 
 In the meantime, if your watch already syncs to Strava (Garmin can forward automatically, and tools like [tapiriik](https://github.com/cpfair/tapiriik) bridge other platforms), a bulk export from there imports fine through the existing file upload.
 
@@ -63,4 +63,4 @@ Longer-term items live in [docs/dev-plan.md §16](docs/dev-plan.md), notably a G
 ## Docs
 
 - [Product Requirements (PRD v1.6)](docs/PRD.md)
-- [Development Plan v2.4](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
+- [Development Plan v2.5](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks

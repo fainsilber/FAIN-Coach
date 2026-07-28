@@ -1,8 +1,17 @@
-# FAIN Coach — Monetization Analysis (v1, 2026-07-23)
+# FAIN Coach — Monetization Analysis (v2, 2026-07-28)
 
-Unit economics and pricing for a **hosted paid tier**: accounts + managed AI
-key + cloud backup + multi-device sync, on Cloudflare + Dexie Cloud. The free
-tier (fully local, bring-your-own OpenRouter key) stays as-is and is the funnel.
+Unit economics and pricing for **hosted paid tiers**: accounts + cloud backup
++ multi-device sync (Sprint 11), and managed AI + billing on top of that
+(Sprint 12), on Cloudflare + Dexie Cloud. The free tier (fully local,
+bring-your-own OpenRouter key) stays as-is and is the funnel.
+
+**v2 change**: split the original single "Pro" bundle into two purchasable
+tiers — **Sync** (accounts + multi-device sync + cloud backup, still BYO key)
+and **Pro** (Sync + a managed AI key) — because they map cleanly onto Sprints
+11 and 12 respectively. Sync is a real, separately billable product the
+moment Sprint 11 ships; it does not need Sprint 12's proxy/billing Worker to
+exist. Also adds a speculative fourth tier, **Pro+** (premium commercial
+models through the managed key), which is not fully priced yet — see §4.4.
 
 > **Numbers marked (verify) are planning estimates**, not quoted vendor prices —
 > OpenRouter per-model rates, Dexie Cloud tiers, and tax rules change. Confirm
@@ -80,15 +89,72 @@ margin, and reuses the existing model catalog with a "managed" flag.
 
 ## 4. Recommended pricing
 
-| Plan | Price | Effective /mo | Rationale |
+### 4.1 Three tiers, not one bundle
+
+The original plan bundled sync and managed AI into a single $4 "Pro" tier.
+Splitting them is better product strategy, not just extra SKUs: a runner who
+wants their data to follow them across devices but is happy bringing their
+own OpenRouter key is a real, distinct segment from one who wants zero setup.
+Charging them the same price as someone consuming managed inference
+overcharges the first group and undersells the second. It also lets **Sync**
+ship and start earning as soon as Sprint 11 is done, without waiting on
+Sprint 12's proxy Worker and billing integration.
+
+| Plan | Price | Effective /mo | What it adds over the tier below |
 |---|---|---|---|
 | **Free** | $0 | — | Local-first, BYO OpenRouter key. The whole current app. Funnel + the "technical" audience (who can fork it anyway). |
-| **Pro monthly** | **$4 / mo** | $4.00 | Middle of your $3–5 range. |
-| **Pro annual** | **$40 / yr** | $3.33 | 2 months free; fixes the Stripe-fee problem; better retention. |
+| **Sync** | $2/mo or **$20/yr** | $1.67 (annual) | Accounts, multi-device sync, cloud backup. Still BYO key — no inference resold, so no usage-cap risk. |
+| **Pro** | $4/mo or **$40/yr** | $3.33 (annual) | Everything in Sync, **plus** a managed AI key (curated cheap models, capped usage) — zero setup. |
+| **Pro+** *(speculative — see §4.4)* | not yet priced | — | Everything in Pro, but the managed key also covers premium commercial models (Claude, GPT). |
 
-Consider a **7–14 day free trial** on Pro (Stripe supports it natively) to lift
-conversion — the local free tier already de-risks the try-before-buy, so a trial
-is optional, not essential.
+Both paid tiers should offer **annual billing at ~2 months free** (Sync:
+$24/yr → $20; Pro: $48/yr → $40) — the Stripe fixed fee is a much bigger bite
+out of a small monthly charge than an annual one (§3.1). Consider a **7–14
+day free trial** on either paid tier (Stripe supports it natively) — the
+local free tier already de-risks try-before-buy, so a trial is optional, not
+essential.
+
+### 4.2 Sync tier economics
+
+No inference is resold, so the cost floor is just billing overhead and Dexie
+Cloud — there's no usage-cap risk the way there is for Pro.
+
+| Line item | Monthly ($2/mo) | Annual ($20/yr, per year) |
+|---|---|---|
+| **Stripe fee** | ~$0.36 (2.9% + $0.30, charged monthly) | ~$0.88 (one annual charge) |
+| **Dexie Cloud** | ~$0.30/mo *(verify)* | ~$3.60/yr (12 × $0.30) |
+| **Total cost** | ~$0.66/mo | ~$4.48/yr |
+| **Net** | ~$1.34/mo (**67% margin**) | ~$15.52/yr, ~$1.29/mo effective (**78% margin**) |
+
+The Stripe fixed fee is proportionally harsher here than on Pro (§2) because
+the price is lower — **don't price Sync below ~$2/mo on monthly billing**, or
+the fixed fee eats too much of the margin. At $1/mo the Stripe fee alone is
+~33% of revenue before Dexie Cloud is even counted.
+
+### 4.3 Pro (unchanged from v1)
+
+See §2 above for the full breakdown — ~80% gross margin at $4/mo, driven by
+inference being pennies and Dexie Cloud/Stripe being the real costs.
+
+### 4.4 Pro+ — premium models, priced later
+
+A plausible fourth tier for users who want zero-setup access to commercial
+models (Claude, GPT) rather than BYO-key. **Not ready to price** — two things
+have to be confirmed first that don't apply to Pro's cheap-model set:
+
+- **Current OpenRouter rates for the specific premium models offered.**
+  Commercial/reasoning models commonly run **10–30× the per-token cost** of
+  the open-weights set in §3.3 (Llama 3.3 70B, Qwen 2.5, DeepSeek V3). At that
+  multiplier, a typical user's ~100k tokens/month could cost **$3–15** in
+  inference alone — a flat token-budget cap like Pro's (§3.2) would need to be
+  10–30× tighter, or reworked entirely.
+- **A different cap shape.** An open token budget is the wrong mechanism here
+  — a heavy user could turn a $12–15/mo sub into a loss on premium-model
+  inference alone. A **fixed number of premium-model exchanges/month**, with
+  overflow either blocked or silently falling back to the cheap-model set, is
+  the safer design. Decide this before setting a price, not after.
+
+Until both are confirmed, treat Pro+ as a roadmap idea, not a committed SKU.
 
 ---
 
@@ -103,6 +169,13 @@ is optional, not essential.
   windfall** — 100 paying users ≈ $325/mo net; 1,000 ≈ $3.2k/mo net. It scales
   linearly and cheaply, but the ceiling is set by how many runners you can
   reach.
+- **Sync as a lower-friction entry point:** at $2/mo, Sync is a smaller ask
+  than Pro's $4 — someone unsure about a managed AI key but sold on
+  multi-device sync can convert there first. Whether that actually grows
+  total paying users (a cheaper on-ramp) or just splits Pro's revenue into a
+  lower-margin tier (cannibalization) is unknown without real conversion
+  data — worth watching once both tiers exist, not something to resolve on
+  paper.
 
 ---
 
@@ -128,15 +201,25 @@ requirements and whether an MoR simplifies your position.)
 
 ## 7. Risks
 
-- **Uncapped inference** — the only path to losing money. Mitigated by §3.2. Do
-  not ship the proxy without the cap.
-- **Dexie Cloud cost/lock-in** — the biggest cost uncertainty. If its pricing
-  doesn't pencil out at scale, the fallback is building sync on Cloudflare D1 /
+- **Uncapped inference** — the only path to losing money on Pro (and, more
+  severely, on Pro+ — see §4.4). Mitigated by §3.2. Do not ship the proxy
+  without the cap.
+- **Dexie Cloud cost/lock-in** — the biggest cost uncertainty, and it now
+  affects two tiers (Sync and Pro) instead of one. If its pricing doesn't
+  pencil out at scale, the fallback is building sync on Cloudflare D1 /
   Durable Objects (much more work) — design the sync layer so it *could* be
   swapped, as the `LlmClient` abstraction did for transport.
-- **Privacy positioning** — sync + managed AI softens the "data never leaves
-  your device" promise. Keep the free tier genuinely local and be explicit in
-  the UI that Pro syncs through the cloud, scoped to the account.
+- **Privacy positioning** — sync (Sync and Pro both) softens the "data never
+  leaves your device" promise; managed AI (Pro and Pro+) softens it further.
+  Keep the free tier genuinely local and be explicit in the UI about what
+  each paid tier actually does with your data — "Sync stores your data in
+  the cloud, scoped to your account" is a different claim from "Pro's coach
+  runs through our server," and both are different from Free.
+- **Tier-selection friction** — a runner who just wants to log a run
+  shouldn't have to parse four options to figure out which one they need.
+  If Pro+ ships, the upgrade page needs to make the Free → Sync → Pro → Pro+
+  progression legible at a glance (what you gain at each step), not read
+  like a spreadsheet. Worth a design pass before Pro+ ships, not after.
 - **Low absolute revenue at small scale** — see §5. Set expectations.
 - **Churn** — annual billing and genuine coaching value are the defenses.
 
@@ -144,9 +227,18 @@ requirements and whether an MoR simplifies your position.)
 
 ## 8. Numbers to confirm before pricing
 
-1. Current OpenRouter rate for the managed models (Llama 3.3 70B et al.).
-2. Current Dexie Cloud production pricing and any monthly minimum.
+1. Current OpenRouter rate for the managed models (Llama 3.3 70B et al.) —
+   needed for Pro.
+2. Current Dexie Cloud production pricing and any monthly minimum — needed
+   for both Sync and Pro, since both carry it as a cost line.
 3. Israel/international tax obligations, and whether an MoR removes them.
-4. Chosen usage cap (tokens/month) — the §3.2 knob.
-5. Final price: $4/mo + $40/yr is the recommendation; your $3–5 instinct is
+4. Chosen usage cap (tokens/month) — the §3.2 knob, for Pro.
+5. Pro price: $4/mo + $40/yr is the recommendation; your $3–5 instinct is
    sound and the margins work across that whole range.
+6. Sync price: $2/mo + $20/yr is the recommendation (§4.2) — don't go below
+   ~$2/mo on monthly billing, the Stripe fixed fee dominates too hard below
+   that.
+7. **Before pricing Pro+**: current OpenRouter rates for the specific
+   premium models under consideration, and a decided cap mechanism
+   (exchanges/month, not raw tokens) — see §4.4. Do not ship Pro+ without
+   both.
