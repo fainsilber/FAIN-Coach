@@ -1,7 +1,10 @@
 import Dexie, { type EntityTable } from 'dexie';
+import dexieCloud from 'dexie-cloud-addon';
 import { getActiveProfile, LEGACY_DB_NAME } from '@/lib/profiles';
+import { CLOUD_DATABASE_URL, isCloudBuild, UNSYNCED_TABLES } from './cloudConfig';
 import type {
   ChatMessage,
+  EntityId,
   LogEntry,
   PlannedWorkout,
   RunRecord,
@@ -46,10 +49,102 @@ export class FainCoachDB extends Dexie {
   }
 }
 
-// One database per profile; the module binds to the active profile at load
-// time, and switching profiles reloads the app (see ProfileGate). Falls back
-// to the legacy name so tests and the pre-profile boot path keep working.
-export const db = new FainCoachDB(getActiveProfile()?.dbName ?? LEGACY_DB_NAME);
+/**
+ * Cloud-backed database (Sprint 11). A SEPARATE database from the local one,
+ * never an upgrade of it — which is the whole point:
+ *
+ * - Primary keys are `@id` (globally unique strings the addon mints), because
+ *   per-device auto-increment cannot survive two devices syncing.
+ * - Because the key type differs, this cannot be a Dexie version bump on the
+ *   local schema; IndexedDB will not change a store's key path in place. Data
+ *   moves across by export → `remapBackupForCloud()` → import instead
+ *   (src/lib/cloudMigration.ts), which is also what rewrites the foreign keys.
+ * - Starting at version 1 means a signed-in account never runs the local
+ *   database's v1→v3 upgrade chain, so there is no migration to get wrong.
+ *
+ * `settings` and `logs` keep auto-increment/`key` primary keys and are listed
+ * in `unsyncedTables` — they must stay device-local (see cloudConfig.ts).
+ */
+export class FainCoachCloudDB extends Dexie {
+  runs!: EntityTable<RunRecord, 'id'>;
+  trainingPlans!: EntityTable<TrainingPlan, 'id'>;
+  plannedWorkouts!: EntityTable<PlannedWorkout, 'id'>;
+  chatMessages!: EntityTable<ChatMessage, 'id'>;
+  settings!: EntityTable<Settings, 'key'>;
+  logs!: EntityTable<LogEntry, 'id'>;
+  shoes!: EntityTable<Shoe, 'id'>;
+
+  constructor(name: string, databaseUrl: string) {
+    super(name, { addons: [dexieCloud] });
+    this.version(1).stores({
+      runs: '@id, date, matchStatus, plannedWorkoutId, shoeId',
+      trainingPlans: '@id, status, createdAt',
+      plannedWorkouts: '@id, planId, date, status',
+      chatMessages: '@id, timestamp, planId',
+      shoes: '@id',
+      // Device-local, never synced — same schema as the local database.
+      settings: 'key',
+      logs: '++id, at',
+    });
+    this.cloud.configure({
+      databaseUrl,
+      // The app renders its own account UI rather than the addon's default
+      // dialog, so it matches the rest of the interface and is localized
+      // through the existing i18n catalogs.
+      customLoginGui: true,
+      // Sync is opt-in per account: a build with a cloud URL still starts
+      // unauthenticated and fully local until the user actually signs in.
+      requireAuth: false,
+      unsyncedTables: [...UNSYNCED_TABLES],
+    });
+  }
+}
+
+/** Either backend, narrowed to the surface the app actually uses. */
+export type AppDB = FainCoachDB | FainCoachCloudDB;
+
+/**
+ * One database per profile; the module binds to the active profile at load
+ * time, and switching profiles reloads the app (see ProfileGate). Falls back
+ * to the legacy name so tests and the pre-profile boot path keep working.
+ *
+ * A build with no `VITE_DEXIE_CLOUD_URL` gets the local class and never
+ * touches the cloud addon at all — the free tier is unchanged by Sprint 11.
+ */
+function openDatabase(): AppDB {
+  const name = getActiveProfile()?.dbName ?? LEGACY_DB_NAME;
+  if (CLOUD_DATABASE_URL) {
+    // Distinct name so a cloud account and a local profile can coexist on one
+    // device without fighting over the same IndexedDB database.
+    return new FainCoachCloudDB(`${name}-cloud`, CLOUD_DATABASE_URL);
+  }
+  return new FainCoachDB(name);
+}
+
+export const db: AppDB = openDatabase();
+
+/**
+ * Whether the active database mints STRING ids (Dexie Cloud `@id`) rather than
+ * Dexie auto-increment numbers. See `EntityId` in ./types.
+ *
+ * Reads the build-time cloud config, so in a non-cloud build this is a
+ * constant `false` and `parseEntityId` folds to `Number()` exactly as before
+ * Sprint 11.
+ */
+export const USES_STRING_IDS = isCloudBuild();
+
+/**
+ * Turns a `<select>`/route-param string back into an id of the right type.
+ *
+ * This is the ONLY place the numeric/string distinction should appear in
+ * application code. A bare `Number(value)` on a cloud id yields `NaN`, and
+ * `db.table.get(NaN)` quietly returns undefined — a lookup that fails with no
+ * error, which is the worst possible failure shape. Route everything through
+ * here instead.
+ */
+export function parseEntityId(raw: string): EntityId {
+  return USES_STRING_IDS ? raw : Number(raw);
+}
 
 /**
  * FR-2.2: request persistent storage so the browser doesn't evict IndexedDB.

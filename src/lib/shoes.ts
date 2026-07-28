@@ -1,4 +1,4 @@
-import type { RunRecord, Shoe } from '@/db/types';
+import type { EntityId, RunRecord, Shoe } from '@/db/types';
 
 // Pure functions (PRD §4.7 / dev plan §13.2) — mileage is always DERIVED from
 // assigned runs, never a stored counter, so deleting or re-assigning a run
@@ -52,7 +52,7 @@ export function shoeMileage(shoe: Shoe, runs: RunRecord[]): number {
 export function mostRecentShoeId(
   shoes: Shoe[],
   runs: RunRecord[],
-): number | undefined {
+): EntityId | undefined {
   const activeIds = new Set(
     shoes.filter((s) => !s.retired).map((s) => s.id),
   );

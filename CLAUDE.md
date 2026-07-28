@@ -4,7 +4,7 @@ Local-first AI running coach PWA. Users upload `.tcx` files from any GPS watch, 
 
 **Live:** https://fainsilber.github.io/FAIN-Coach/ and https://fain-coach.fainsilber.workers.dev/ (both auto-deploy on push to `main` — see Deployment below)
 
-**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v2.5 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
+**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v2.6 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
 
 ## Commands
 
@@ -47,6 +47,7 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 - API key is BYO, stored in IndexedDB `settings`, never sent anywhere except OpenRouter.
 - **Prompt rules must be literal.** Weaker instruct models follow instructions exactly: "taper before the race" produced an empty race week, and "derive a pace from the goal" put easy runs at race pace. State constraints explicitly — ambiguity here is a safety issue, not a style one.
 - **LLM retries**: the connection phase retries automatically; never retry after tokens have streamed (duplicates output) and never on 4xx.
+- **Ids are `EntityId = number | string`, and you must never `Number()` one.** The local tier uses Dexie auto-increment numbers; a cloud account uses Dexie Cloud `@id` strings (Sprint 11). Turning a `<select>` value or route param back into an id goes through `parseEntityId()` in `src/db/db.ts` — the *only* place that distinction belongs. `Number()` on a cloud id gives `NaN`, and `.get(NaN)` returns undefined with no error: a lookup that fails silently.
 - **Booleans are not a valid IndexedDB index.** Dexie/IndexedDB can't index a boolean field reliably — filter it client-side instead (e.g. `shoes.retired`). Don't repeat this mistake in a future schema change.
 - **Every AI-dependent action must be gated on a live `hasKey` check, not just error handling after the fact.** ChatPage and PlanPage both `useLiveQuery` the API key's presence and disable the actual submit control (Send / Generate) while it's `!== true`, with a persistent banner linking to Settings explaining why — never let the user fill out a form or type a message only to discover on submit that there's no key. This applies to any future AI-dependent feature too, including Sprint 12's managed-key `ProxyClient` path once BYO isn't the only option.
 

@@ -5,6 +5,17 @@ dev-dist
 *.local
 *.tsbuildinfo
 
+# Dexie Cloud CLI output (docs/dexie-cloud-setup.md). Environment, not source.
+# dexie-cloud.key contains a CLIENT SECRET granting access to the database —
+# it must never be committed.
+dexie-cloud.json
+dexie-cloud.key
+
+# Local env files that may hold VITE_DEXIE_CLOUD_URL and similar
+.env
+.env.*
+!.env.example
+
 # Editor
 .vscode/*
 !.vscode/extensions.json

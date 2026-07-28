@@ -102,6 +102,7 @@ function shortSha(): string {
 export default defineConfig(({ command, isPreview }) => {
   const target = resolveTarget();
   const outDir = path.resolve(__dirname, 'dist');
+  const cloudUrl = process.env.VITE_DEXIE_CLOUD_URL;
   // The dev server is not a deployment — it always serves at '/'. `vite
   // preview` serves the built artifact, so it must match the build's base.
   const isDevServer = command === 'serve' && !isPreview;
@@ -112,6 +113,11 @@ export default defineConfig(({ command, isPreview }) => {
       __APP_VERSION__: JSON.stringify(pkg.version),
       __GIT_SHA__: JSON.stringify(shortSha()),
       __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+      // Dexie Cloud (dev plan §12.2). `define` rather than import.meta.env so
+      // an unset variable becomes the literal `null`, which lets Rollup prove
+      // the cloud branch dead and drop dexie-cloud-addon (~240 kB) from a
+      // local-only build. Not a secret — see docs/dexie-cloud-setup.md.
+      __CLOUD_DATABASE_URL__: JSON.stringify(cloudUrl ?? null),
     },
     plugins: [
       react(),
@@ -157,6 +163,20 @@ export default defineConfig(({ command, isPreview }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        // Keep dexie-cloud-addon out of local-only builds entirely. A Dexie
+        // addon mutates the Dexie prototype at import time, so Rollup cannot
+        // tree-shake it even when the branch constructing the cloud database
+        // is provably dead — aliasing it to a throwing stub is the only
+        // reliable way to stop ~240 kB shipping to free-tier users who can
+        // never use it. See src/db/dexieCloudStub.ts.
+        ...(cloudUrl
+          ? {}
+          : {
+              'dexie-cloud-addon': path.resolve(
+                __dirname,
+                './src/db/dexieCloudStub.ts',
+              ),
+            }),
       },
     },
     test: {

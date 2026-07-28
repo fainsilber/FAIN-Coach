@@ -1,5 +1,20 @@
 // Data contracts from the dev plan (v1.1), section 3 — Dexie v1 schema.
 
+/**
+ * Primary/foreign key type (Sprint 11, dev plan §12.2).
+ *
+ * The local database uses Dexie auto-increment NUMBERS. A cloud account uses
+ * Dexie Cloud's globally unique STRINGS (`@id`), because per-device
+ * auto-increment cannot survive two devices syncing into one account.
+ *
+ * Both are live at once — the free tier stays local, so this is a real union
+ * rather than a migration waypoint. Application code should treat ids as
+ * opaque and never do arithmetic on them; the one place the distinction
+ * matters is turning a `<select>`'s string value back into an id, which is
+ * centralized in `parseEntityId()` (src/db/db.ts).
+ */
+export type EntityId = number | string;
+
 export interface LapSplit {
   lapIndex: number;
   distanceMeters: number;
@@ -23,7 +38,7 @@ export const FEEL_TAGS = [
 export type FeelTag = (typeof FEEL_TAGS)[number];
 
 export interface RunRecord {
-  id?: number;
+  id?: EntityId;
   date: string; // ISO, indexed
   totalDistanceMeters: number;
   totalDurationSeconds: number;
@@ -35,7 +50,7 @@ export interface RunRecord {
   rpe?: number; // 1-10
   feelTags?: string[]; // 'legs-heavy' | 'slept-poorly' | 'sore' | ...
   userNotes?: string;
-  plannedWorkoutId?: number; // link after user confirmation
+  plannedWorkoutId?: EntityId; // link after user confirmation
   matchStatus: MatchStatus;
   /**
    * How the run got here. Absent on every record created before Sprint 8, so
@@ -46,11 +61,11 @@ export interface RunRecord {
   source?: 'tcx' | 'manual';
   /** Which pair of shoes this run was in. Absent = not recorded (FR-7.2) —
    * always valid, never blocks saving. */
-  shoeId?: number;
+  shoeId?: EntityId;
 }
 
 export interface TrainingPlan {
-  id?: number;
+  id?: EntityId;
   createdAt: string;
   status: 'active' | 'archived';
   goal: string; // e.g. "Sub-50 10k on 2026-10-04"
@@ -61,8 +76,8 @@ export interface TrainingPlan {
 export type WorkoutType = 'easy' | 'tempo' | 'intervals' | 'long' | 'rest' | 'race';
 
 export interface PlannedWorkout {
-  id?: number;
-  planId: number; // indexed
+  id?: EntityId;
+  planId: EntityId; // indexed
   date: string; // indexed
   type: WorkoutType;
   description: string;
@@ -72,11 +87,11 @@ export interface PlannedWorkout {
 }
 
 export interface ChatMessage {
-  id?: number;
+  id?: EntityId;
   timestamp: string;
   role: 'user' | 'assistant';
   content: string;
-  planId?: number; // which plan era it belongs to
+  planId?: EntityId; // which plan era it belongs to
 }
 
 export interface Settings {
@@ -93,7 +108,7 @@ export type LogLevel = 'info' | 'warn' | 'error';
  * backup export/import (FR-8.10) — see backup.ts.
  */
 export interface LogEntry {
-  id?: number;
+  id?: EntityId;
   at: string; // ISO, indexed
   level: LogLevel;
   event: string; // stable code, e.g. 'tcx.parse.failed'
@@ -110,7 +125,7 @@ export const DEFAULT_RETIREMENT_METERS = 800_000;
  * src/lib/shoes.ts.
  */
 export interface Shoe {
-  id?: number;
+  id?: EntityId;
   name: string;
   brand?: string;
   purchasedAt?: string; // ISO date, optional

@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useParams } from 'react-router-dom';
 import { LapChart, type LapPoint } from '@/components/LapChart';
 import { StatGrid } from '@/components/StatGrid';
-import { db } from '@/db/db';
+import { db, parseEntityId } from '@/db/db';
 import { FEEL_TAGS, type FeelTag, type LapSplit } from '@/db/types';
 
 function isFeelTag(tag: string): tag is FeelTag {
@@ -61,7 +61,7 @@ export function RunDetailPage() {
   const { id } = useParams();
   // undefined = still loading; null = looked up and not found
   const run = useLiveQuery(
-    async () => (await db.runs.get(Number(id))) ?? null,
+    async () => (id ? ((await db.runs.get(parseEntityId(id))) ?? null) : null),
     [id],
   );
   const linkOptions = useLiveQuery(async () => {
@@ -86,12 +86,14 @@ export function RunDetailPage() {
 
   async function handleShoeChange(value: string) {
     if (!run?.id) return;
-    await db.runs.update(run.id, { shoeId: value ? Number(value) : undefined });
+    await db.runs.update(run.id, {
+      shoeId: value ? parseEntityId(value) : undefined,
+    });
   }
 
   async function handleRelink(value: string) {
     if (!run?.id) return;
-    const newId = value ? Number(value) : undefined;
+    const newId = value ? parseEntityId(value) : undefined;
     const oldId = run.plannedWorkoutId;
     await db.transaction('rw', [db.runs, db.plannedWorkouts], async () => {
       if (oldId !== undefined && oldId !== newId) {

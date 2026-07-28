@@ -5,3 +5,8 @@
 declare const __APP_VERSION__: string;
 declare const __GIT_SHA__: string;
 declare const __BUILD_TIME__: string;
+
+// Dexie Cloud database URL (Sprint 11), or null in a local-only build.
+// Injected via `define` rather than read from `import.meta.env` so it becomes
+// a literal Rollup can constant-fold — see src/db/cloudConfig.ts.
+declare const __CLOUD_DATABASE_URL__: string | null;

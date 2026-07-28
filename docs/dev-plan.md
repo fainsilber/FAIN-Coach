@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v2.5)
+# FAIN Coach — Development Plan (v2.6)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -737,6 +737,47 @@ charging for it — that's a sequencing choice, not a requirement.
   tier.
 - **Exit**: sign in on two devices, a run logged on one appears on the other;
   offline edits reconcile; the free local tier is untouched.
+
+**Status 2026-07-29 — foundation shipped, sync not yet verifiable.** Setup the
+owner must do first: [dexie-cloud-setup.md](dexie-cloud-setup.md).
+
+Done and verified:
+- **The id remap** (`src/lib/cloudMigration.ts`), the "main cost" above:
+  `remapBackupForCloud()` rewrites every primary key to a unique string and
+  repoints all four foreign keys (`run.plannedWorkoutId`, `run.shoeId`,
+  `plannedWorkout.planId`, `chatMessage.planId`) in one pass. Pure, so it is
+  fully testable without a database — **17 unit tests**, including dangling
+  references (dropped and counted rather than left pointing at a row that will
+  never exist), numeric/string id equivalence after a JSON round-trip, and
+  non-mutation of the input.
+- **`EntityId = number | string`** across the schema. The local tier keeps
+  auto-increment numbers; only a cloud account uses strings. The one place the
+  distinction matters is turning a `<select>` value back into an id, funnelled
+  through `parseEntityId()` — a bare `Number()` on a cloud id yields `NaN`, and
+  `.get(NaN)` returns undefined with no error, which is the worst failure shape
+  available.
+- **`FainCoachCloudDB`**, a *separate* database (`<profile>-cloud`) at version
+  1 with `@id` keys. Deliberately not a version bump on the local schema:
+  IndexedDB will not change a store's key path in place, and starting fresh
+  means a signed-in account never runs the local v1→v3 upgrade chain.
+- **`unsyncedTables: ['settings', 'logs']`** — the OpenRouter API key must
+  never traverse the sync service. Whole tables excluded, not single rows.
+- **Zero cost to the free tier**, and this needed work: adding
+  `dexie-cloud-addon` grew the bundle 420.85 → 663.94 kB (+243 kB) *even
+  without a cloud URL*, because a Dexie addon mutates the Dexie prototype on
+  import and so cannot be tree-shaken. Fixed by aliasing the package to a
+  throwing stub in local-only builds (`src/db/dexieCloudStub.ts`); measured
+  back at **420.92 kB**, +0.07 kB versus pre-Sprint-11. Verified both ways: the
+  local build contains no `dexie.cloud` reference, a build with the env var set
+  contains both the addon and the URL.
+
+Not done — each needs a live database to build against:
+- Sign-in UI. `customLoginGui: true` is configured, so the app owes its own
+  email-OTP dialog rendered from `db.cloud.userInteraction`.
+- A caller for `remapBackupForCloud()`: first sign-in should offer to bring
+  local data across.
+- The two-device exit criteria above, which are unverifiable by construction
+  until the database exists.
 
 ### 12.3 Sprint 12 — Managed AI Proxy + Billing + Gating
 

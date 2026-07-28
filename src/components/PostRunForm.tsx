@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/db/db';
-import { FEEL_TAGS, type FeelTag } from '@/db/types';
+import { db, parseEntityId } from '@/db/db';
+import { FEEL_TAGS, type EntityId, type FeelTag } from '@/db/types';
 import { useT } from '@/i18n';
 import { mostRecentShoeId } from '@/lib/shoes';
 import { cn } from '@/lib/utils';
@@ -10,7 +10,7 @@ export interface PostRunDetails {
   rpe?: number;
   feelTags: FeelTag[];
   userNotes?: string;
-  shoeId?: number;
+  shoeId?: EntityId;
 }
 
 const RPE_VALUES = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -26,7 +26,7 @@ export function PostRunForm({
   const [rpe, setRpe] = useState<number>();
   const [feelTags, setFeelTags] = useState<FeelTag[]>([]);
   const [notes, setNotes] = useState('');
-  const [shoeId, setShoeId] = useState<number | ''>('');
+  const [shoeId, setShoeId] = useState<EntityId | ''>('');
 
   // Only registered once shoes/runs have loaded, so it doesn't clobber a
   // choice the user already made while data was still arriving.
@@ -115,7 +115,7 @@ export function PostRunForm({
           <select
             value={shoeId}
             onChange={(e) =>
-              setShoeId(e.target.value ? Number(e.target.value) : '')
+              setShoeId(e.target.value ? parseEntityId(e.target.value) : '')
             }
             className="w-full rounded-md border bg-background p-2 text-sm"
           >
