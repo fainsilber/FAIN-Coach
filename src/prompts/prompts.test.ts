@@ -234,6 +234,34 @@ describe('language support (FR-5.6)', () => {
     expect(prompt).toContain('"type" values in English');
     expect(prompt).toContain('easy|tempo|intervals|long|race');
   });
+
+  it('demands Spanish output with Spanish section headings', () => {
+    const ctx = buildCoachContext(undefined, [], undefined, [], 'metric', 'es-MX');
+    expect(ctx).toContain('ENTIRELY in Spanish');
+    expect(ctx).toContain('El Panorama General');
+    expect(ctx).toContain('Análisis de los Datos');
+    expect(ctx).toContain('Próximo Paso');
+    // The metric-omission rule must survive localization
+    expect(ctx).toContain('never mention');
+  });
+
+  it('plan request localizes descriptions to Spanish but pins JSON schema to English', () => {
+    const prompt = buildPlanRequest(
+      {
+        goal: 'Sub-50 10k',
+        raceDate: '2026-10-04',
+        currentWeeklyKm: 25,
+        daysPerWeek: 4,
+      },
+      [],
+      new Date('2026-07-23T12:00:00Z'),
+      'metric',
+      'es-MX',
+    );
+    expect(prompt).toContain('in SPANISH');
+    expect(prompt).toContain('"type" values in English');
+    expect(prompt).toContain('easy|tempo|intervals|long|race');
+  });
 });
 
 describe('capMessages token budget', () => {

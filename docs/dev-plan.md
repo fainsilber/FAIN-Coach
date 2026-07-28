@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v2.3)
+# FAIN Coach — Development Plan (v2.4)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -10,12 +10,14 @@ v1.8 specified Sprint 13 (shoe tracking); v1.9 specified Sprint 14
 (diagnostics); v2.0 specified Sprints 15–17 (provider import, plus a tapiriik
 evaluation); v2.1 (2026-07-26) recorded **Sprint 14 — Version Visibility &
 Diagnostics** as shipped; v2.2 (2026-07-26) recorded **Sprint 13 — Shoe
-Tracking** as shipped; **v2.3 (2026-07-28)** records **Sprint 10 — Cloudflare
-hosting** as shipped.
+Tracking** as shipped; v2.3 (2026-07-28) recorded **Sprint 10 — Cloudflare
+hosting** as shipped; **v2.4 (2026-07-28)** records **Spanish (Mexico)** as a
+third supported language (§9.6) and the AI-feature API-key gating fix.
 
 **Status:** Sprints 1–8, 10, 13, and 14 complete. Live on both
 https://fainsilber.github.io/FAIN-Coach/ and
-https://fain-coach.fainsilber.workers.dev/. 162 tests passing.
+https://fain-coach.fainsilber.workers.dev/. Version 1.6.0, 167 tests passing.
+Three languages: English, Hebrew, Spanish (Mexico).
 
 **Next up.** One standalone track, then two dependent chains — 11 is next in
 the paid-tier chain now that 10 has unblocked it:
@@ -437,6 +439,42 @@ translators need standard tooling.
   localized headings, while generated plan JSON still validates.
 - Type-check fails if a Hebrew string is missing.
 - Language survives a reload and applies to the profile picker itself.
+
+### 9.6 Third language: Spanish (Mexico) — added 2026-07-28
+
+Requested directly by the owner, outside the sprint backlog. The point of
+§9.2's architecture claim ("one catalog file + one `LANGUAGES` entry, nothing
+else changes") was to make exactly this cheap, so it's recorded here rather
+than as a new sprint.
+
+- `src/i18n/es-MX.ts` — full `Record<MessageKey, string>` catalog, informal
+  "tú" register throughout, unit abbreviations (bpm/spm/W) kept in Latin form
+  matching `he.ts`'s existing convention.
+- `LANGUAGES` gained `{ code: 'es-MX', label: 'Español (México)', dir: 'ltr' }`;
+  `localeOf()` maps it to the `es-MX` Intl locale; `detectLanguage()` treats
+  any `es-*` browser preference as `es-MX` (the only Spanish variant so far),
+  mirroring the existing `he`/`iw` special-case.
+- `PromptLanguage` in `prompts.ts` gained `'es-MX'`. `coachSystemPrompt`'s
+  headings/language-rule ternaries were refactored into
+  `Record<PromptLanguage, …>` lookup tables — TypeScript now enforces that a
+  future language extends both, rather than silently falling through a
+  ternary's `else` branch.
+- `i18n.test.ts`'s completeness/placeholder-parity checks were generalized to
+  loop over a `NON_ENGLISH_CATALOGS` map instead of hard-coding Hebrew, so
+  they cover every catalog automatically going forward.
+- Confirmed zero changes were needed in any feature component — no `dir`
+  logic, no RTL-specific code path, nothing beyond the two files above plus
+  the two lookup tables in `prompts.ts`. That's the architecture doing its
+  job.
+
+**Outcome**: met. 167 tests passing (+5: catalog completeness, placeholder
+parity, interpolation, `detectLanguage`, and two coach-prompt assertions).
+Browser-verified: every screen (Settings, History, Chat, Plan, Shoes, manual
+entry) renders correctly in Spanish; the API-key gate banner and its Settings
+link work identically to English/Hebrew; and — confirmed by intercepting the
+`fetch` call to openrouter.ai — the coach's actual system prompt contains
+`ENTIRELY in Spanish` and the three localized headings (`El Panorama
+General` / `Análisis de los Datos` / `Próximo Paso`).
 
 ## 10. Sprint 8 — Manual Run Entry ✅ (implemented 2026-07-23)
 

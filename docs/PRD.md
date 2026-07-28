@@ -123,7 +123,7 @@ model; reasoning models remain user-selectable for richer prose.
 
 **Language**
 
-* **FR-5.1:** The app **must** let the user choose the interface language. Launch languages: **English** and **Hebrew**. The architecture must accept further languages without code changes to feature components.
+* **FR-5.1:** The app **must** let the user choose the interface language. Launch languages: **English** and **Hebrew**; **Spanish (Mexico)** added 2026-07-28 as proof of the architecture claim below — it required zero changes to any feature component, only a new catalog file and one `LANGUAGES` entry. The architecture must accept further languages without code changes to feature components.
 * **FR-5.2:** The app **must** fully support right-to-left (RTL) layout for Hebrew — `dir="rtl"`, mirrored layout, and correct alignment throughout, including navigation, forms, chat bubbles, tables, and the plan calendar.
 * **FR-5.3:** Numeric values (pace, distance, heart rate, dates, times) **must** render correctly inside RTL text. Bidirectional isolation is required so that strings such as `5:48 /km` are not visually reordered.
 * **FR-5.4:** Dates, times, numbers, and plural forms **must** be formatted per the active locale (e.g. Hebrew weekday names).
@@ -276,7 +276,7 @@ breakdown. Status as of 2026-07-26:
 | — | Local profiles (§4.4) | ✅ Complete |
 | — | Deployment to GitHub Pages | ✅ Live |
 | 6 | Units & week start (§4.5, FR-5.7–5.14) | ✅ Complete |
-| 7 | Multi-language: English + Hebrew RTL (§4.5, FR-5.1–5.6) | ✅ Complete |
+| 7 | Multi-language: English + Hebrew RTL, later Spanish (Mexico) (§4.5, FR-5.1–5.6) | ✅ Complete |
 | 8 | Manual run entry (§4.6, FR-6.1–6.8) | ✅ Complete |
 | 9 | Design refresh | ⬜ Placeholder — direction not yet defined |
 | 10 | Cloudflare hosting (first link of the paid-tier chain) | ✅ Complete — live at both GitHub Pages and Cloudflare, dev-plan §12.1 |

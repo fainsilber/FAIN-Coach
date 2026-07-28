@@ -123,7 +123,7 @@ export function summarizeRun(
 
 /** Prompt-facing language type. Mirrors the UI languages but is kept as a
  * plain union so prompt functions have no dependency on React code. */
-export type PromptLanguage = 'en' | 'he';
+export type PromptLanguage = 'en' | 'he' | 'es-MX';
 
 /**
  * System prompt contract.
@@ -135,19 +135,34 @@ export type PromptLanguage = 'en' | 'he';
  * section headings. The INSTRUCTIONS stay in English — models follow English
  * instructions most reliably — only the demanded output language changes.
  */
+interface SectionHeadings {
+  big: string;
+  telemetry: string;
+  next: string;
+}
+
+// One entry per PromptLanguage — adding a language means extending both maps
+// below, which TypeScript enforces (Record<PromptLanguage, ...> is exhaustive).
+const SECTION_HEADINGS: Record<PromptLanguage, SectionHeadings> = {
+  en: { big: 'The Big Picture', telemetry: 'Telemetry Breakdown', next: 'Next Step' },
+  he: { big: 'התמונה הגדולה', telemetry: 'ניתוח הנתונים', next: 'הצעד הבא' },
+  'es-MX': {
+    big: 'El Panorama General',
+    telemetry: 'Análisis de los Datos',
+    next: 'Próximo Paso',
+  },
+};
+
+const LANGUAGE_RULE: Record<PromptLanguage, string> = {
+  en: '',
+  he: 'Respond ENTIRELY in Hebrew. When you use the three-section format, use the exact Hebrew section headings below.',
+  'es-MX':
+    'Respond ENTIRELY in Spanish, using natural Mexican Spanish phrasing and the informal "tú" register. When you use the three-section format, use the exact Spanish section headings below.',
+};
+
 export function coachSystemPrompt(language: PromptLanguage = 'en'): string {
-  const headings =
-    language === 'he'
-      ? {
-          big: 'התמונה הגדולה',
-          telemetry: 'ניתוח הנתונים',
-          next: 'הצעד הבא',
-        }
-      : { big: 'The Big Picture', telemetry: 'Telemetry Breakdown', next: 'Next Step' };
-  const languageRule =
-    language === 'he'
-      ? 'Respond ENTIRELY in Hebrew. When you use the three-section format, use the exact Hebrew section headings below.'
-      : '';
+  const headings = SECTION_HEADINGS[language];
+  const languageRule = LANGUAGE_RULE[language];
   return `You are FAIN Coach, an experienced and encouraging running coach. Talk like a real coach in conversation — warm, direct, concise.
 ${languageRule}
 WHEN the runner shares a specific run for you to review (a message containing a run summary with distance, time and metrics), structure that reply in exactly three sections:
@@ -309,11 +324,16 @@ export function buildPlanRequest(
     // the model happily writes a mile count into a field named "...Meters".
     '- targetDistanceMeters is ALWAYS in METRES, whatever units the descriptions use. targetDurationSeconds (seconds) optional.',
   );
-  if (language === 'he') {
-    // FR-5.6 + dev plan §9.4: prose localized, schema untouched. Translating
-    // the type enum would break parsePlanResponse's validation.
+  // FR-5.6 + dev plan §9.4: prose localized, schema untouched. Translating
+  // the type enum would break parsePlanResponse's validation.
+  const descriptionLanguage: Partial<Record<PromptLanguage, string>> = {
+    he: 'HEBREW',
+    'es-MX': 'SPANISH (Mexican Spanish)',
+  };
+  const target = descriptionLanguage[language];
+  if (target) {
     lines.push(
-      '- Write every "description" in HEBREW. Keep all JSON keys and the "type" values in English exactly as specified above.',
+      `- Write every "description" in ${target}. Keep all JSON keys and the "type" values in English exactly as specified above.`,
     );
   }
   return lines.join('\n');

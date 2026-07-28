@@ -4,7 +4,7 @@ Local-first AI running coach PWA. Users upload `.tcx` files from any GPS watch, 
 
 **Live:** https://fainsilber.github.io/FAIN-Coach/ and https://fain-coach.fainsilber.workers.dev/ (both auto-deploy on push to `main` — see Deployment below)
 
-**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v2.3 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
+**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v2.4 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
 
 ## Commands
 
@@ -73,23 +73,27 @@ Both GitHub Pages and Cloudflare are live (dev-plan §12.1). CI builds each targ
 - `PlanGoalInput.currentWeeklyKm` is canonical km — the wizard converts from miles on entry, and `buildPlanRequest` always states the unit so a bare "16" can't be misread.
 - Plan JSON `targetDistanceMeters` is always metres, whatever units the prose uses; the prompt says so explicitly.
 
-## Language & RTL (built — Sprint 7)
+## Language & RTL (built — Sprint 7; three languages as of 2026-07-28)
 
-- `src/i18n/` owns it: `en.ts` is the source of truth for keys; every other catalog is `Record<MessageKey, string>` so a missing translation is a **compile error**. Adding a language = one catalog file + one `LANGUAGES` entry.
+- `src/i18n/` owns it: `en.ts` is the source of truth for keys; every other catalog is `Record<MessageKey, string>` so a missing translation is a **compile error**. Adding a language = one catalog file + one `LANGUAGES` entry — proven by Spanish (Mexico, `es-MX`), added with zero changes to any feature component.
+- Three catalogs today: `en.ts`, `he.ts`, `es-MX.ts`. Unit abbreviations (bpm, spm, W) stay in Latin form in every catalog, even RTL — they're units, not translated words.
 - **No user-visible string hard-coded in a component** — always `t('key')` via `useT()`/`useI18n()`. Pure functions (prompts) take a `PromptLanguage` parameter instead of using React context.
 - **Logical** Tailwind utilities only (`ms-*`/`ps-*`/`text-start`, never `ml-*`/`pl-*`/`text-left`). Numeric compound lines get `dir="ltr"`; inline values inside text get `<bdi>`; chat bubbles and workout descriptions use `dir="auto"`; charts and the lap table stay `dir="ltr"`.
-- Coach prompts localize the demanded OUTPUT and 3-step headings, but instructions stay English; plan JSON keys and `type` enum values stay English — only `description` is localized.
+- Coach prompts localize the demanded OUTPUT and 3-step headings, but instructions stay English; plan JSON keys and `type` enum values stay English — only `description` is localized. `coachSystemPrompt`'s headings/language-rule live in `Record<PromptLanguage, …>` lookup tables in `prompts.ts` — TypeScript enforces every language is present in both, so adding one that's missing a heading is a compile error, not a silent English fallback.
 - Language is per profile (`settings.language`) with a device-level `localStorage` fallback (`fain-coach.language`) so the profile gate is localized before any profile is active.
+- `detectLanguage()` maps browser language *prefixes* to catalogs, not exact tags — `es-ES`/`es-419`/bare `es` all resolve to `es-MX` since it's the only Spanish variant so far, mirroring the existing `he`/`iw` (legacy Hebrew tag) special-case. Revisit this mapping if a second Spanish catalog is ever added.
 
 ## Status
 
-Sprints 1–8, 10, 13, and 14 complete, local profiles added, deployed to both GitHub Pages and Cloudflare. Version 1.5.3, 162 tests passing. English + Hebrew (RTL), metric/imperial, configurable week start, manual run entry, shoe tracking, version/diagnostics, and up-front API-key gating on both AI features all shipped.
+Sprints 1–8, 10, 13, and 14 complete, local profiles added, deployed to both GitHub Pages and Cloudflare. Version 1.6.0, 167 tests passing. English + Hebrew (RTL) + Spanish (Mexico), metric/imperial, configurable week start, manual run entry, shoe tracking, version/diagnostics, and up-front API-key gating on both AI features all shipped.
 
 **Shipped, Sprint 10 — Cloudflare hosting.** See the Deployment section above for the mechanics. First deploy attempt failed on a `public/_redirects` file that conflicted with Cloudflare's own SPA handling — removed, not re-added; don't reintroduce one without re-reading the note above. Verified via curl (build identity, base path, SW, deep link, `/404.html` fallthrough) since browser tooling wasn't available at verification time — Hebrew/RTL and PWA installability were not independently re-checked on Cloudflare specifically, only inferred from the shared codebase already verified on Pages.
 
 **Shipped, Sprint 14 — version + diagnostics.** Version display (`src/lib/appInfo.ts`, injected in `vite.config.ts` via `define` from `package.json` + `git rev-parse --short HEAD`) and a bounded diagnostics log (`src/lib/log.ts`, Dexie `logs` table, v2) are live in Settings. `registerType` was switched from `'autoUpdate'` to `'prompt'` (with `injectRegister: false`) — that's the actual fix; autoUpdate never fires `onNeedRefresh`, it just reloads silently. **If you touch the logger, redaction is mandatory** — `logEvent()` enforces it, never bypass it by writing to `db.logs` directly. Never log the API key, chat content, or run notes (PRD FR-8.8) — metadata and event codes only. `saveRunAndPromptCoach` in `src/lib/saveRun.ts` is the single place `run.saved`/`run.save.failed` get logged for both entry paths.
 
 **Shipped, Sprint 13 — shoe tracking.** `src/lib/shoes.ts` (pure `shoeStatus`/`shoeMileage`/`mostRecentShoeId`) plus `src/pages/ShoesPage.tsx` (reachable from Settings, not the bottom nav — it's already full at five). Mileage is always derived from `initialDistanceMeters + Σ(runs assigned to that shoe)`, never stored — reassigning or deleting a run can't leave a stale total. The shoe picker (shared `PostRunForm`, used by both upload and manual entry) defaults to the most recently worn *active* pair and always offers "not recorded"; retired pairs vanish from the picker but stay visible on their historical runs and on the Shoes screen. Warn at ≥90%, over at ≥100% of `retirementDistanceMeters` — advisory only, never blocks saving. `shoes: '++id'` takes Dexie v3 (no index on `retired` — see the boolean-index hard rule above). `BACKUP_SCHEMA_VERSION` bumped to 2; `parseBackup` still accepts v1 files (no `shoes` key → treated as empty). The coach gets one line in its context when the active pair is at warn/over (FR-7.10) — verified end-to-end by intercepting the OpenRouter `fetch` call and confirming the alert text was present in the system prompt.
+
+**Shipped, 2026-07-28 — Spanish (Mexico), a third language.** See the Language & RTL section above for the mechanics; this is the record of what shipping it actually cost. Requested directly, outside the sprint backlog. Two files touched to add the language itself (`src/i18n/es-MX.ts`, `src/i18n/index.tsx`), plus `prompts.ts`'s coach-prompt lookup tables — genuinely zero changes anywhere else, confirming the FR-5.1 architecture claim. Verified end-to-end: every page renders correctly in Spanish, the API-key gate works identically, and the coach's actual system prompt (checked via fetch interception) demands `ENTIRELY in Spanish` with the correct localized headings. `i18n.test.ts` was generalized while doing this — completeness/placeholder-parity checks now loop over a catalog map instead of hard-coding Hebrew, so a fourth language gets the same test coverage for free.
 
 **Next — three independent-ish tracks:**
 - **Sprint 9** — design refresh ([dev-plan §11](docs/dev-plan.md)) is a deliberate placeholder; **do not invent a design direction**, it will be supplied.

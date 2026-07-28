@@ -17,7 +17,7 @@ A local-first AI running coach. Upload `.tcx` files from any GPS watch (Garmin, 
 - **Local profiles** — several runners can share one device, each with isolated data and an optional PIN. Note this is data *separation*, not encryption.
 - **Offline** — everything except LLM calls works without a network.
 - **Units & week start** — metric or imperial, and a week that starts Sunday or Monday. Switching only changes what you see: runs are always stored in metres, so backups stay portable between users of either system.
-- **English & Hebrew** — full right-to-left interface in Hebrew, per profile, and the AI coach replies in your language. More languages are a single translation file away.
+- **English, Hebrew & Spanish (Mexico)** — full right-to-left interface in Hebrew, per profile, and the AI coach replies in your language. More languages are a single translation file away.
 - **Backups** — versioned JSON export/import to move data between devices.
 - **Version & diagnostics** — Settings shows exactly which build you're running (version, commit, build time), with an explicit prompt when an update is ready — no more guessing whether a refresh worked. A local, exportable diagnostics log helps troubleshoot problems; it never contains your API key, chat messages, or notes.
 - **Shoe tracking** — register your shoes, assign runs to them, and see mileage accumulate toward a replacement threshold you set. The picker defaults to whichever pair you wore most recently; retire a pair instead of deleting it and its history stays intact. The coach mentions it once a pair is close to worn out.
@@ -63,4 +63,4 @@ Longer-term items live in [docs/dev-plan.md §16](docs/dev-plan.md), notably a G
 ## Docs
 
 - [Product Requirements (PRD v1.6)](docs/PRD.md)
-- [Development Plan v2.3](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
+- [Development Plan v2.4](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks

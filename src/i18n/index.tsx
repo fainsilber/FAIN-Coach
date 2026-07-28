@@ -10,16 +10,22 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { en, type MessageKey } from './en';
 import { he } from './he';
+import { esMX } from './es-MX';
 
 // Adding a language = one catalog file + one entry here. Nothing else changes.
 export const LANGUAGES = [
   { code: 'en', label: 'English', dir: 'ltr' },
   { code: 'he', label: 'עברית', dir: 'rtl' },
+  { code: 'es-MX', label: 'Español (México)', dir: 'ltr' },
 ] as const;
 
 export type Language = (typeof LANGUAGES)[number]['code'];
 
-const catalogs: Record<Language, Record<MessageKey, string>> = { en, he };
+const catalogs: Record<Language, Record<MessageKey, string>> = {
+  en,
+  he,
+  'es-MX': esMX,
+};
 
 export const LANGUAGE_SETTING_KEY = 'language';
 const DEVICE_LANGUAGE_KEY = 'fain-coach.language';
@@ -34,7 +40,9 @@ export function dirOf(language: Language): 'ltr' | 'rtl' {
 
 /** Date-formatting locale for the language. */
 export function localeOf(language: Language): string {
-  return language === 'he' ? 'he-IL' : 'en-GB';
+  if (language === 'he') return 'he-IL';
+  if (language === 'es-MX') return 'es-MX';
+  return 'en-GB';
 }
 
 /**
@@ -48,6 +56,9 @@ export function detectLanguage(): Language {
   for (const pref of navigator.languages ?? []) {
     const base = pref.slice(0, 2).toLowerCase();
     if (base === 'he' || base === 'iw') return 'he'; // 'iw' = legacy Hebrew tag
+    // Our only Spanish catalog is es-MX; any es-* browser preference (es-ES,
+    // es-419, bare es…) maps to it until a second Spanish variant exists.
+    if (base === 'es') return 'es-MX';
     if (isLanguage(base)) return base;
   }
   return 'en';
