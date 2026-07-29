@@ -53,6 +53,25 @@ describe('summarizeRun', () => {
     expect(s).toContain('Lap splits');
   });
 
+  it('includes elevation when present, converted for imperial (FR-5.9)', () => {
+    const hilly: RunRecord = {
+      ...fullRun,
+      totalAscentMeters: 291,
+      totalDescentMeters: 285,
+    };
+    const metric = summarizeRun(hilly);
+    expect(metric).toContain('Elevation: 291m up, 285m down');
+
+    // 291 m ≈ 955 ft — elevation is unit-dependent like distance.
+    const imperial = summarizeRun(hilly, 'imperial');
+    expect(imperial).toContain('955ft up');
+    expect(imperial).not.toContain('291m');
+  });
+
+  it('omits elevation entirely when the run has none', () => {
+    expect(summarizeRun(bareRun)).not.toContain('Elevation');
+  });
+
   it('never mentions absent metrics (FR-3.4 enforcement)', () => {
     const s = summarizeRun(bareRun).toLowerCase();
     expect(s).not.toContain('heart');

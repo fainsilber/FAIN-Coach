@@ -65,6 +65,7 @@ export const he: Record<MessageKey, string> = {
   'stat.maxHr': 'דופק מרבי',
   'stat.cadence': 'קדנס',
   'stat.power': 'הספק',
+  'stat.ascent': 'עלייה מצטברת',
   'stat.rpe': 'RPE',
 
   // Post-run form

@@ -13,9 +13,11 @@ import type {
 import type { LlmMessage } from '@/llm/LlmClient';
 import {
   distanceUnitLabel,
+  elevationUnitLabel,
   paceUnitLabel,
   secondsPerDistanceUnit,
   toDisplayDistance,
+  toDisplayElevation,
   type UnitSystem,
 } from '@/lib/units';
 
@@ -53,6 +55,10 @@ function fmtPace(
 
 function fmtDistance(meters: number, unit: UnitSystem, digits = 2): string {
   return `${toDisplayDistance(meters, unit).toFixed(digits)}${distanceUnitLabel(unit)}`;
+}
+
+function fmtElevation(meters: number, unit: UnitSystem): string {
+  return `${Math.round(toDisplayElevation(meters, unit))}${elevationUnitLabel(unit)}`;
 }
 
 function lapLine(lap: LapSplit, unit: UnitSystem): string {
@@ -101,6 +107,18 @@ export function summarizeRun(
   }
   if (run.avgPower !== undefined) {
     lines.push(`- Power: avg ${run.avgPower} W`);
+  }
+  // Elevation is genuine coaching context — the same pace uphill is a much
+  // harder effort — so it belongs alongside the other metrics rather than
+  // being dropped. Unit-aware per FR-5.9: metres or feet, never converted for
+  // imperial users only at display time.
+  if (run.totalAscentMeters !== undefined) {
+    const ascent = fmtElevation(run.totalAscentMeters, unit);
+    const descent =
+      run.totalDescentMeters !== undefined
+        ? `, ${fmtElevation(run.totalDescentMeters, unit)} down`
+        : '';
+    lines.push(`- Elevation: ${ascent} up${descent}`);
   }
   if (run.rpe !== undefined) {
     lines.push(`- Effort (RPE): ${run.rpe}/10`);

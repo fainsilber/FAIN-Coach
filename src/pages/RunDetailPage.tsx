@@ -13,6 +13,7 @@ import {
   formatDistance,
   formatDistanceValue,
   formatDuration,
+  formatElevation,
   formatPace,
   formatPaceValue,
 } from '@/lib/format';
@@ -138,6 +139,11 @@ export function RunDetailPage() {
     stats.push([t('stat.cadence'), `${run.avgCadence} spm`]);
   if (run.avgPower !== undefined)
     stats.push([t('stat.power'), `${run.avgPower} W`]);
+  if (run.totalAscentMeters !== undefined)
+    stats.push([
+      t('stat.ascent'),
+      formatElevation(run.totalAscentMeters, unitSystem),
+    ]);
   if (run.rpe !== undefined) stats.push([t('stat.rpe'), String(run.rpe)]);
 
   const pace = points(run.laps, (l) =>

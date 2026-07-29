@@ -65,6 +65,7 @@ export const esMX: Record<MessageKey, string> = {
   'stat.maxHr': 'FC máxima',
   'stat.cadence': 'Cadencia',
   'stat.power': 'Potencia',
+  'stat.ascent': 'Desnivel positivo',
   'stat.rpe': 'RPE',
 
   // Post-run form

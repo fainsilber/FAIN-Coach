@@ -22,6 +22,11 @@ export interface LapSplit {
   avgHeartRate?: number;
   avgCadence?: number;
   avgPower?: number;
+  /** Elevation gained/lost during this lap, in metres. Absent when the file
+   * carried no altitude data — never defaulted to 0, which would claim a flat
+   * run rather than an unmeasured one (FR-1.3). */
+  ascentMeters?: number;
+  descentMeters?: number;
 }
 
 export type MatchStatus = 'unmatched' | 'suggested' | 'confirmed' | 'unplanned';
@@ -46,6 +51,13 @@ export interface RunRecord {
   maxHeartRate?: number;
   avgCadence?: number; // normalized SPM
   avgPower?: number;
+  /**
+   * Total elevation gained / lost over the run, in metres (FR-5.9 —
+   * unit-dependent at the display boundary, stored SI like every other
+   * distance). Absent when the source had no altitude data.
+   */
+  totalAscentMeters?: number;
+  totalDescentMeters?: number;
   laps: LapSplit[];
   rpe?: number; // 1-10
   feelTags?: string[]; // 'legs-heavy' | 'slept-poorly' | 'sore' | ...

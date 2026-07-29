@@ -81,6 +81,48 @@ function trackpointDistance(trackpoints: Element[]): number {
   return readings[readings.length - 1] - readings[0];
 }
 
+/**
+ * Metres a climb (or descent) must accumulate before it counts.
+ *
+ * This is the whole reason elevation needs care rather than a one-line sum.
+ * Barometric and GPS altitude both jitter by a metre or two constantly, and a
+ * real Garmin file carries thousands of trackpoints — the 21k fixture has
+ * 7,441. Naively adding every positive delta integrates that noise and reports
+ * hundreds of metres of "climb" on a flat run.
+ *
+ * 3 m is the usual industry threshold and comfortably exceeds typical jitter
+ * while still catching genuine rolling terrain.
+ */
+const ELEVATION_NOISE_THRESHOLD_METERS = 3;
+
+/**
+ * Cumulative ascent/descent from a sequence of altitude readings, with
+ * hysteresis: a move only counts once it has travelled far enough from the
+ * last committed reference to be real, and the reference then resets there.
+ * Small oscillations never accumulate.
+ */
+export function elevationChange(altitudes: number[]): {
+  ascentMeters: number;
+  descentMeters: number;
+} {
+  let ascentMeters = 0;
+  let descentMeters = 0;
+  if (altitudes.length < 2) return { ascentMeters, descentMeters };
+
+  let reference = altitudes[0];
+  for (const altitude of altitudes) {
+    const delta = altitude - reference;
+    if (delta >= ELEVATION_NOISE_THRESHOLD_METERS) {
+      ascentMeters += delta;
+      reference = altitude;
+    } else if (delta <= -ELEVATION_NOISE_THRESHOLD_METERS) {
+      descentMeters += -delta;
+      reference = altitude;
+    }
+  }
+  return { ascentMeters, descentMeters };
+}
+
 interface LapAggregate {
   split: LapSplit;
   maxHeartRate?: number;
@@ -110,6 +152,14 @@ function parseLap(lapEl: Element, lapIndex: number): LapAggregate {
     (lx ? numFrom(childByLocal(lx, 'AvgWatts')) : undefined) ??
     mean(collect(trackpoints, (tp) => tpxNum(tp, 'Watts')));
 
+  // Elevation must be derived here, while the trackpoints still exist — the
+  // parser discards them before returning, so this is the only chance.
+  const altitudes = collect(trackpoints, (tp) =>
+    numFrom(childByLocal(tp, 'AltitudeMeters')),
+  );
+  const hasElevation = altitudes.length >= 2;
+  const { ascentMeters, descentMeters } = elevationChange(altitudes);
+
   return {
     split: {
       lapIndex,
@@ -122,9 +172,25 @@ function parseLap(lapEl: Element, lapIndex: number): LapAggregate {
         avgCadence: Math.round(normalizeCadence(rawCadence)),
       }),
       ...(avgPower !== undefined && { avgPower: Math.round(avgPower) }),
+      // Only claim elevation when the file actually carried altitude. A lap
+      // that genuinely gained nothing reports 0; one with no data reports
+      // nothing at all, and the two must not look alike (FR-3.4).
+      ...(hasElevation && {
+        ascentMeters: Math.round(ascentMeters),
+        descentMeters: Math.round(descentMeters),
+      }),
     },
     ...(maxHeartRate !== undefined && { maxHeartRate }),
   };
+}
+
+/** Sums a per-lap elevation field, or undefined when no lap reported one. */
+function sumElevation(
+  laps: LapSplit[],
+  pick: (lap: LapSplit) => number | undefined,
+): number | undefined {
+  const values = collect(laps, pick);
+  return values.length > 0 ? values.reduce((a, b) => a + b, 0) : undefined;
 }
 
 /** Duration-weighted average across laps, using only laps that have the metric. */
@@ -178,6 +244,8 @@ export function parseTcx(xml: string): ParsedRun {
   const avgCadence = weightedAvg(laps, (l) => l.avgCadence);
   const avgPower = weightedAvg(laps, (l) => l.avgPower);
   const maxHeartRate = maxOf(collect(aggregates, (a) => a.maxHeartRate));
+  const totalAscentMeters = sumElevation(laps, (l) => l.ascentMeters);
+  const totalDescentMeters = sumElevation(laps, (l) => l.descentMeters);
 
   return {
     date,
@@ -189,6 +257,8 @@ export function parseTcx(xml: string): ParsedRun {
     ...(maxHeartRate !== undefined && { maxHeartRate }),
     ...(avgCadence !== undefined && { avgCadence: Math.round(avgCadence) }),
     ...(avgPower !== undefined && { avgPower: Math.round(avgPower) }),
+    ...(totalAscentMeters !== undefined && { totalAscentMeters }),
+    ...(totalDescentMeters !== undefined && { totalDescentMeters }),
     laps,
     matchStatus: 'unmatched',
   };

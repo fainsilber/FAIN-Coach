@@ -63,6 +63,7 @@ export const en = {
   'stat.maxHr': 'Max HR',
   'stat.cadence': 'Cadence',
   'stat.power': 'Power',
+  'stat.ascent': 'Elevation gain',
   'stat.rpe': 'RPE',
 
   // Post-run form
