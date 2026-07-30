@@ -46,6 +46,19 @@ export class FainCoachDB extends Dexie {
       runs: '++id, date, matchStatus, plannedWorkoutId, shoeId',
       shoes: '++id',
     });
+    // Sprint 15: provider import. `[source+externalId]` makes "have I already
+    // imported this activity?" a single indexed lookup (FR-9.3).
+    //
+    // Deliberately NOT unique (`&`). Uniqueness is enforced in application code
+    // instead, for two reasons: a re-import should report "already imported"
+    // rather than throw mid-batch, and a unique constraint would surface as a
+    // sync-time ConstraintError if two devices imported the same activity
+    // while offline — the same class of failure that broke cloud import in
+    // v1.8.0. Rows without `externalId` (every TCX/manual run) are absent from
+    // a compound index entirely, so existing data needs no migration.
+    this.version(4).stores({
+      runs: '++id, date, matchStatus, plannedWorkoutId, shoeId, [source+externalId]',
+    });
   }
 }
 
@@ -85,6 +98,12 @@ export class FainCoachCloudDB extends Dexie {
       // Device-local, never synced — same schema as the local database.
       settings: 'key',
       logs: '++id, at',
+    });
+    // Sprint 15: same provider-import index as the local schema above (and the
+    // same reasoning for leaving it non-unique). A real bump rather than an
+    // edit of v1 — this database already holds live account data.
+    this.version(2).stores({
+      runs: '@id, date, matchStatus, plannedWorkoutId, shoeId, [source+externalId]',
     });
     this.cloud.configure({
       databaseUrl,

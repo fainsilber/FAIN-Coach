@@ -32,3 +32,27 @@ export function buildCoachMessage({
     t('coach.runQuestion'),
   ].join('\n');
 }
+
+/**
+ * The single message posted after a batch import, instead of one per run.
+ *
+ * Deliberately short: it announces the import and asks a question, but carries
+ * no run summaries. The coach's own context builder already supplies recent
+ * runs from the database, and inlining eighty summaries here would blow the
+ * ~1,000-token post-run budget many times over.
+ */
+export function buildBatchImportMessage({
+  count,
+  rangeLabel,
+  t,
+}: {
+  count: number;
+  rangeLabel: string;
+  t: Translate;
+}): string {
+  return [
+    t('coach.batchIntro', { count, range: rangeLabel }),
+    '',
+    t('coach.batchQuestion'),
+  ].join('\n');
+}

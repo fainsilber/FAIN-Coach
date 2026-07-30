@@ -285,7 +285,7 @@ breakdown. Status as of 2026-07-30:
 | 12b | Pricing investigation + billing + gating | ▶ Specified, **blocked** — payment provider undecided (dev-plan §12.4) |
 | 13 | Shoe tracking (§4.7, FR-7.1–7.11) | ✅ Complete |
 | 14 | Version visibility & diagnostics (§4.8, FR-8.1–8.11) | ✅ Complete |
-| 15 | Provider import: Garmin (§4.9, FR-9.1–9.11) | ▶ Specified — **needs no Worker and no Sprint 12 at all**, only Sprint 11 (see dev-plan §15) |
+| 15 | Provider import: Garmin (§4.9, FR-9.1–9.11) | ◐ **Stage A shipped** (v1.9.0) — local export helper + batch import with dedupe, no backend needed. Stages B/C in dev-plan §15.1 |
 | 16–17 | Provider import: Smashrun, then Strava (§4.9) | ▶ Specified — need *a* Worker, not necessarily Sprint 12's (see dev-plan §15) |
 
 ---

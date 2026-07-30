@@ -39,8 +39,9 @@ export const en = {
 
   // Upload
   'upload.title': 'Upload Run',
-  'upload.dropHere': 'Drop a .tcx file here',
-  'upload.tapToChoose': 'or tap to choose a file exported from your watch',
+  'upload.dropHere': 'Drop .tcx files here',
+  'upload.tapToChoose':
+    'or tap to choose — one run, or a whole folder to import at once',
   'upload.privacyNote':
     'Parsing happens entirely in your browser — the file never leaves this device.',
   'upload.notTcx': '"{name}" is not a .tcx file.',
@@ -53,6 +54,22 @@ export const en = {
     'Looks like your planned {type} for {weekday}: “{description}” — was it?',
   'upload.matchYes': "Yes, that's it",
   'upload.matchNo': 'No, unplanned run',
+
+  // Batch import (Sprint 15) — many files at once
+  'upload.batchTitle': 'Import {count} runs',
+  'upload.batchSubtitle':
+    'Review before importing. Runs you already have are skipped automatically.',
+  'upload.batchReading': 'Reading {count} files…',
+  'upload.batchImport': 'Import {count} runs',
+  'upload.batchImportOne': 'Import 1 run',
+  'upload.batchNothing': 'Nothing new to import.',
+  'upload.batchSelectAll': 'Select all',
+  'upload.batchStatusDuplicate': 'Already imported',
+  'upload.batchStatusError': 'Could not read',
+  'upload.batchMatched': 'Matches plan',
+  'upload.batchNoSubjective':
+    'How each run felt is not asked for on a bulk import — you can add notes to individual runs later.',
+  'upload.batchFailed': 'Failed to import the runs. Nothing was saved.',
 
   // Stat labels
   'stat.distance': 'Distance',
@@ -104,6 +121,10 @@ export const en = {
   'coach.runIntro': 'I just finished a run.',
   'coach.runQuestion': 'What do you make of it, and what should I do next?',
   'coach.plannedNote': 'This was my planned workout: "{description}"',
+  'coach.batchIntro':
+    'I just imported {count} past runs into my log ({range}).',
+  'coach.batchQuestion':
+    'Looking at this history as a whole, what patterns stand out, and what should I focus on next?',
 
   // Manual run entry
   'manual.link': 'or enter a run manually',

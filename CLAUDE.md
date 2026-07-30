@@ -4,7 +4,7 @@ Local-first AI running coach PWA. Users upload `.tcx` files from any GPS watch, 
 
 **Live:** https://fainsilber.github.io/FAIN-Coach/ and https://fain-coach.fainsilber.workers.dev/ (both auto-deploy on push to `main` — see Deployment below)
 
-**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v3.1 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
+**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v3.2 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
 
 ## Commands
 
@@ -24,7 +24,8 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 - `src/lib/profiles.ts` — local profile registry (localStorage), salted-PIN hashing, legacy-DB adoption. Data *separation*, not security (PRD §4.4).
 - `src/lib/backup.ts` — versioned JSON export/import over all tables (except `logs`, deliberately); import replaces the DB, preserving ids and cross-table links. Accepts both the current schema version and v1 (pre-Sprint-13, no `shoes` key).
 - `src/lib/matching.ts` — run↔plan auto-match (±1 day, distance tie-break) and adherence stats.
-- `src/lib/saveRun.ts` — **the single write path for a completed run**, shared by TCX upload and manual entry: persist, complete a matched workout, inject the coach message. Add a new entry point here rather than duplicating the sequence.
+- `src/lib/saveRun.ts` — **the single write path for a completed run**, shared by TCX upload and manual entry: persist, complete a matched workout, inject the coach message. Add a new entry point here rather than duplicating the sequence. `saveRunsBatch` is the bulk-import sibling — atomic, and posts **one** summary coach message instead of one per run (logging stays outside the transaction; `logs` isn't in scope and writing to it inside would abort it).
+- `src/lib/providerImport.ts` — pure batch-import rules: `externalIdFromFilename` (reads the id back out of `garmin-<activityId>.tcx`), `parseImportCandidate` (a bad file becomes an error row, never throws), `markDuplicates` (existing rows *and* repeats within one batch).
 - `src/lib/manualRun.ts` — pure validation/conversion for manual entry (form strings → `NewRun`), so the rules are testable without the form.
 - `src/lib/shoes.ts` — pure shoe-mileage functions (`shoeStatus`, `shoeMileage`, `mostRecentShoeId`) over a shoe + run list; mileage is always derived, never stored. `src/pages/ShoesPage.tsx` is the management UI (off Settings, not the bottom nav).
 - `src/lib/log.ts` — bounded (~500 entry) diagnostics log; `logEvent()` enforces redaction, swallows its own errors, never throws.
@@ -49,6 +50,7 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 - **LLM retries**: the connection phase retries automatically; never retry after tokens have streamed (duplicates output) and never on 4xx.
 - **Ids are `EntityId = number | string`, and you must never `Number()` one.** The local tier uses Dexie auto-increment numbers; a cloud account uses Dexie Cloud `@id` strings (Sprint 11). Turning a `<select>` value or route param back into an id goes through `parseEntityId()` in `src/db/db.ts` — the *only* place that distinction belongs. `Number()` on a cloud id gives `NaN`, and `.get(NaN)` returns undefined with no error: a lookup that fails silently.
 - **Booleans are not a valid IndexedDB index.** Dexie/IndexedDB can't index a boolean field reliably — filter it client-side instead (e.g. `shoes.retired`). Don't repeat this mistake in a future schema change.
+- **Provider dedupe is `[source+externalId]`, deliberately NOT unique.** Uniqueness is enforced in application code (`markDuplicates`) so a re-import reports "already imported" instead of throwing mid-batch, and so two devices importing the same activity offline can't produce a sync-time `ConstraintError`. Rows with no `externalId` are absent from a compound index entirely — verified, which is why existing runs needed no migration.
 - **Every AI-dependent action must be gated on a live `hasKey` check, not just error handling after the fact.** ChatPage and PlanPage both `useLiveQuery` the API key's presence and disable the actual submit control (Send / Generate) while it's `!== true`, with a persistent banner linking to Settings explaining why — never let the user fill out a form or type a message only to discover on submit that there's no key. This applies to any future AI-dependent feature too, including Sprint 12's managed-key `ProxyClient` path once BYO isn't the only option.
 
 ## Deployment — two targets, one codebase

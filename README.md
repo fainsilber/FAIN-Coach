@@ -9,6 +9,7 @@ A local-first AI running coach. Upload `.tcx` files from any GPS watch (Garmin, 
 ## Features
 
 - **TCX upload** — drag-and-drop or file picker, parsed entirely in-browser. Handles missing metrics gracefully and normalizes single-leg cadence. Trackpoints are discarded after lap aggregation, so a 5.5 MB file becomes a ~3 KB record.
+- **Bulk import** — drop a whole folder of `.tcx` files at once and review them before anything is saved. Runs you already imported are recognised and skipped, an unreadable file is reported without derailing the rest, and the coach gets one summary message instead of one per run. [`tools/garmin-export/`](tools/garmin-export/) downloads your Garmin history into such a folder — it runs on your machine, and your Garmin password never leaves it.
 - **Manual entry** — no file? Log the run by hand. Only date, distance and time are required; anything you didn't measure is simply left out, and the coach is told the numbers are self-reported.
 - **Run history & detail** — lap table plus per-lap charts for pace, heart rate, cadence, and power. Charts appear only for metrics your watch actually recorded.
 - **Subjective input** — RPE 1–10, feel tags, and free-text notes, fused with the telemetry when coaching.
@@ -64,4 +65,4 @@ Longer-term items live in [docs/dev-plan.md §16](docs/dev-plan.md), notably a G
 ## Docs
 
 - [Product Requirements (PRD v1.7)](docs/PRD.md)
-- [Development Plan v3.1](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
+- [Development Plan v3.2](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks

@@ -41,8 +41,8 @@ export const he: Record<MessageKey, string> = {
 
   // Upload
   'upload.title': 'העלאת ריצה',
-  'upload.dropHere': 'גררו לכאן קובץ tcx.',
-  'upload.tapToChoose': 'או הקישו לבחירת קובץ שיוצא מהשעון',
+  'upload.dropHere': 'גררו לכאן קבצי tcx.',
+  'upload.tapToChoose': 'או הקישו לבחירה — ריצה אחת, או תיקייה שלמה לייבוא בבת אחת',
   'upload.privacyNote':
     'הניתוח מתבצע כולו בדפדפן — הקובץ לעולם לא עוזב את המכשיר.',
   'upload.notTcx': '"{name}" אינו קובץ tcx.',
@@ -55,6 +55,22 @@ export const he: Record<MessageKey, string> = {
     'נראה כמו אימון ה{type} המתוכנן ליום {weekday}: "{description}" — נכון?',
   'upload.matchYes': 'כן, זה האימון',
   'upload.matchNo': 'לא, ריצה לא מתוכננת',
+
+  // ייבוא מרובה (ספרינט 15)
+  'upload.batchTitle': 'ייבוא {count} ריצות',
+  'upload.batchSubtitle':
+    'עברו על הרשימה לפני הייבוא. ריצות שכבר קיימות מדולגות אוטומטית.',
+  'upload.batchReading': 'קורא {count} קבצים…',
+  'upload.batchImport': 'ייבאו {count} ריצות',
+  'upload.batchImportOne': 'ייבאו ריצה אחת',
+  'upload.batchNothing': 'אין מה לייבא.',
+  'upload.batchSelectAll': 'בחרו הכול',
+  'upload.batchStatusDuplicate': 'כבר יובאה',
+  'upload.batchStatusError': 'לא ניתן לקרוא',
+  'upload.batchMatched': 'תואם לתוכנית',
+  'upload.batchNoSubjective':
+    'בייבוא מרובה לא נשאלים איך הרגישה כל ריצה — אפשר להוסיף הערות לריצות בודדות מאוחר יותר.',
+  'upload.batchFailed': 'ייבוא הריצות נכשל. שום דבר לא נשמר.',
 
   // Stat labels
   'stat.distance': 'מרחק',
@@ -105,6 +121,9 @@ export const he: Record<MessageKey, string> = {
   'coach.runIntro': 'סיימתי עכשיו ריצה.',
   'coach.runQuestion': 'מה דעתך עליה, ומה כדאי לי לעשות בהמשך?',
   'coach.plannedNote': 'זה היה האימון המתוכנן שלי: "{description}"',
+  'coach.batchIntro': 'ייבאתי כרגע {count} ריצות עבר ליומן ({range}).',
+  'coach.batchQuestion':
+    'במבט על ההיסטוריה הזו כמכלול, אילו דפוסים בולטים, ועל מה כדאי לי להתמקד עכשיו?',
 
   // Manual run entry
   'manual.link': 'או הזינו ריצה ידנית',

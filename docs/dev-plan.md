@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v3.1)
+# FAIN Coach — Development Plan (v3.2)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -43,7 +43,11 @@ Garmin account** — an API-fetched TCX parsed by the unmodified `parseTcx`
 matched Garmin's own summary values exactly (distance, duration, laps, HR,
 power, start time), FR-1.4's cadence doubling fired on real single-leg
 data, and login hit **429 rate limits** that only the multi-strategy
-fallback survived (§15.1).
+fallback survived (§15.1); **v3.2 (2026-07-31)** records **Sprint 15
+stage A as shipped** (v1.9.0) — batch multi-file import with
+`[source+externalId]` dedupe and a single summary coach message, plus
+`tools/garmin-export/`, and stages the rest as A → B → C where each
+reuses the last rather than replacing it (§15.1).
 
 **Status:** Sprints 1–8, 10, 11, 13, and 14 complete. Live on
 https://fainsilber.github.io/FAIN-Coach/ (local tier) and
@@ -1315,7 +1319,43 @@ plan; see the 2026-07-30 note below for why.
 - **Import is explicit (FR-9.4)**: pick a date range, preview the list, choose
   what to pull. No silent full-history sync.
 
-### 15.1 Sprint 15 — Garmin Connect (unofficial route; read the caveats — verified working 2026-07-30)
+### 15.1 Sprint 15 — Garmin Connect
+
+> **Stage A shipped 2026-07-31 (v1.9.0).** The spike's finding that only the
+> *login* needs Python — every authenticated call, TCX download included, is a
+> plain bearer-token GET — splits this sprint into stages that each reuse the
+> last:
+>
+> - **A (done):** `tools/garmin-export/` downloads TCX locally; the app gained
+>   **batch import** with dedupe. **No backend**, so it works on the free tier
+>   too, and batch import helps anyone with a bulk export regardless of the API.
+> - **B (next):** the helper pushes tokens to a Worker, which does the
+>   downloads. One click, works on mobile, Sync tier only.
+> - **C (optional, gated on demand):** a Python service mints tokens
+>   server-side, removing the local step. **C is B with minting relocated**, so
+>   it replaces nothing — *provided* B's token store stays agnostic about who
+>   minted the tokens, the same swappable boundary `LlmClient` gave the AI
+>   transport.
+>
+> Reasons not to jump to C: login hit **429 twice from one residential IP**
+> during the spike, and C funnels every user's login through one server IP — the
+> worst shape for that. A Garmin token also grants activities, GPS traces, HR
+> and sleep, which is a far heavier thing to hold than an OpenRouter key.
+
+**Stage A as built:** `RunRecord.externalId` + a non-unique `[source+externalId]`
+index (Dexie v4 local / v2 cloud); `parseImportCandidate` / `markDuplicates` in
+[src/lib/providerImport.ts](../src/lib/providerImport.ts); `saveRunsBatch` in
+[src/lib/saveRun.ts](../src/lib/saveRun.ts); batch review UI in `UploadPage`.
+The index is deliberately **not** unique — a re-import must report "already
+imported" rather than throw, and a unique constraint would surface as a
+sync-time `ConstraintError` when two devices import the same activity offline.
+
+**Bulk import posts one coach message, not one per run** — eighty runs would
+otherwise flood the thread and fire eighty LLM calls. It also collects no
+subjective input: nobody recalls RPE months later, and FR-6.4 requires absent
+to stay absent.
+
+#### Caveats of the unofficial route (unchanged)
 
 Garmin's official API is a **paid, approval-gated programme**, which is why the
 practical route is an unofficial client. That route carries three costs that

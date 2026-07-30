@@ -70,7 +70,17 @@ export interface RunRecord {
    * indexes, not fields, so this needed no version bump or migration.
    * Manually entered metrics are self-reported, which the coach summary flags.
    */
-  source?: 'tcx' | 'manual';
+  source?: 'tcx' | 'manual' | 'garmin';
+  /**
+   * The provider's own activity id, for idempotent import (FR-9.3). Present
+   * only on provider-imported runs; `[source+externalId]` is indexed so a
+   * re-import can recognise what it already has.
+   *
+   * Deliberately a STRING even though Garmin's ids are numeric — provider ids
+   * are opaque identifiers, not numbers, and Strava/Smashrun need not agree
+   * with Garmin about their shape. Never do arithmetic on one.
+   */
+  externalId?: string;
   /** Which pair of shoes this run was in. Absent = not recorded (FR-7.2) —
    * always valid, never blocks saving. */
   shoeId?: EntityId;

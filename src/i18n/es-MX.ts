@@ -41,8 +41,9 @@ export const esMX: Record<MessageKey, string> = {
 
   // Upload
   'upload.title': 'Subir Carrera',
-  'upload.dropHere': 'Suelta aquí un archivo .tcx',
-  'upload.tapToChoose': 'o toca para elegir un archivo exportado de tu reloj',
+  'upload.dropHere': 'Suelta aquí archivos .tcx',
+  'upload.tapToChoose':
+    'o toca para elegir — una carrera, o una carpeta entera para importar de una vez',
   'upload.privacyNote':
     'El análisis ocurre completamente en tu navegador — el archivo nunca sale de este dispositivo.',
   'upload.notTcx': '"{name}" no es un archivo .tcx.',
@@ -55,6 +56,22 @@ export const esMX: Record<MessageKey, string> = {
     'Parece tu {type} planeado para el {weekday}: "{description}" — ¿fue este?',
   'upload.matchYes': 'Sí, así fue',
   'upload.matchNo': 'No, carrera no planeada',
+
+  // Importación por lotes (Sprint 15)
+  'upload.batchTitle': 'Importar {count} carreras',
+  'upload.batchSubtitle':
+    'Revisa antes de importar. Las carreras que ya tienes se omiten automáticamente.',
+  'upload.batchReading': 'Leyendo {count} archivos…',
+  'upload.batchImport': 'Importar {count} carreras',
+  'upload.batchImportOne': 'Importar 1 carrera',
+  'upload.batchNothing': 'No hay nada nuevo que importar.',
+  'upload.batchSelectAll': 'Seleccionar todo',
+  'upload.batchStatusDuplicate': 'Ya importada',
+  'upload.batchStatusError': 'No se pudo leer',
+  'upload.batchMatched': 'Coincide con el plan',
+  'upload.batchNoSubjective':
+    'En una importación masiva no se pregunta cómo se sintió cada carrera — puedes agregar notas a carreras individuales después.',
+  'upload.batchFailed': 'No se pudieron importar las carreras. No se guardó nada.',
 
   // Stat labels
   'stat.distance': 'Distancia',
@@ -106,6 +123,9 @@ export const esMX: Record<MessageKey, string> = {
   'coach.runIntro': 'Acabo de terminar una carrera.',
   'coach.runQuestion': '¿Qué opinas de ella y qué debería hacer después?',
   'coach.plannedNote': 'Este era mi entrenamiento planeado: "{description}"',
+  'coach.batchIntro': 'Acabo de importar {count} carreras pasadas a mi registro ({range}).',
+  'coach.batchQuestion':
+    'Viendo este historial en conjunto, ¿qué patrones destacan y en qué debería enfocarme ahora?',
 
   // Manual run entry
   'manual.link': 'o ingresa una carrera manualmente',
