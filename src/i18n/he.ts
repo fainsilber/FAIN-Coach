@@ -293,6 +293,16 @@ export const he: Record<MessageKey, string> = {
   'run.shoe': 'נעליים',
   'run.noShoe': '— לא מקושר —',
 
+  // Cloud account (Sprint 11 — cloud deployment only)
+  'cloud.title': 'כניסה',
+  'cloud.subtitle': 'הגרסה הזו מסנכרנת את הריצות שלכם בין המכשירים. היכנסו עם האימייל — בלי סיסמה לזכור.',
+  'cloud.email': 'כתובת אימייל',
+  'cloud.continue': 'המשך',
+  'cloud.working': 'מעבד…',
+  'cloud.connecting': 'מתחבר…',
+  'cloud.signOut': 'התנתקות',
+  'cloud.privacyNote': 'הריצות מסונכרנות בענן, בהיקף החשבון שלכם. מפתח ה-API של OpenRouter לעולם לא עוזב את המכשיר הזה.',
+
   // Model select
   'model.custom': 'מותאם אישית…',
   'model.customHint':

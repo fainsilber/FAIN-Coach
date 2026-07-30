@@ -36,6 +36,33 @@ const TARGET_ONLY_FILES: Record<DeployTarget, readonly string[]> = {
   cloudflare: [],
 };
 
+/**
+ * Which Dexie Cloud database each deployment talks to (dev plan §12.2).
+ *
+ * This is the switch between the two tiers, and it is deliberately per-TARGET
+ * rather than a runtime toggle inside the app:
+ *
+ * - `pages` → **null**. GitHub Pages is the free tier: fully local, no
+ *   accounts, no sign-in, and the cloud addon is not even in the bundle.
+ * - `cloudflare` → the cloud database. That deployment is the Sync tier and
+ *   requires signing in; the account is the identity, so local profiles don't
+ *   apply there.
+ *
+ * Committed rather than dashboard-configured because the database URL is not a
+ * secret — it only names which database to talk to. The credential is the
+ * CLI's `dexie-cloud.key`, which stays on the owner's machine and is
+ * gitignored (docs/dexie-cloud-setup.md). Keeping it here means the two
+ * deployments' behaviour is visible in the repo instead of hidden in two
+ * different hosting dashboards.
+ *
+ * `VITE_DEXIE_CLOUD_URL` overrides, which is how you point a build at a
+ * different database (or enable cloud in local dev).
+ */
+const CLOUD_URL_BY_TARGET: Record<DeployTarget, string | null> = {
+  pages: null,
+  cloudflare: 'https://z18kml7kr.dexie.cloud',
+};
+
 // No public/_redirects for the Cloudflare target: an earlier version of this
 // file shipped one (`/* /index.html 200`, the classic Pages SPA-fallback
 // idiom) and it broke the deploy outright. Cloudflare's current import flow
@@ -102,11 +129,16 @@ function shortSha(): string {
 export default defineConfig(({ command, isPreview }) => {
   const target = resolveTarget();
   const outDir = path.resolve(__dirname, 'dist');
-  const cloudUrl = process.env.VITE_DEXIE_CLOUD_URL;
   // The dev server is not a deployment — it always serves at '/'. `vite
   // preview` serves the built artifact, so it must match the build's base.
   const isDevServer = command === 'serve' && !isPreview;
   const base = isDevServer ? '/' : BASE_BY_TARGET[target];
+  // Dev stays LOCAL by default even though the default target is `cloudflare`,
+  // so day-to-day work isn't gated behind a sign-in. Set VITE_DEXIE_CLOUD_URL
+  // explicitly to exercise the cloud path in dev.
+  const cloudUrl =
+    process.env.VITE_DEXIE_CLOUD_URL ??
+    (isDevServer ? null : CLOUD_URL_BY_TARGET[target]);
   return {
     base,
     define: {

@@ -1,7 +1,7 @@
 {
   "name": "fain-coach",
   "private": true,
-  "version": "1.7.1",
+  "version": "1.8.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,8 @@
     "preview:pages": "cross-env DEPLOY_TARGET=pages vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "dev:cloud": "cross-env VITE_DEXIE_CLOUD_URL=https://z18kml7kr.dexie.cloud vite"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

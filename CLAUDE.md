@@ -53,7 +53,7 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 
 ## Deployment — two targets, one codebase
 
-Both GitHub Pages and Cloudflare are live (dev-plan §12.1). CI builds each target separately. `DEPLOY_TARGET` in `vite.config.ts` is the **only** switch:
+Both GitHub Pages and Cloudflare are live (dev-plan §12.1). CI builds each target separately. `DEPLOY_TARGET` in `vite.config.ts` is the **only** switch, and it now decides the identity model too — `CLOUD_URL_BY_TARGET` gives Cloudflare a Dexie Cloud database (sign-in required) and leaves GitHub Pages purely local (local profiles, addon not bundled):
 
 | Target | Base | SPA fallback | Build |
 |---|---|---|---|

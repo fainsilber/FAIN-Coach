@@ -1,8 +1,21 @@
 # Dexie Cloud — setup steps (Sprint 11)
 
+> **Status: done as of 2026-07-30.** The database exists
+> (`https://z18kml7kr.dexie.cloud`), origins are whitelisted, and the app is
+> pointed at it — the URL now lives in `CLOUD_URL_BY_TARGET` in
+> `vite.config.ts`, so **no hosting-dashboard configuration is needed**. Which
+> deployment uses it:
+>
+> | Deployment | Database | Sign-in |
+> |---|---|---|
+> | GitHub Pages | local only (addon not even bundled) | none — local profiles |
+> | Cloudflare (`workers.dev` + `coach.fainsilber.co.il`) | `z18kml7kr.dexie.cloud` | **required** |
+>
+> Keep the rest of this file for reference: creating another database, adding
+> an origin, or rotating the one in use.
+
 Everything here is **yours to do** — it needs a Dexie Cloud account, and the
-CLI writes a secret file that must never reach the repo. The app code is
-already in place and does nothing until step 4 gives it a database URL.
+CLI writes a secret file that must never reach the repo.
 
 **Time:** ~10 minutes. **Cost:** free tier is enough to start (confirm current
 limits at <https://dexie.org/cloud/pricing> before relying on it — pricing is
@@ -53,17 +66,22 @@ This is the step that is easy to miss and produces a confusing failure — the
 app loads fine but every sync request is rejected. Dexie Cloud only accepts
 requests from origins you explicitly allow.
 
-FAIN Coach runs on three origins, so whitelist all three:
+FAIN Coach runs on several origins. Only the ones that actually use the cloud
+database need whitelisting — GitHub Pages never talks to it, so it does not:
 
 ```bash
 npx dexie-cloud whitelist http://localhost:5173
 ```
 ```bash
-npx dexie-cloud whitelist https://fainsilber.github.io
-```
-```bash
 npx dexie-cloud whitelist https://fain-coach.fainsilber.workers.dev
 ```
+```bash
+npx dexie-cloud whitelist https://coach.fainsilber.co.il
+```
+
+**A custom domain is a separate origin.** Adding `coach.fainsilber.co.il` in
+Cloudflare did not carry over the `workers.dev` whitelist entry — each host
+needs its own.
 
 Check what's registered at any time with `npx dexie-cloud whitelist` (no
 arguments). Origins must match `location.origin` exactly — scheme and port
@@ -149,16 +167,21 @@ Once the URL is set, on the code side:
   pointing at one, in a single pass — `remapBackupForCloud()` in
   `src/lib/cloudMigration.ts`, covered by 17 unit tests.
 
-## Still to do after this (not blocked on you)
+## Still to do
 
-The pieces below need a live database to build against, which is why they're
-not done yet:
-
-- **Sign-in UI.** `customLoginGui: true` is set, so the app must render its own
-  email-OTP dialog against `db.cloud.userInteraction`. Not written yet.
-- **Triggering the migration.** `remapBackupForCloud()` is built and tested but
-  nothing calls it yet — first sign-in should offer to bring local data across.
+- **Triggering the migration.** `remapBackupForCloud()` is built and tested (17
+  tests) but nothing calls it yet — first sign-in should offer to bring an
+  existing local profile's data across. Not urgent while the Cloudflare
+  deployment has no accumulated data.
 - **Two-device verification.** Sprint 11's exit criteria (dev-plan §12.2): log a
-  run on one device, see it on another; offline edits reconcile.
+  run on one device, see it on another; offline edits reconcile. Needs two
+  signed-in devices and an OTP from the owner's inbox.
 
-Tell me once the database exists and I'll build those against it.
+## Testing the cloud path locally
+
+`npm run dev` stays **local** deliberately, so everyday work isn't gated behind
+a sign-in. To exercise the cloud build against the real database:
+
+```bash
+npm run dev:cloud
+```

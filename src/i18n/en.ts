@@ -295,6 +295,16 @@ export const en = {
   'run.shoe': 'Shoes',
   'run.noShoe': '— not linked —',
 
+  // Cloud account (Sprint 11 — cloud deployment only)
+  'cloud.title': 'Sign in',
+  'cloud.subtitle': 'This version keeps your runs in sync across your devices. Sign in with your email — no password to remember.',
+  'cloud.email': 'Email address',
+  'cloud.continue': 'Continue',
+  'cloud.working': 'Working…',
+  'cloud.connecting': 'Connecting…',
+  'cloud.signOut': 'Sign out',
+  'cloud.privacyNote': 'Your runs sync through the cloud, scoped to your account. Your OpenRouter API key never leaves this device.',
+
   // Model select
   'model.custom': 'Custom…',
   'model.customHint': 'Any model id from openrouter.ai/models works via Custom.',

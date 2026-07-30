@@ -1,7 +1,10 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
+import { CloudSignInGate } from './components/CloudSignInGate';
 import { ProfileGate } from './components/ProfileGate';
 import { UpdateBanner } from './components/UpdateBanner';
+import { db, type FainCoachCloudDB } from './db/db';
+import { isCloudBuild } from './db/cloudConfig';
 import { useT } from './i18n';
 import type { MessageKey } from './i18n/en';
 import { clearActiveProfile, getActiveProfile } from './lib/profiles';
@@ -26,7 +29,22 @@ const navItems: Array<{ to: string; labelKey: MessageKey }> = [
   { to: '/settings', labelKey: 'nav.settings' },
 ];
 
+/**
+ * Which identity model applies is decided by the DEPLOYMENT, not by a setting
+ * (dev plan §12.2):
+ *
+ * - Local/free build (GitHub Pages): local profiles, no sign-in.
+ * - Cloud build (Cloudflare): an account, and signing in is required. Profiles
+ *   don't apply — the account is the identity.
+ *
+ * `isCloudBuild()` folds to a constant, so the branch not taken is dropped
+ * along with everything it references.
+ */
 export function App() {
+  return isCloudBuild() ? <CloudApp /> : <LocalApp />;
+}
+
+function LocalApp() {
   const t = useT();
   const profile = getActiveProfile();
 
@@ -42,22 +60,57 @@ export function App() {
   }
 
   return (
+    <AppShell
+      identityChip={
+        <button
+          type="button"
+          onClick={() => {
+            clearActiveProfile();
+            window.location.reload();
+          }}
+          className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent"
+          title={t('app.switchProfileTitle')}
+        >
+          {t('app.switchProfile', { name: profile.name })}
+        </button>
+      }
+    />
+  );
+}
+
+function CloudApp() {
+  const t = useT();
+  return (
+    <>
+      <UpdateBanner />
+      <CloudSignInGate>
+        <AppShell
+          identityChip={
+            <button
+              type="button"
+              onClick={() => void (db as FainCoachCloudDB).cloud.logout()}
+              className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent"
+            >
+              {t('cloud.signOut')}
+            </button>
+          }
+        />
+      </CloudSignInGate>
+    </>
+  );
+}
+
+function AppShell({ identityChip }: { identityChip: ReactNode }) {
+  const t = useT();
+  return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <div className="flex min-h-dvh flex-col">
-        <UpdateBanner />
+        {/* Cloud builds mount this above the sign-in gate instead, so an
+            update can be applied without getting past login first. */}
+        {!isCloudBuild() && <UpdateBanner />}
         <header className="flex items-center justify-between border-b px-4 py-3">
           <h1 className="text-lg font-semibold">FAIN Coach</h1>
-          <button
-            type="button"
-            onClick={() => {
-              clearActiveProfile();
-              window.location.reload();
-            }}
-            className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent"
-            title={t('app.switchProfileTitle')}
-          >
-            {t('app.switchProfile', { name: profile.name })}
-          </button>
+          {identityChip}
         </header>
         <main className="flex flex-1 flex-col p-4">
           <Routes>

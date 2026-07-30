@@ -4,20 +4,38 @@
     {
       "name": "fain-coach-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5173
     },
     {
       "name": "fain-coach-preview-cloudflare",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "preview:cloudflare"],
+      "runtimeArgs": [
+        "run",
+        "preview:cloudflare"
+      ],
       "port": 4173
     },
     {
       "name": "fain-coach-preview-pages",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "preview:pages"],
+      "runtimeArgs": [
+        "run",
+        "preview:pages"
+      ],
       "port": 4173
+    },
+    {
+      "name": "fain-coach-dev-cloud",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:cloud"
+      ],
+      "port": 5174
     }
   ]
 }

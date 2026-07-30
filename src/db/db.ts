@@ -92,9 +92,11 @@ export class FainCoachCloudDB extends Dexie {
       // dialog, so it matches the rest of the interface and is localized
       // through the existing i18n catalogs.
       customLoginGui: true,
-      // Sync is opt-in per account: a build with a cloud URL still starts
-      // unauthenticated and fully local until the user actually signs in.
-      requireAuth: false,
+      // A cloud build IS the account tier — the deployment is the opt-in, so
+      // there is no useful unauthenticated state here. Local profiles don't
+      // apply either: the account is the identity. The free/local tier is a
+      // separate deployment that never sets a cloud URL at all.
+      requireAuth: true,
       unsyncedTables: [...UNSYNCED_TABLES],
     });
   }

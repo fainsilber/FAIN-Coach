@@ -301,6 +301,16 @@ export const esMX: Record<MessageKey, string> = {
   'run.shoe': 'Tenis',
   'run.noShoe': '— sin vincular —',
 
+  // Cloud account (Sprint 11 — cloud deployment only)
+  'cloud.title': 'Iniciar sesión',
+  'cloud.subtitle': 'Esta versión mantiene tus carreras sincronizadas entre tus dispositivos. Entra con tu correo — sin contraseña que recordar.',
+  'cloud.email': 'Correo electrónico',
+  'cloud.continue': 'Continuar',
+  'cloud.working': 'Procesando…',
+  'cloud.connecting': 'Conectando…',
+  'cloud.signOut': 'Cerrar sesión',
+  'cloud.privacyNote': 'Tus carreras se sincronizan en la nube, limitadas a tu cuenta. Tu clave de API de OpenRouter nunca sale de este dispositivo.',
+
   // Model select
   'model.custom': 'Personalizado…',
   'model.customHint':
