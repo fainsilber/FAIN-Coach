@@ -14,7 +14,8 @@ A local-first AI running coach. Upload `.tcx` files from any GPS watch (Garmin, 
 - **Subjective input** — RPE 1–10, feel tags, and free-text notes, fused with the telemetry when coaching.
 - **AI coach** — one global, plan-aware chat thread. Streaming replies in a fixed 3-part format: the big picture, a telemetry breakdown, and one concrete next step.
 - **Training plans** — generate a multi-week plan from a goal race, then track it. Uploaded runs auto-match to planned workouts (you confirm), and adherence feeds back into the coaching.
-- **Local profiles** — several runners can share one device, each with isolated data and an optional PIN. Note this is data *separation*, not encryption.
+- **Local profiles** (free tier, GitHub Pages) — several runners can share one device, each with isolated data and an optional PIN. Note this is data *separation*, not encryption.
+- **Cloud sync** (Sync tier, [coach.fainsilber.co.il](https://coach.fainsilber.co.il/)) — sign in with email + a one-time code and your runs, plans, and chat history follow you across devices. Verified to reconcile correctly even when two devices edit while both offline. Your OpenRouter API key is never part of what syncs — it stays local to whichever device you typed it into.
 - **Offline** — everything except LLM calls works without a network.
 - **Units & week start** — metric or imperial, and a week that starts Sunday or Monday. Switching only changes what you see: runs are always stored in metres, so backups stay portable between users of either system.
 - **English, Hebrew & Spanish (Mexico)** — full right-to-left interface in Hebrew, per profile, and the AI coach replies in your language. More languages are a single translation file away.
@@ -54,7 +55,7 @@ Data is per-device by design — there is no server and no sync. Each device sta
 
 - **Design refresh** — planned; direction not yet defined.
 - **Import from Strava, Garmin and Smashrun** — connect the platform you already sync to instead of exporting files by hand. Needs the hosted backend first. [Spec](docs/dev-plan.md)
-- **Paid tiers** — see [docs/monetization.md](docs/monetization.md) and dev-plan §12. Cloudflare hosting is done, and **Sync** (accounts + cloud sync + backup, still bring-your-own key) is live at [coach.fainsilber.co.il](https://coach.fainsilber.co.il/) while multi-device sync finishes verification. Remaining: a **managed AI key** so there's no setup required, then the billing that turns it into a paid **Pro** tier.
+- **Paid tiers** — see [docs/monetization.md](docs/monetization.md) and dev-plan §12. Cloudflare hosting and the **Sync** tier (accounts, multi-device sync, cloud backup, still bring-your-own key) are both done and live at [coach.fainsilber.co.il](https://coach.fainsilber.co.il/). Remaining: a **managed AI key** so there's no setup required, then the billing that turns it into a paid **Pro** tier.
 
 In the meantime, if your watch already syncs to Strava (Garmin can forward automatically, and tools like [tapiriik](https://github.com/cpfair/tapiriik) bridge other platforms), a bulk export from there imports fine through the existing file upload.
 
@@ -63,4 +64,4 @@ Longer-term items live in [docs/dev-plan.md §16](docs/dev-plan.md), notably a G
 ## Docs
 
 - [Product Requirements (PRD v1.6)](docs/PRD.md)
-- [Development Plan v2.7](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
+- [Development Plan v2.8](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks

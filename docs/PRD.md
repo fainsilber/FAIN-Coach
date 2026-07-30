@@ -280,7 +280,7 @@ breakdown. Status as of 2026-07-26:
 | 8 | Manual run entry (§4.6, FR-6.1–6.8) | ✅ Complete |
 | 9 | Design refresh | ⬜ Placeholder — direction not yet defined |
 | 10 | Cloudflare hosting (first link of the paid-tier chain) | ✅ Complete — live at both GitHub Pages and Cloudflare, dev-plan §12.1 |
-| 11 | Accounts + sync + cloud backup — the **Sync** tier | ◐ Shipped but **open** — sign-in and local→cloud migration confirmed; two-device sync and offline reconcile unverified (dev-plan §12.2) |
+| 11 | Accounts + sync + cloud backup — the **Sync** tier | ✅ Complete — all exit criteria verified live, including simultaneous offline edits on two devices (dev-plan §12.2) |
 | 12 | Managed AI proxy + transport (the **Pro** capability) | ▶ Specified, buildable — needs only the OpenRouter key as a Worker secret (dev-plan §12.3) |
 | 12b | Pricing investigation + billing + gating | ▶ Specified, **blocked** — payment provider undecided (dev-plan §12.4) |
 | 13 | Shoe tracking (§4.7, FR-7.1–7.11) | ✅ Complete |

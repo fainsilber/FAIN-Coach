@@ -167,7 +167,10 @@ Once the URL is set, on the code side:
   pointing at one, in a single pass — `remapBackupForCloud()` in
   `src/lib/cloudMigration.ts`, covered by 17 unit tests.
 
-## Working (owner-confirmed 2026-07-30)
+## Verified (owner-confirmed 2026-07-30) — Sprint 11 is done
+
+All four exit criteria passed on two real devices (a PC and a phone, both
+signed into the same account):
 
 - **Sign-in** — email + OTP through the app's own gate.
 - **Local → cloud migration.** Import a backup exported from the GitHub Pages
@@ -176,16 +179,14 @@ Once the URL is set, on the code side:
   foreign key, and says so before writing. Requires v1.8.1 or later — earlier
   builds failed with `ConstraintError: The ID "3" is not valid for table
   "runs"` because ids were minted locally instead of by Dexie.
-
-## Still to do
-
-- **Two-device verification — the last of Sprint 11's exit criteria**
-  (dev-plan §12.2): log a run on one device, see it on another; offline edits
-  reconcile. **Shortcut:** the two Cloudflare origins
-  (`coach.fainsilber.co.il` and `fain-coach.fainsilber.workers.dev`) have
-  **separate IndexedDB but hit the same account**, so they act as two devices
-  in one browser — no second phone needed. Offline test: DevTools → Network →
-  Offline, edit something, then reconnect.
+- **A run logged on one device appears on the other.** A manual entry (plus
+  its auto-injected coach message) on the PC showed up on the phone, and
+  vice versa.
+- **Offline edits reconcile — tested the thorough way.** Both devices went
+  offline *simultaneously* (DevTools → Network → Offline on the PC; Airplane
+  mode on the phone), each logged a different run while disconnected, both
+  reconnected together. Result: both runs on both devices, correct order, no
+  duplicates, nothing lost — real conflict-free merge, not just delayed sync.
 
 ## Testing the cloud path locally
 

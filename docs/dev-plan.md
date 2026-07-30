@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v2.7)
+# FAIN Coach — Development Plan (v2.8)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -15,24 +15,24 @@ hosting** as shipped; v2.4 (2026-07-28) records **Spanish (Mexico)** as a
 third supported language (§9.6) and the AI-feature API-key gating fix;
 v2.5 (2026-07-28) reflects monetization.md v2's tier split — Sprint 11's
 output is now its own sellable **Sync** tier, not just a stepping stone to 12
-(§12 intro); v2.6 (2026-07-29) recorded the Sprint 11 foundation; **v2.7
-(2026-07-30)** splits Sprint 12 into **12 (managed AI proxy, buildable)** and
+(§12 intro); v2.6 (2026-07-29) recorded the Sprint 11 foundation; v2.7
+(2026-07-30) splits Sprint 12 into **12 (managed AI proxy, buildable)** and
 **12b (pricing + billing, blocked)**, corrects §15's dependency to Sprint 12's
-Worker only, and records Sprint 11 as still open pending two-device sync.
+Worker only, and records Sprint 11 as still open pending two-device sync;
+**v2.8 (2026-07-30)** records **Sprint 11 as fully done** — the owner ran both
+its exit criteria (cross-device sync, simultaneous offline edits on two
+devices) against the live database and both passed clean.
 
-**Status:** Sprints 1–8, 10, 13, and 14 complete. **Sprint 11 is shipped but
-still OPEN** — sign-in and local→cloud migration are owner-confirmed, two-device
-sync and offline reconcile are not (§12.2). Live on
+**Status:** Sprints 1–8, 10, 11, 13, and 14 complete. Live on
 https://fainsilber.github.io/FAIN-Coach/ (local tier) and
 https://coach.fainsilber.co.il/ + https://fain-coach.fainsilber.workers.dev/
-(cloud tier). Version 1.8.1, 195 tests passing. Three languages: English,
-Hebrew, Spanish (Mexico).
+(cloud tier, Sync — accounts, multi-device sync, cloud backup). Version 1.8.1,
+195 tests passing. Three languages: English, Hebrew, Spanish (Mexico).
 
-**Next up.** One standalone track, then two dependent chains:
+**Next up.** One standalone track, then one dependent chain:
 
 | | Sprint(s) | Notes |
 |---|---|---|
-| **Finish first** | **11** (§12.2) two-device sync check | Not code — the exit criteria have never been exercised. Must pass before 12b attaches billing to this tier |
 | Standalone | **9** (§11) design refresh | Awaiting a design direction |
 | **Chain** | **12 → 12b** (§12.3, §12.4) paid hosted tier | 10 and 11 done. **12** = managed AI proxy + transport, buildable now (needs only the OpenRouter key as a Worker secret). **12b** = pricing investigation + billing, blocked on an undecided payment provider |
 | **Chain** | **15 → 16 → (17)** (§15) Strava, then Garmin, optionally Smashrun | **Requires Sprint 12's Worker** — *not* 12b. A frontend-only PWA cannot hold an OAuth secret. Run the tapiriik spike (§15.4) *before* 16 |
@@ -732,7 +732,7 @@ the build log showed `Build command: npm run build` rather than
 `cloudflare` when `DEPLOY_TARGET` is unset, but worth correcting in the
 dashboard so that default isn't load-bearing.
 
-### 12.2 Sprint 11 — Accounts + Sync + Cloud Backup (Dexie Cloud)
+### 12.2 Sprint 11 — Accounts + Sync + Cloud Backup (Dexie Cloud) ✅ (implemented 2026-07-30)
 
 Delivers accounts, sync, and cloud backup — this **is** the Sync tier
 (monetization.md §4.2), sellable on its own the moment it ships. Can also
@@ -754,29 +754,29 @@ charging for it — that's a sequencing choice, not a requirement.
 - **Exit**: sign in on two devices, a run logged on one appears on the other;
   offline edits reconcile; the free local tier is untouched.
 
-**Status 2026-07-30 — sign-in and migration confirmed working; SPRINT 11 IS
-STILL OPEN because its two headline exit criteria are unverified.** Setup
-reference: [dexie-cloud-setup.md](dexie-cloud-setup.md).
+**Outcome 2026-07-30 — met. All four exit criteria verified by the owner
+against the live database** (`https://z18kml7kr.dexie.cloud`), across two real
+devices (a PC and a phone, both signed into the same account):
 
-Owner-confirmed working against the live database
-(`https://z18kml7kr.dexie.cloud`):
 - ✅ **Sign-in.** Email + OTP through the app's own gate (`customLoginGui`).
 - ✅ **Local → cloud import, including the re-key.** A backup exported from the
   GitHub Pages (local) deployment imports cleanly into the cloud deployment,
   after the v1.8.1 fix below.
 - ✅ **Free/local tier untouched.** The Pages bundle ships neither the addon nor
   the cloud URL, and still uses local profiles with no sign-in.
+- ✅ **A run logged on one device appears on the other.** A manually-entered
+  run on the PC, plus its auto-injected coach message, showed up on the phone
+  (and vice versa) after a reload.
+- ✅ **Offline edits reconcile — the thorough version.** Both devices went
+  offline *simultaneously* (PC: DevTools → Network → Offline; phone: Airplane
+  mode), each logged a **different** run while disconnected, then both came
+  back online together. Result: both devices ended up with both runs, in the
+  correct order, no duplicates, nothing lost. This is the actual test that
+  matters — proving sync works when both sides make changes with no
+  connection, not just that one side's edit eventually arrives.
 
-**Still unverified — and these ARE the exit criteria above:**
-- ❌ **Two-device sync**: a run logged on one device appearing on another.
-- ❌ **Offline edits reconciling.**
-
-That is the core Sync-tier promise, so it must pass before 12b attaches billing
-to this tier — selling sync that does not sync is the one unacceptable outcome.
-Shortcut for testing it without a second physical device: the two Cloudflare
-origins (`coach.fainsilber.co.il` and `fain-coach.fainsilber.workers.dev`) have
-**separate IndexedDB but hit the same account**, so they serve as two clients in
-one browser. Offline reconcile: DevTools → Network → Offline, edit, reconnect.
+**Sprint 11 is done.** The Sync tier's core promise — your data follows you —
+is proven, not assumed.
 
 **Correction shipped in v1.8.1 — worth remembering.** The first import attempt
 failed, and the reason was not the missing wire-up but the id format:
@@ -827,13 +827,25 @@ Done and verified:
   local build contains no `dexie.cloud` reference, a build with the env var set
   contains both the addon and the URL.
 
-Not done — each needs a live database to build against:
-- Sign-in UI. `customLoginGui: true` is configured, so the app owes its own
-  email-OTP dialog rendered from `db.cloud.userInteraction`.
-- A caller for `remapBackupForCloud()`: first sign-in should offer to bring
-  local data across.
-- The two-device exit criteria above, which are unverifiable by construction
-  until the database exists.
+Also shipped, once the database existed to build against:
+- **`CloudSignInGate`** (`src/components/CloudSignInGate.tsx`), rendering the
+  addon's own `db.cloud.userInteraction` descriptors — email prompt, then OTP —
+  rather than a hard-coded form, so the same component handles whatever step
+  the addon asks for next. Fixed a real bug found by testing against the live
+  database rather than mocking it: `DXCAlert.message` carries `{token}`
+  placeholders the GUI must interpolate itself; rendering it raw showed users
+  a literal `"sent to {email}"`.
+- **`isCloudBuild()`** picks `CloudSignInGate` or the local `ProfileGate` per
+  *deployment*, not a runtime toggle — GitHub Pages is Free, Cloudflare is
+  Sync, and the choice folds to a build-time constant so the branch not taken
+  (and everything it references) is dropped from that bundle.
+- **The import wire-up.** `SettingsPage`'s backup import detects a local
+  (numeric-id) backup via `isAlreadyCloudShaped()`, runs it through
+  `remapBackupForCloud()`, and says so in the confirm dialog *before* writing
+  anything — re-keying is a one-way transformation of the file's contents, not
+  a plain copy. If the remap drops a dangling reference (a run whose planned
+  workout was deleted before export), the result line reports how many rather
+  than leaving it a silent surprise.
 
 ### 12.3 Sprint 12 — Managed AI Proxy + Transport
 
