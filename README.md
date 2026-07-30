@@ -64,4 +64,4 @@ Longer-term items live in [docs/dev-plan.md §16](docs/dev-plan.md), notably a G
 ## Docs
 
 - [Product Requirements (PRD v1.7)](docs/PRD.md)
-- [Development Plan v3.0](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
+- [Development Plan v3.1](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks

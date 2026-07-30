@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v3.0)
+# FAIN Coach — Development Plan (v3.1)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -37,7 +37,13 @@ omits the `_csrf` field Garmin's form now requires), corrects the
 overbroad "TLS fingerprinting blocks everything" claim in §15.1 with what
 was actually observed, and promotes **fetch-the-original-TCX** to Sprint
 15's primary design so the existing parser is reused unchanged. Notes the
-full local tapiriik install as **deliberately skipped and still owed**.
+full local tapiriik install as **deliberately skipped and still owed**;
+**v3.1 (2026-07-30)** records that design **verified end-to-end on a real
+Garmin account** — an API-fetched TCX parsed by the unmodified `parseTcx`
+matched Garmin's own summary values exactly (distance, duration, laps, HR,
+power, start time), FR-1.4's cadence doubling fired on real single-leg
+data, and login hit **429 rate limits** that only the multi-strategy
+fallback survived (§15.1).
 
 **Status:** Sprints 1–8, 10, 11, 13, and 14 complete. Live on
 https://fainsilber.github.io/FAIN-Coach/ (local tier) and
@@ -1309,7 +1315,7 @@ plan; see the 2026-07-30 note below for why.
 - **Import is explicit (FR-9.4)**: pick a date range, preview the list, choose
   what to pull. No silent full-history sync.
 
-### 15.1 Sprint 15 — Garmin Connect (unofficial route; read the caveats, but it works today)
+### 15.1 Sprint 15 — Garmin Connect (unofficial route; read the caveats — verified working 2026-07-30)
 
 Garmin's official API is a **paid, approval-gated programme**, which is why the
 practical route is an unofficial client. That route carries three costs that
@@ -1355,10 +1361,48 @@ as of 2026-07-30:
   the Garmin service becomes a *fetcher*, and all parsing stays in the one
   place that already owns it. Fall back to activity+splits JSON only for
   activities whose TCX export is unavailable.
-  - **Verified so far:** library API surface and signature (installed and
-    introspected). **Still to verify end-to-end:** an actual signed-in download
-    parsed by the real `parseTcx`, plus MFA behaviour, token lifetime, and any
-    bulk-download rate limit. Do this before committing to the sprint's shape.
+  - **✅ Verified end-to-end on a real account, 2026-07-30.** Downloaded a
+    1.88 MB TCX (activity 23754217618, 6.76 km road run) and parsed it with the
+    **unmodified** `parseTcx`. Every field matches Garmin's *own* numbers,
+    cross-checked against `summaryDTO` from a **different** endpoint:
+
+    | Field | `parseTcx` | Garmin `summaryDTO` |
+    |---|---|---|
+    | distance (m) | `6758.88` | `6758.88` — exact |
+    | duration (s) | `2504.381` | `2504.381` — exact |
+    | laps | `10` | `metadataDTO.lapCount: 10` |
+    | avg / max HR | `132` / `154` | `132` / `154` |
+    | avg power (W) | `265` | `265` |
+    | start time | `2026-07-27T17:53:51.000Z` | `startTimeGMT` — to the second |
+    | avg cadence | `162` | `162.92` (rounding + lap weighting) |
+    | ascent / descent (m) | `73` / `93` | `85` / `115` — see note |
+
+    **This is the whole argument for the TCX route in one line:** zero parser
+    changes, zero new mapping code.
+  - **FR-1.4 fired for real.** Per-lap `<ns3:AvgRunCadence>` values were
+    `72, 63, 85, 81, 86, 68, 89, 70, 91, 82` — all single-leg. Without the
+    doubling rule we'd have reported ~81 spm. Cadence lives in **namespaced**
+    `ns3:` TPX/LX extensions (there is no plain `<Cadence>` element); the
+    parser's local-name lookup already handles this.
+  - **Elevation differs by design, not by defect.** Our hysteresis noise filter
+    (`elevationChange`, `ELEVATION_NOISE_THRESHOLD_METERS`) deliberately
+    discards small oscillations, so we report ~14% less ascent than Garmin's
+    raw accumulation. Pre-existing behaviour, unrelated to import source — but
+    users who compare against Garmin will notice, so don't treat a mismatch
+    here as a bug.
+  - **Trackpoints discarded as required:** 1,880,602 chars → a **1,753-char**
+    record (≈1073:1). The no-trackpoint-storage rule holds on API-sourced files.
+  - **Login is rate-limited in practice — budget for it.** The five-strategy
+    cascade was load-bearing on the *first* attempt: `mobile+cffi` and
+    `mobile+requests` both returned **429 (IP rate limited)** and `widget+cffi`
+    succeeded. Total 12.3s. A single-flow client would simply have failed. No
+    MFA prompt on this account; tokens cached to disk, so later runs need no
+    password. Bulk backfill must therefore throttle and expect 429s as a
+    normal, recoverable state (FR-9.8), not an error.
+  - ⚠️ **Do not add a real Garmin TCX to `src/parser/fixtures/`.** These files
+    carry full GPS traces — the spike file's first trackpoint is the runner's
+    home area. The existing fixture is already sufficient; if a provider-shaped
+    fixture is ever needed, synthesize or scrub the coordinates first.
 - **Exit**: connect an account, preview a date range, import runs that appear
   identically to uploaded ones; re-running the import adds nothing; disconnect
   stops imports while keeping imported runs. Plus: the credential disclosure
