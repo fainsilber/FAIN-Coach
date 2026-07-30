@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v2.9)
+# FAIN Coach — Development Plan (v3.0)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -30,7 +30,14 @@ the section's dependency claim (Garmin needs no Worker and no Sprint 12 at
 all; Smashrun/Strava need *a* Worker, not specifically Sprint 12's), and
 records five other providers investigated (Polar: free/self-serve, best
 next candidate; COROS, Wahoo: official but gated; Suunto: no personal-use
-access; Runkeeper: dead, skip).
+access; Runkeeper: dead, skip); **v3.0 (2026-07-30)** replaces §15.4's
+inferred tapiriik verdict with a **measured** one — the project is
+disqualified twice over (it never downloads a TCX at all, and its login
+omits the `_csrf` field Garmin's form now requires), corrects the
+overbroad "TLS fingerprinting blocks everything" claim in §15.1 with what
+was actually observed, and promotes **fetch-the-original-TCX** to Sprint
+15's primary design so the existing parser is reused unchanged. Notes the
+full local tapiriik install as **deliberately skipped and still owed**.
 
 **Status:** Sprints 1–8, 10, 11, 13, and 14 complete. Live on
 https://fainsilber.github.io/FAIN-Coach/ (local tier) and
@@ -1319,19 +1326,39 @@ as of 2026-07-30:
 2. **It is unofficial and demonstrably fragile.** `garth` — actively maintained
    — was broken by a Garmin bot-protection change within a day, and its
    maintainer discontinued it rather than keep chasing Garmin. The replacement,
-   `python-garminconnect`, currently works (v0.3.5+, curl_cffi TLS
-   impersonation, MFA support) but this is an ongoing arms race, not a
-   one-time integration. Budget for it breaking again without notice, and ship
-   it marked unofficial/best-effort.
+   `python-garminconnect`, currently works (v0.3.8 as installed 2026-07-30;
+   MFA support, and a **five-strategy login chain** — mobile/widget/portal ×
+   curl_cffi/requests — that falls through on failure) but this is an ongoing
+   arms race, not a one-time integration. Budget for it breaking again without
+   notice, and ship it marked unofficial/best-effort.
+   - **Measured nuance (2026-07-30):** the common claim that Garmin's Cloudflare
+     TLS fingerprinting "blocks all non-browser HTTP clients" is **too broad**.
+     Plain `requests` reaches `sso.garmin.com/sso/signin` with HTTP 200. What is
+     really enforced at the login form is a **`_csrf` token** plus reCAPTCHA,
+     and `connectapi.garmin.com` 403s unauthenticated. So curl_cffi's value is
+     in rate-limit and WAF avoidance on *other* steps, not a blanket gate at the
+     door — worth knowing when this next breaks, so we debug the actual step.
 3. **It cannot run on Cloudflare Workers.** Workers are JS/WASM; the Python
    dependency tree isn't viable there. This sprint adds a **second,
    Python-capable service** (Fly.io / Railway / Cloud Run) — real
    infrastructure and cost beyond §12.
 
-- **Data mapping**: Garmin activity + splits JSON → the same `ParsedRun` shape.
-  Garmin can also serve the original TCX/FIT, so an alternative is to fetch the
-  TCX and reuse the **existing parser unchanged** — likely the least-code path,
-  worth preferring if the download endpoint is reachable.
+- **Data mapping — fetch the original TCX and reuse the existing parser.**
+  Promoted from "alternative worth considering" to the **primary design** on
+  2026-07-30: `python-garminconnect` exposes
+  `download_activity(activity_id, dl_fmt=ActivityDownloadFormat.TCX) -> bytes`,
+  hitting Garmin's own `/download-service/export/tcx/activity` — and TCX is the
+  method's **default** format. That returns the *original* file, i.e. exactly
+  what [src/parser/tcx.ts](../src/parser/tcx.ts) already parses and is already
+  fixture-tested against a real Garmin export (`fixtures/garmin-21k.tcx`). No
+  JSON→`ParsedRun` adapter, no second mapping to keep in sync with the parser —
+  the Garmin service becomes a *fetcher*, and all parsing stays in the one
+  place that already owns it. Fall back to activity+splits JSON only for
+  activities whose TCX export is unavailable.
+  - **Verified so far:** library API surface and signature (installed and
+    introspected). **Still to verify end-to-end:** an actual signed-in download
+    parsed by the real `parseTcx`, plus MFA behaviour, token lifetime, and any
+    bulk-download rate limit. Do this before committing to the sprint's shape.
 - **Exit**: connect an account, preview a date range, import runs that appear
   identically to uploaded ones; re-running the import adds nothing; disconnect
   stops imports while keeping imported runs. Plus: the credential disclosure
@@ -1390,7 +1417,7 @@ the mechanics.
   identically to uploaded ones; re-running the import adds nothing; disconnect
   revokes and stops imports while keeping imported runs.
 
-### 15.4 Aggregators (tapiriik et al.) — spike run 2026-07-30, verdict: Option A only
+### 15.4 Aggregators (tapiriik et al.) — spike run 2026-07-30, verdict: don't build on it, don't recommend it for Garmin
 
 **[tapiriik](https://github.com/cpfair/tapiriik)** is an open-source Python
 service that syncs workouts *between* fitness platforms (Garmin, Strava,
@@ -1409,15 +1436,67 @@ The idea: if a Python service is being stood up for Garmin anyway, running
 tapiriik's provider layer there could deliver Garmin + Smashrun + others at
 once instead of one adapter per sprint.
 
-**Spike result: the project is stale.** Last commit **2023-11-24** — over two
-and a half years before this note. Apache 2.0 licensed (permits this use), but
-licence was never the blocker. The disqualifying fact: `python-garminconnect` —
-an *actively maintained* library — needed emergency surgery in 2026 to survive
-Garmin's bot-protection changes (§15.1 point 2). A project untouched since 2023
-has no realistic chance of still working against Garmin's current defenses, and
-no evidence turned up of anyone having recently gotten its Garmin module
-working. **Do not build on it.** Sprint 15 proceeds hand-rolled on
-`python-garminconnect`, as specced.
+**Spike result — re-run 2026-07-30 against the real repo and live Garmin
+endpoints. Option B rejected on evidence, not inference.** Clone checked out at
+`ee01538` (2023-11-23; GitHub displays 2023-11-24 — timezone). Apache 2.0
+permits this use; licence was never the blocker.
+
+**Disqualifier 1 — tapiriik cannot produce a TCX at all.** This is independent
+of whether its login works, and it alone ends Option B. `DownloadActivity()`
+(garminconnect.py:455) fetches **JSON** from
+`/activity-service/activity/{id}/details?maxSize=999999999` and reconstructs an
+internal `Activity` object; a TCX could only come from `TCXIO.Dump()` on that
+reconstruction — a *synthesized* file, not Garmin's. Grepping the service for
+`download-service` / `export/tcx` returns **zero hits**: tapiriik never calls
+Garmin's TCX export endpoint. We want the original file, because
+[src/parser/tcx.ts](../src/parser/tcx.ts) is already proven against a real
+Garmin export (`src/parser/fixtures/garmin-21k.tcx`).
+
+**Disqualifier 2 — the login is broken, but not for the reason first assumed.**
+The earlier note here guessed "stale → killed by bot protection / TLS
+fingerprinting." **That guess was wrong**, and three credential-free probes
+(the unauthenticated SSO prestart needs no account) show the real mechanism:
+
+| Probe | Result |
+|---|---|
+| Plain `requests` → `sso.garmin.com/sso/signin` | **HTTP 200** — *not* blocked; the TLS-fingerprint theory is false at this step |
+| Fields in Garmin's live signin form | `_csrf`, `embed`, `password`, `username` |
+| Fields tapiriik posts (garminconnect.py:198-204) | `username`, `password`, `embed`, `_eventId=submit` — **no `_csrf`**, plus a stale `_eventId` the modern form doesn't use |
+| reCAPTCHA on the signin page | present (6 references) |
+| `GET /modern/proxy/activitylist-service/…` | **302 → `/signin/…` HTML page**; Garmin moved the prefix to `/app/proxy/` |
+
+So tapiriik's POST cannot succeed (missing required CSRF token), there is a
+CAPTCHA behind it, and even with a valid session its data endpoints now return
+a sign-in page that would be parsed as activity JSON. Three independent, fatal
+breakages.
+
+For contrast, `python-garminconnect` scrapes and posts the token
+(`_CSRF_RE`, client.py:102 → 646/743), sends a `connect-csrf-token` header, and
+cascades **five login strategies** (mobile+cffi, mobile+requests, widget+cffi,
+portal+cffi, portal+requests) with TLS rotation and anti-WAF delays. That is a
+maintained library in a live arms race against a 2023 snapshot with one
+hardcoded flow.
+
+> **Lesson, same shape as the `newId()` bug in §12.2:** the original verdict
+> reached the right *conclusion* from the wrong *mechanism*. "Last commit was
+> years ago" is a reason to go and measure, not a substitute for measuring —
+> the actual failure was a missing form field, which no amount of reasoning
+> about bot protection would have found.
+
+> **NOT DONE — still owed.** The **full local tapiriik install** (Docker:
+> Django 1.8.2 + `pymongo==3.0.1` + MongoDB 3.x on Python ≤3.5, with
+> `sources.list` repointed at archive.debian.org for `lxml`) was **deliberately
+> skipped** once the probes above made its outcome predictable. It was never
+> run, and nothing here is a claim about the running application — only about
+> its source and Garmin's live endpoints. Worth doing if we ever want to inspect
+> tapiriik's provider architecture firsthand, or to re-evaluate if someone
+> revives the project. `local_settings.py` (imported last) is where container
+> hostnames go, since `settings.py` hardcodes `localhost` with no env override.
+
+**Do not build on it.** Sprint 15 proceeds hand-rolled on
+`python-garminconnect`, as specced. Option A (recommend it to users) survives
+only as a bulk-export convenience — with the caveat that its Garmin sync is
+almost certainly broken too, so point users at Garmin's own export instead.
 
 ### 15.5 Other providers researched but not yet scheduled (2026-07-30)
 
@@ -1456,7 +1535,10 @@ Cheapest of all, and worth documenting in-app regardless of what gets built:
 
 - Garmin Connect can **auto-export to Strava** — making Sprint 17 sufficient for
   many people with no work on our side.
-- **tapiriik** as above (Option A, §15.4).
+- ~~**tapiriik**~~ — **do not recommend it for Garmin.** Its Garmin login is
+  broken (missing `_csrf`; §15.4) and the project is unmaintained since 2023.
+  It may still bridge provider pairs that don't involve Garmin, but that is
+  untested and shouldn't be put in front of users as advice.
 - Garmin, Strava, and most others support **bulk export**, which already works
   through the existing file upload for one-off historical imports.
 - Phone-side sync utilities (RunGap, SyncMyTracks, HealthFit and similar) can
