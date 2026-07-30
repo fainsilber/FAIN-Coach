@@ -280,10 +280,12 @@ breakdown. Status as of 2026-07-26:
 | 8 | Manual run entry (§4.6, FR-6.1–6.8) | ✅ Complete |
 | 9 | Design refresh | ⬜ Placeholder — direction not yet defined |
 | 10 | Cloudflare hosting (first link of the paid-tier chain) | ✅ Complete — live at both GitHub Pages and Cloudflare, dev-plan §12.1 |
-| 11–12 | Paid hosted tier: accounts + sync, managed AI + billing (a connected track) | ▶ Specified — see dev-plan §12 & [monetization.md](monetization.md) |
+| 11 | Accounts + sync + cloud backup — the **Sync** tier | ◐ Shipped but **open** — sign-in and local→cloud migration confirmed; two-device sync and offline reconcile unverified (dev-plan §12.2) |
+| 12 | Managed AI proxy + transport (the **Pro** capability) | ▶ Specified, buildable — needs only the OpenRouter key as a Worker secret (dev-plan §12.3) |
+| 12b | Pricing investigation + billing + gating | ▶ Specified, **blocked** — payment provider undecided (dev-plan §12.4) |
 | 13 | Shoe tracking (§4.7, FR-7.1–7.11) | ✅ Complete |
 | 14 | Version visibility & diagnostics (§4.8, FR-8.1–8.11) | ✅ Complete |
-| 15–16 | Provider import: Strava, then Garmin (§4.9, FR-9.1–9.11) | ▶ Specified — **requires sprints 10–12 first** (see dev-plan §15) |
+| 15–16 | Provider import: Strava, then Garmin (§4.9, FR-9.1–9.11) | ▶ Specified — **requires Sprint 12's Worker, not 12b's billing** (see dev-plan §15) |
 | 17 | Provider import: Smashrun (§4.9) | ▶ Specified, low priority — only on demand |
 
 ---

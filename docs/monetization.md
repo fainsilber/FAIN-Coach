@@ -1,15 +1,21 @@
-# FAIN Coach — Monetization Analysis (v2, 2026-07-28)
+# FAIN Coach — Monetization Analysis (v2.1, 2026-07-30)
 
 Unit economics and pricing for **hosted paid tiers**: accounts + cloud backup
-+ multi-device sync (Sprint 11), and managed AI + billing on top of that
-(Sprint 12), on Cloudflare + Dexie Cloud. The free tier (fully local,
-bring-your-own OpenRouter key) stays as-is and is the funnel.
++ multi-device sync (Sprint 11), managed AI (Sprint 12), and the billing that
+makes it chargeable (Sprint 12b), on Cloudflare + Dexie Cloud. The free tier
+(fully local, bring-your-own OpenRouter key) stays as-is and is the funnel.
+
+**v2.1 change**: dev-plan split the old "Sprint 12" into **12** (managed AI
+proxy — buildable) and **12b** (pricing + billing — blocked on an undecided
+payment provider). §8's checklist is now tagged by which of the two each item
+actually gates, because only two items block the proxy and the rest were
+stalling it for no reason.
 
 **v2 change**: split the original single "Pro" bundle into two purchasable
 tiers — **Sync** (accounts + multi-device sync + cloud backup, still BYO key)
 and **Pro** (Sync + a managed AI key) — because they map cleanly onto Sprints
 11 and 12 respectively. Sync is a real, separately billable product the
-moment Sprint 11 ships; it does not need Sprint 12's proxy/billing Worker to
+moment Sprint 11 ships; it does not need Sprint 12's proxy or 12b's billing to
 exist. Also adds a speculative fourth tier, **Pro+** (premium commercial
 models through the managed key), which is not fully priced yet — see §4.4.
 
@@ -98,7 +104,7 @@ own OpenRouter key is a real, distinct segment from one who wants zero setup.
 Charging them the same price as someone consuming managed inference
 overcharges the first group and undersells the second. It also lets **Sync**
 ship and start earning as soon as Sprint 11 is done, without waiting on
-Sprint 12's proxy Worker and billing integration.
+Sprint 12's proxy Worker or 12b's billing integration.
 
 | Plan | Price | Effective /mo | What it adds over the tier below |
 |---|---|---|---|
@@ -227,12 +233,26 @@ requirements and whether an MoR simplifies your position.)
 
 ## 8. Numbers to confirm before pricing
 
-1. Current OpenRouter rate for the managed models (Llama 3.3 70B et al.) —
-   needed for Pro.
+**Tagged by which sprint each actually gates** (dev-plan §12.3 / §12.4). Only
+two of these block building the AI proxy; the rest are money questions that
+block *charging*, and must not be allowed to stall the proxy sprint.
+
+**Gate Sprint 12 — the managed AI proxy (dev-plan §12.3):**
+
+1. Current OpenRouter rate for the managed models (Llama 3.3 70B et al.).
+   Needed to size the cap sensibly, not to set a price.
+4. Chosen usage cap (tokens/month) — the §3.2 knob. The proxy enforces it, so
+   it needs a number. ~1M tokens/month is the standing recommendation: ~10×
+   a typical user, ~$0.30 worst-case cost.
+
+**Gate Sprint 12b — pricing + billing (dev-plan §12.4):**
+
 2. Current Dexie Cloud production pricing and any monthly minimum — needed
    for both Sync and Pro, since both carry it as a cost line.
 3. Israel/international tax obligations, and whether an MoR removes them.
-4. Chosen usage cap (tokens/month) — the §3.2 knob, for Pro.
+   **Payment provider is still undecided** as of 2026-07-30; §6 recommends a
+   Merchant of Record. Whatever is chosen, the entitlement check must sit
+   behind one narrow swappable interface (dev-plan §12.4).
 5. Pro price: $4/mo + $40/yr is the recommendation; your $3–5 instinct is
    sound and the margins work across that whole range.
 6. Sync price: $2/mo + $20/yr is the recommendation (§4.2) — don't go below

@@ -4,7 +4,7 @@ Local-first AI running coach PWA. Users upload `.tcx` files from any GPS watch, 
 
 **Live:** https://fainsilber.github.io/FAIN-Coach/ and https://fain-coach.fainsilber.workers.dev/ (both auto-deploy on push to `main` — see Deployment below)
 
-**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v2.6 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
+**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v2.7 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
 
 ## Commands
 
@@ -98,7 +98,9 @@ Sprints 1–8, 10, 13, and 14 complete, local profiles added, deployed to both G
 
 **Next — three independent-ish tracks:**
 - **Sprint 9** — design refresh ([dev-plan §11](docs/dev-plan.md)) is a deliberate placeholder; **do not invent a design direction**, it will be supplied.
-- **Sprints 11–12** — two purchasable tiers, now that 10 has unblocked them: Sprint 11 alone ships **Sync** (accounts/sync/backup, still BYO key, ~$2/mo — sellable on its own); Sprint 12 adds **Pro** (managed AI on top, ~$4/mo). A *connected* track, build in order: [dev-plan §12](docs/dev-plan.md), economics in [monetization.md](docs/monetization.md).
-- **Sprints 15–17** — provider import: Strava, then Garmin, optionally Smashrun ([dev-plan §15](docs/dev-plan.md)). **Require the §12 backend first** — a frontend-only PWA can't do them (Strava's OAuth needs a server-side secret; the Garmin Python client can't run on Workers at all and needs a separate Python service). Provider tokens/passwords **must never** touch browser storage or sync (PRD FR-9.7). Run the **tapiriik spike** (§15.4) before Sprint 16.
+- **Sprint 11 is shipped but OPEN** — sign-in and local→cloud migration are confirmed working; **two-device sync and offline reconcile have never been exercised**, and those are its actual exit criteria ([dev-plan §12.2](docs/dev-plan.md)). Don't treat the Sync tier as proven until they pass. Testing shortcut: the two Cloudflare origins have separate IndexedDB but one account, so they act as two devices.
+- **Sprint 12** (§12.3) — managed AI proxy + transport. **Buildable now**: Worker `/ai` (session auth, token cap, OpenRouter proxy with SSE), plus `ProxyClient implements LlmClient` so the transport swaps with zero component changes. This adds the repo's **first Worker request handler** — Cloudflare currently serves static assets only. Needs only `OPENROUTER_API_KEY` as a Worker secret. Gated by just two monetization.md §8 items (rates + cap), *not* the whole checklist.
+- **Sprint 12b** (§12.4) — pricing investigation + billing + gating. **Blocked**: payment provider undecided. When built, the entitlement check must sit behind one narrow swappable interface, the way `LlmClient` did for AI transport — a provider's webhook shape must not leak into the app.
+- **Sprints 15–17** — provider import: Strava, then Garmin, optionally Smashrun ([dev-plan §15](docs/dev-plan.md)). **Require Sprint 12's Worker — NOT 12b's billing.** What they need is a server-side home for an OAuth secret (the Garmin Python client can't run on Workers at all and needs a separate Python service). Provider tokens/passwords **must never** touch browser storage or sync (PRD FR-9.7). Run the **tapiriik spike** (§15.4) before Sprint 16.
 
 Ongoing risks in [§16](docs/dev-plan.md) — deferred items (GPX parser, chat-history summary); Hebrew output is confirmed working.

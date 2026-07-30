@@ -167,15 +167,25 @@ Once the URL is set, on the code side:
   pointing at one, in a single pass — `remapBackupForCloud()` in
   `src/lib/cloudMigration.ts`, covered by 17 unit tests.
 
+## Working (owner-confirmed 2026-07-30)
+
+- **Sign-in** — email + OTP through the app's own gate.
+- **Local → cloud migration.** Import a backup exported from the GitHub Pages
+  (local) deployment into the cloud deployment via **Settings → Import
+  backup**; it detects the numeric ids, re-keys every row and repoints every
+  foreign key, and says so before writing. Requires v1.8.1 or later — earlier
+  builds failed with `ConstraintError: The ID "3" is not valid for table
+  "runs"` because ids were minted locally instead of by Dexie.
+
 ## Still to do
 
-- **Triggering the migration.** `remapBackupForCloud()` is built and tested (17
-  tests) but nothing calls it yet — first sign-in should offer to bring an
-  existing local profile's data across. Not urgent while the Cloudflare
-  deployment has no accumulated data.
-- **Two-device verification.** Sprint 11's exit criteria (dev-plan §12.2): log a
-  run on one device, see it on another; offline edits reconcile. Needs two
-  signed-in devices and an OTP from the owner's inbox.
+- **Two-device verification — the last of Sprint 11's exit criteria**
+  (dev-plan §12.2): log a run on one device, see it on another; offline edits
+  reconcile. **Shortcut:** the two Cloudflare origins
+  (`coach.fainsilber.co.il` and `fain-coach.fainsilber.workers.dev`) have
+  **separate IndexedDB but hit the same account**, so they act as two devices
+  in one browser — no second phone needed. Offline test: DevTools → Network →
+  Offline, edit something, then reconnect.
 
 ## Testing the cloud path locally
 

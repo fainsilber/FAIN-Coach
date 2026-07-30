@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v2.6)
+# FAIN Coach — Development Plan (v2.7)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -13,23 +13,29 @@ Diagnostics** as shipped; v2.2 (2026-07-26) recorded **Sprint 13 — Shoe
 Tracking** as shipped; v2.3 (2026-07-28) recorded **Sprint 10 — Cloudflare
 hosting** as shipped; v2.4 (2026-07-28) records **Spanish (Mexico)** as a
 third supported language (§9.6) and the AI-feature API-key gating fix;
-**v2.5 (2026-07-28)** reflects monetization.md v2's tier split — Sprint 11's
+v2.5 (2026-07-28) reflects monetization.md v2's tier split — Sprint 11's
 output is now its own sellable **Sync** tier, not just a stepping stone to 12
-(§12 intro).
+(§12 intro); v2.6 (2026-07-29) recorded the Sprint 11 foundation; **v2.7
+(2026-07-30)** splits Sprint 12 into **12 (managed AI proxy, buildable)** and
+**12b (pricing + billing, blocked)**, corrects §15's dependency to Sprint 12's
+Worker only, and records Sprint 11 as still open pending two-device sync.
 
-**Status:** Sprints 1–8, 10, 13, and 14 complete. Live on both
-https://fainsilber.github.io/FAIN-Coach/ and
-https://fain-coach.fainsilber.workers.dev/. Version 1.6.0, 167 tests passing.
-Three languages: English, Hebrew, Spanish (Mexico).
+**Status:** Sprints 1–8, 10, 13, and 14 complete. **Sprint 11 is shipped but
+still OPEN** — sign-in and local→cloud migration are owner-confirmed, two-device
+sync and offline reconcile are not (§12.2). Live on
+https://fainsilber.github.io/FAIN-Coach/ (local tier) and
+https://coach.fainsilber.co.il/ + https://fain-coach.fainsilber.workers.dev/
+(cloud tier). Version 1.8.1, 195 tests passing. Three languages: English,
+Hebrew, Spanish (Mexico).
 
-**Next up.** One standalone track, then two dependent chains — 11 is next in
-the paid-tier chain now that 10 has unblocked it:
+**Next up.** One standalone track, then two dependent chains:
 
 | | Sprint(s) | Notes |
 |---|---|---|
+| **Finish first** | **11** (§12.2) two-device sync check | Not code — the exit criteria have never been exercised. Must pass before 12b attaches billing to this tier |
 | Standalone | **9** (§11) design refresh | Awaiting a design direction |
-| **Chain** | **11 → 12** (§12) paid hosted tier | 10 done; build 11 then 12. 11 alone ships the **Sync** tier ($2/mo — monetization.md §4.2); 12 adds **Pro** ($4/mo, managed AI) on top |
-| **Chain** | **15 → 16 → (17)** (§15) Strava, then Garmin, optionally Smashrun | **Requires 11–12 first** — a frontend-only PWA cannot do these integrations. Run the tapiriik spike (§15.4) *before* 16 |
+| **Chain** | **12 → 12b** (§12.3, §12.4) paid hosted tier | 10 and 11 done. **12** = managed AI proxy + transport, buildable now (needs only the OpenRouter key as a Worker secret). **12b** = pricing investigation + billing, blocked on an undecided payment provider |
+| **Chain** | **15 → 16 → (17)** (§15) Strava, then Garmin, optionally Smashrun | **Requires Sprint 12's Worker** — *not* 12b. A frontend-only PWA cannot hold an OAuth secret. Run the tapiriik spike (§15.4) *before* 16 |
 
 Ongoing risks are in §16 — none blocking.
 
@@ -600,24 +606,34 @@ true, so whoever picks this up starts informed:
   see §9.3) and **mobile ergonomics** (44px touch targets, 16px form inputs to
   stop iOS zoom, safe-area insets).
 
-## 12. Sprints 10–12 — Paid Hosted Tier (a CONNECTED track, specified)
+## 12. Sprints 10 → 11 → 12 → 12b — Paid Hosted Tier (a CONNECTED track)
 
 Requested 2026-07-23. Adds paid tiers alongside the unchanged free local
-tier — accounts + cloud backup + multi-device sync (Sprint 11), then a
-managed AI key on top of that (Sprint 12). Economics, pricing, and the
-abuse-cost analysis live in [monetization.md](monetization.md) — **v2
-(2026-07-28) split what was one "Pro" bundle into two purchasable tiers,
-Sync and Pro, that map directly onto Sprints 11 and 12.**
+tier — accounts + cloud backup + multi-device sync (Sprint 11), a managed AI
+key on top of that (Sprint 12), then the billing that makes it chargeable
+(Sprint 12b). Economics, pricing, and the abuse-cost analysis live in
+[monetization.md](monetization.md) — **v2 (2026-07-28) split what was one
+"Pro" bundle into two purchasable tiers, Sync and Pro.**
 
-**Build in order, but revised 2026-07-28: Sprint 11's output is independently
-sellable, not just independently shippable.** 10 unblocks 11 and 12 (they
-need a backend host and a root domain that GitHub Pages can't give); 11
-provides the accounts that 12's billing and managed-key gating attach to —
-that dependency is unchanged. What's revised: 11 no longer has to wait for
-12 to be *useful to a user* — accounts + sync + cloud backup, still BYO
-OpenRouter key, is the **Sync** tier (monetization.md §4.2) and can go live
-and start earning the moment 11 ships. Sprint 9 (design) is orthogonal and
-can happen any time.
+**Four steps, built in order, but each independently shippable — and two of
+them independently *sellable*:**
+
+| Step | Ships | Sellable on its own? |
+|---|---|---|
+| **10** (§12.1) ✅ | Cloudflare hosting | — infrastructure |
+| **11** (§12.2) | accounts, sync, cloud backup | **yes** — the **Sync** tier |
+| **12** (§12.3) | managed AI proxy + transport | no — needs 12b to charge |
+| **12b** (§12.4) | pricing decisions + billing + gating | **yes** — turns 12 into **Pro** |
+
+10 unblocked 11 and 12 (both need a backend host and a root domain GitHub Pages
+can't give). 11 provides the accounts that 12's cap and 12b's billing attach
+to. **Revised 2026-07-30:** 12 was split from 12b because the proxy is
+buildable today while billing is blocked on a provider that doesn't exist yet
+— see §12.3. Sprint 9 (design) is orthogonal and can happen any time.
+
+> **Note for the provider-import track (§15):** what Strava and Garmin need
+> from this track is a **server-side place to hold an OAuth secret** — i.e.
+> Sprint 12's Worker. Billing (12b) is *not* a prerequisite for them.
 
 **Architecture** (the payoff of two earlier decisions):
 - The `LlmClient` interface (Sprint 3) means the paid transport is a new
@@ -738,8 +754,48 @@ charging for it — that's a sequencing choice, not a requirement.
 - **Exit**: sign in on two devices, a run logged on one appears on the other;
   offline edits reconcile; the free local tier is untouched.
 
-**Status 2026-07-29 — foundation shipped, sync not yet verifiable.** Setup the
-owner must do first: [dexie-cloud-setup.md](dexie-cloud-setup.md).
+**Status 2026-07-30 — sign-in and migration confirmed working; SPRINT 11 IS
+STILL OPEN because its two headline exit criteria are unverified.** Setup
+reference: [dexie-cloud-setup.md](dexie-cloud-setup.md).
+
+Owner-confirmed working against the live database
+(`https://z18kml7kr.dexie.cloud`):
+- ✅ **Sign-in.** Email + OTP through the app's own gate (`customLoginGui`).
+- ✅ **Local → cloud import, including the re-key.** A backup exported from the
+  GitHub Pages (local) deployment imports cleanly into the cloud deployment,
+  after the v1.8.1 fix below.
+- ✅ **Free/local tier untouched.** The Pages bundle ships neither the addon nor
+  the cloud URL, and still uses local profiles with no sign-in.
+
+**Still unverified — and these ARE the exit criteria above:**
+- ❌ **Two-device sync**: a run logged on one device appearing on another.
+- ❌ **Offline edits reconciling.**
+
+That is the core Sync-tier promise, so it must pass before 12b attaches billing
+to this tier — selling sync that does not sync is the one unacceptable outcome.
+Shortcut for testing it without a second physical device: the two Cloudflare
+origins (`coach.fainsilber.co.il` and `fain-coach.fainsilber.workers.dev`) have
+**separate IndexedDB but hit the same account**, so they serve as two clients in
+one browser. Offline reconcile: DevTools → Network → Offline, edit, reconnect.
+
+**Correction shipped in v1.8.1 — worth remembering.** The first import attempt
+failed, and the reason was not the missing wire-up but the id format:
+
+```
+ConstraintError: The ID "3" is not valid for table "runs".
+Primary '@' keys requires the key to be prefixed with "rns"
+```
+
+Dexie Cloud derives a per-table prefix and validates every `@id` against it.
+`remapBackupForCloud()` had minted `run_<uuid>` — a prefix invented locally —
+so it would have failed identically. **All 17 of its tests passed**, because
+they only checked internal consistency (uniqueness, foreign-key rewiring) and
+never that an id is something Dexie Cloud would *accept*. Ids now come from
+Dexie's own `table.newId()`, injected as a factory so the remap stays pure.
+Verified against the live database rather than assumed: `rns…`/`trn…`/`pln…`/
+`cht…`/`shs…` (note `shoes` → `shs`, not the `sho` a test fake first guessed).
+Two regression tests now cover it. **The lesson generalizes: a test that only
+checks self-consistency proves nothing about an external contract.**
 
 Done and verified:
 - **The id remap** (`src/lib/cloudMigration.ts`), the "main cost" above:
@@ -779,34 +835,74 @@ Not done — each needs a live database to build against:
 - The two-device exit criteria above, which are unverifiable by construction
   until the database exists.
 
-### 12.3 Sprint 12 — Managed AI Proxy + Billing + Gating
+### 12.3 Sprint 12 — Managed AI Proxy + Transport
 
-Adds the **Pro** tier (managed AI on top of Sync — monetization.md §4.1) and
-the billing plumbing both paid tiers need.
+**Split out of the original "Sprint 12" on 2026-07-30** (owner's call). The old
+section bundled the AI proxy with billing, but the two halves have completely
+different readiness: the proxy needs one credential the owner already has, while
+billing needs a payment provider that does not exist yet. Bundling them stalls
+the buildable half behind the blocked one — and invites writing billing code
+that cannot be exercised, which is exactly how this track already shipped two
+broken id assumptions (`run_<uuid>` against Dexie Cloud's required `rns`
+prefix) that only surfaced against a live system. Billing is now §12.4.
 
-- **Worker `/ai`**: authenticates the Dexie Cloud session, checks an active
-  subscription, **enforces the per-user token cap** (monetization.md §3.2),
-  forwards to OpenRouter with the server-held key, streams SSE back. Restrict to
-  the **cheap managed model set** (§3.3) — premium models stay BYO-key only.
+Delivers the **managed-AI half of Pro** (monetization.md §4.1): a signed-in
+account gets coaching with no OpenRouter key of its own. Sellable only once
+§12.4 adds billing, but independently buildable and testable.
+
+- **Worker `/ai`**: authenticates the Dexie Cloud session, **enforces the
+  per-user token cap** (monetization.md §3.2), forwards to OpenRouter with the
+  server-held key, streams SSE back. Restrict to the **cheap managed model
+  set** (§3.3) — premium models stay BYO-key only.
+  - This is the repo's **first Worker request handler.** Cloudflare currently
+    serves static assets only, so `wrangler.jsonc` gains a `main` entry
+    alongside the existing assets binding — new architecture, not an edit.
 - **`ProxyClient implements LlmClient`**: the app picks transport by tier — BYO
-  `OpenRouterClient` for free, `ProxyClient` for Pro. No component changes.
-- **Billing**: subscription checkout + webhook marks the account active. Prefer
-  a **Merchant of Record** (Lemon Squeezy/Paddle) over raw Stripe for tax
-  reasons (monetization.md §6). **Credentials (OpenRouter key, billing keys,
-  Dexie Cloud) are configured by the owner as Cloudflare secrets — never handled
-  in code or committed.**
+  `OpenRouterClient` for free, `ProxyClient` for Pro. No component changes;
+  this is the payoff of the Sprint 3 abstraction (`src/llm/LlmClient.ts`).
+- **Owner-supplied**: `OPENROUTER_API_KEY` as a Cloudflare secret. **Never
+  handled in code or committed.**
+- **Gate (from monetization.md §8) — only two items, not the whole checklist:**
+  §8.1 current OpenRouter rates for the managed models, and §8.4 the chosen
+  usage cap. Both feed the cap's sizing. The money questions (§8.2, §8.3,
+  §8.5–8.7) gate §12.4 instead, and must not stall this sprint.
+- **Exit**: a signed-in account chats and generates plans with no OpenRouter
+  key of its own; the cap blocks a runaway; only the managed model set is
+  reachable through the proxy; the free BYO-key path still works unchanged.
+
+### 12.4 Sprint 12b — Pricing Investigation + Billing + Gating
+
+Blocked, and deliberately so — see §12.3's note. Turns the managed-AI
+capability into something you can actually charge for.
+
+**Investigate first. This is the gate, not a formality:** confirm the
+monetization.md §8 items that are about money — §8.2 Dexie Cloud production
+pricing and any monthly minimum, §8.3 Israel/international tax obligations and
+whether a Merchant of Record removes them, §8.5 the Pro price, §8.6 the Sync
+price, and §8.7 the premium-model rates and cap *mechanism* if Pro+ is still on
+the table. Pricing recommendation stands at **$4/mo or $40/yr** for Pro and
+**$2/mo or $20/yr** for Sync, annual pushed to beat the fixed per-charge fee.
+
+- **Billing provider: NOT CHOSEN** (owner deferred, 2026-07-30).
+  monetization.md §6 recommends a **Merchant of Record** (Lemon Squeezy /
+  Paddle) over raw Stripe, because it makes cross-border VAT registration
+  someone else's problem; the ~2% extra on a $4 sub is ~$0.08, far less than
+  the tax admin it removes.
+  - **Design constraint, decided now so the deferral costs nothing:** the
+    subscription/entitlement check must sit behind a **single narrow
+    interface** so the provider is swappable. This mirrors how `LlmClient`
+    made the AI transport swappable and let `ProxyClient` drop in with zero
+    component changes. A provider's webhook shape must not leak into the app.
+- **Billing flow**: subscription checkout + webhook marks the account active.
+  **Credentials (billing API keys, webhook secret) are configured by the owner
+  as Cloudflare secrets — never handled in code or committed.**
 - **Gating + honesty**: show quota remaining; be explicit in-UI about what
   each tier actually does with your data — Free is fully local; Sync and Pro
   both sync through the cloud; only Pro additionally routes coaching through
   a managed key instead of yours (monetization.md §7).
-- **Exit**: a paid account chats/generates with no OpenRouter key of its own;
-  the cap blocks a runaway; cancelling billing reverts the account to free.
-
-### Pre-build checklist (from monetization.md §8)
-
-Confirm before starting 12: current OpenRouter model rates, Dexie Cloud
-pricing, tax approach (MoR vs Stripe), and the chosen usage cap. Pricing
-recommendation: **$4/mo or $40/yr**, annual pushed to beat the Stripe fixed fee.
+- **Exit**: checkout marks an account active; cancelling reverts it to the
+  free/Sync entitlement; quota remaining is visible; the UI states plainly what
+  each tier does with a user's data.
 
 ## 13. Sprint 13 — Shoe Tracking ✅ (implemented 2026-07-26)
 
@@ -1099,14 +1195,22 @@ two consecutive real Cloudflare/GitHub Pages deployments once one is made —
 straightforward to check next time two commits ship back to back, just not
 something a single implementation pass can observe.
 
-## 15. Sprints 15–16 — Provider Import (specified; DEPEND on §12)
+## 15. Sprints 15–16 — Provider Import (specified; DEPEND on §12's Worker)
 
 Implements PRD §4.9 (FR-9.1 – 9.10). One provider per sprint, as they share
 almost nothing: different auth, different API shape, very different risk.
 
-> **Hard dependency: these require the backend from Sprints 10–12.** This is a
-> frontend-only PWA today, and neither provider can be integrated from the
-> browser alone (reasons below). They are *not* independent tracks like 13/14.
+> **Hard dependency: Sprint 12's Worker (§12.3).** This is a frontend-only PWA
+> today, and neither provider can be integrated from the browser alone — what
+> they need is a **server-side place to hold an OAuth secret**, which is exactly
+> what Sprint 12 introduces. They are *not* independent tracks like 13/14.
+>
+> **Corrected 2026-07-30:** this previously said "the backend from Sprints
+> 10–12", which implied billing was also a prerequisite. It isn't — **Sprint
+> 12b (§12.4) is not required for provider import.** Splitting 12 from 12b
+> therefore unblocks this track earlier than the old wording suggested: it needs
+> 10 (hosting), 11 (accounts, to own the stored tokens) and 12 (the Worker), but
+> not a payment provider.
 
 ### 15.0 Shared design
 
