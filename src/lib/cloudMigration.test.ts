@@ -1,7 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import type { BackupEnvelope } from './backup';
 import { BACKUP_APP_ID, BACKUP_SCHEMA_VERSION } from './backup';
-import { isAlreadyCloudShaped, remapBackupForCloud } from './cloudMigration';
+import {
+  isAlreadyCloudShaped,
+  remapBackupForCloud,
+  type CloudTable,
+} from './cloudMigration';
+
+// Stand-in for Dexie's table.newId(). Mirrors the real prefix scheme (runs ->
+// "rns") so a regression to hand-rolled ids shows up here rather than as a
+// ConstraintError against a live database.
+const PREFIX: Record<CloudTable, string> = {
+  runs: 'rns',
+  trainingPlans: 'trn',
+  plannedWorkouts: 'pln',
+  chatMessages: 'cht',
+  shoes: 'shs', // verified against the live DB — not 'sho'
+};
+function fakeNewId() {
+  let n = 0;
+  return (table: CloudTable) => `${PREFIX[table]}${String(++n).padStart(4, '0')}`;
+}
 
 /** A backup with every cross-table link exercised at least once. */
 function localBackup(): BackupEnvelope {
@@ -75,7 +94,7 @@ function localBackup(): BackupEnvelope {
 
 describe('remapBackupForCloud', () => {
   it('replaces every primary key with a unique string', () => {
-    const { envelope } = remapBackupForCloud(localBackup());
+    const { envelope } = remapBackupForCloud(localBackup(), fakeNewId());
     const ids = [
       ...envelope.tables.runs,
       ...envelope.tables.trainingPlans,
@@ -89,7 +108,7 @@ describe('remapBackupForCloud', () => {
   });
 
   it('repoints every foreign key at its row new id', () => {
-    const { envelope } = remapBackupForCloud(localBackup());
+    const { envelope } = remapBackupForCloud(localBackup(), fakeNewId());
     const { runs, trainingPlans, plannedWorkouts, chatMessages, shoes } =
       envelope.tables;
 
@@ -108,7 +127,7 @@ describe('remapBackupForCloud', () => {
   });
 
   it('never leaves an original numeric id anywhere in the output', () => {
-    const { envelope } = remapBackupForCloud(localBackup());
+    const { envelope } = remapBackupForCloud(localBackup(), fakeNewId());
     // The whole failure mode this guards: a link that still holds `10` after
     // the row it referenced became "workout_<uuid>".
     const json = JSON.stringify(envelope.tables);
@@ -117,20 +136,20 @@ describe('remapBackupForCloud', () => {
 
   it('passes settings through untouched — it is device-local, never synced', () => {
     const before = localBackup();
-    const { envelope } = remapBackupForCloud(before);
+    const { envelope } = remapBackupForCloud(before, fakeNewId());
     expect(envelope.tables.settings).toEqual(before.tables.settings);
   });
 
   it('does not mutate the input envelope', () => {
     const input = localBackup();
-    remapBackupForCloud(input);
+    remapBackupForCloud(input, fakeNewId());
     expect(input.tables.runs[0].id).toBe(100);
     expect(input.tables.runs[0].plannedWorkoutId).toBe(10);
     expect(input.tables.plannedWorkouts[0].planId).toBe(1);
   });
 
   it('preserves all non-id fields verbatim', () => {
-    const { envelope } = remapBackupForCloud(localBackup());
+    const { envelope } = remapBackupForCloud(localBackup(), fakeNewId());
     const run = envelope.tables.runs[0];
     expect(run.totalDistanceMeters).toBe(8000);
     expect(run.matchStatus).toBe('confirmed');
@@ -139,7 +158,7 @@ describe('remapBackupForCloud', () => {
   });
 
   it('reports row counts so the caller can show what moved', () => {
-    const { stats } = remapBackupForCloud(localBackup());
+    const { stats } = remapBackupForCloud(localBackup(), fakeNewId());
     expect(stats).toMatchObject({
       runs: 1,
       trainingPlans: 1,
@@ -157,7 +176,7 @@ describe('remapBackupForCloud — dangling references', () => {
     // A run pointing at a planned workout that was deleted before export.
     backup.tables.runs[0].plannedWorkoutId = 999;
 
-    const { envelope, stats } = remapBackupForCloud(backup);
+    const { envelope, stats } = remapBackupForCloud(backup, fakeNewId());
 
     // Dropped, NOT carried over as a stale 999 that would dangle forever.
     expect(envelope.tables.runs[0].plannedWorkoutId).toBeUndefined();
@@ -171,7 +190,7 @@ describe('remapBackupForCloud — dangling references', () => {
     const backup = localBackup();
     backup.tables.runs[0].shoeId = 42;
 
-    const { envelope, stats } = remapBackupForCloud(backup);
+    const { envelope, stats } = remapBackupForCloud(backup, fakeNewId());
 
     expect(envelope.tables.runs[0].shoeId).toBeUndefined();
     expect(envelope.tables.runs[0].plannedWorkoutId).toBe(
@@ -186,7 +205,7 @@ describe('remapBackupForCloud — dangling references', () => {
     delete backup.tables.runs[0].shoeId;
     delete backup.tables.chatMessages[0].planId;
 
-    const { envelope, stats } = remapBackupForCloud(backup);
+    const { envelope, stats } = remapBackupForCloud(backup, fakeNewId());
 
     expect(envelope.tables.runs[0].plannedWorkoutId).toBeUndefined();
     expect(envelope.tables.runs[0].shoeId).toBeUndefined();
@@ -211,7 +230,7 @@ describe('remapBackupForCloud — edge cases', () => {
         settings: [],
       },
     };
-    const { envelope, stats } = remapBackupForCloud(empty);
+    const { envelope, stats } = remapBackupForCloud(empty, fakeNewId());
     expect(envelope.tables.runs).toEqual([]);
     expect(stats.droppedReferences).toBe(0);
   });
@@ -221,7 +240,7 @@ describe('remapBackupForCloud — edge cases', () => {
     const backup = localBackup();
     backup.tables.trainingPlans[0].id = '1' as unknown as number;
 
-    const { envelope, stats } = remapBackupForCloud(backup);
+    const { envelope, stats } = remapBackupForCloud(backup, fakeNewId());
 
     expect(envelope.tables.plannedWorkouts[0].planId).toBe(
       envelope.tables.trainingPlans[0].id,
@@ -233,7 +252,7 @@ describe('remapBackupForCloud — edge cases', () => {
     const backup = localBackup();
     delete backup.tables.shoes[0].id;
     // The run referenced shoe 5, which no longer has an id to match on.
-    const { envelope, stats } = remapBackupForCloud(backup);
+    const { envelope, stats } = remapBackupForCloud(backup, fakeNewId());
 
     expect(typeof envelope.tables.shoes[0].id).toBe('string');
     expect(envelope.tables.runs[0].shoeId).toBeUndefined();
@@ -259,7 +278,7 @@ describe('remapBackupForCloud — edge cases', () => {
       status: 'pending',
     });
 
-    const { envelope } = remapBackupForCloud(backup);
+    const { envelope } = remapBackupForCloud(backup, fakeNewId());
     const [plan1, plan2] = envelope.tables.trainingPlans;
     const workouts = envelope.tables.plannedWorkouts;
 
@@ -275,7 +294,7 @@ describe('isAlreadyCloudShaped', () => {
   });
 
   it('is true for the output of a remap — re-running it is a no-op decision', () => {
-    const { envelope } = remapBackupForCloud(localBackup());
+    const { envelope } = remapBackupForCloud(localBackup(), fakeNewId());
     expect(isAlreadyCloudShaped(envelope)).toBe(true);
   });
 
@@ -292,7 +311,57 @@ describe('isAlreadyCloudShaped', () => {
         shoes: [],
         settings: [],
       },
-    });
+    }, fakeNewId());
     expect(isAlreadyCloudShaped(envelope)).toBe(true);
+  });
+});
+
+describe('remapBackupForCloud — ids must come from Dexie, not invented here', () => {
+  // Regression. This module used to mint `run_<uuid>` itself, and every test
+  // passed — because they only checked internal consistency (uniqueness, FK
+  // rewiring), never that an id is something Dexie Cloud will accept. It
+  // isn't: Dexie Cloud derives a per-table prefix (runs -> "rns") and rejects
+  // anything else at write time.
+  //   ConstraintError: The ID "3" is not valid for table "runs".
+  //   Primary '@' keys requires the key to be prefixed with "rns"
+  // Ids must therefore come from Dexie's own table.newId().
+  it('asks the factory for one id per row, using real Dexie table names', () => {
+    const asked: CloudTable[] = [];
+    remapBackupForCloud(localBackup(), (table) => {
+      asked.push(table);
+      return `${PREFIX[table]}x${asked.length}`;
+    });
+    // One request per row across the five synced tables: 1+2+1+1+1.
+    expect(asked).toHaveLength(6);
+    // Must be the ACTUAL Dexie table names — the caller resolves the factory as
+    // `db[table].newId()`, so 'run'/'plan'/'msg' would not resolve to a table.
+    expect(new Set(asked)).toEqual(
+      new Set([
+        'runs',
+        'trainingPlans',
+        'plannedWorkouts',
+        'chatMessages',
+        'shoes',
+      ]),
+    );
+  });
+
+  it('fabricates no id of its own — every output id came from the factory', () => {
+    const issued = new Set<string>();
+    const { envelope } = remapBackupForCloud(localBackup(), (table) => {
+      const id = `${PREFIX[table]}${issued.size}`;
+      issued.add(id);
+      return id;
+    });
+    const outputIds = [
+      ...envelope.tables.runs,
+      ...envelope.tables.trainingPlans,
+      ...envelope.tables.plannedWorkouts,
+      ...envelope.tables.chatMessages,
+      ...envelope.tables.shoes,
+    ].map((r) => String(r.id));
+    for (const id of outputIds) {
+      expect(issued.has(id), `${id} was not issued by the factory`).toBe(true);
+    }
   });
 });

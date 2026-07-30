@@ -233,6 +233,10 @@ export const esMX: Record<MessageKey, string> = {
   'settings.importConfirm':
     '¿Importar el respaldo del {date} ({counts})?\n\nEsto REEMPLAZA todos los datos actuales en este dispositivo.',
   'settings.imported': 'Respaldo importado.',
+  'settings.importRemapNote':
+    'Este respaldo viene de un dispositivo local, así que sus carreras se volverán a identificar para tu cuenta. Los vínculos entre carreras, planes y tenis se conservan.',
+  'settings.importedWithDropped':
+    'Respaldo importado. {count} vínculo(s) no se pudieron emparejar y se limpiaron — las carreras siguen intactas.',
   'settings.importFailed': 'No se pudo importar el respaldo.',
   'settings.storage': 'Almacenamiento',
   'settings.storageLine': 'Usando {usage} MB de {quota} MB disponibles',

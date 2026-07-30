@@ -227,6 +227,10 @@ export const en = {
   'settings.importConfirm':
     'Import backup from {date} ({counts})?\n\nThis REPLACES all data currently on this device.',
   'settings.imported': 'Backup imported.',
+  'settings.importRemapNote':
+    'This backup came from a local device, so its runs will be re-keyed for your account. Links between runs, plans and shoes are preserved.',
+  'settings.importedWithDropped':
+    'Backup imported. {count} link(s) could not be matched and were cleared — the runs themselves are intact.',
   'settings.importFailed': 'Failed to import backup.',
   'settings.storage': 'Storage',
   'settings.storageLine': 'Using {usage} MB of {quota} MB available',

@@ -28,29 +28,46 @@ function key(id: EntityId): string {
   return String(id);
 }
 
+/** The synced tables whose primary keys have to be re-minted. */
+export type CloudTable =
+  | 'runs'
+  | 'trainingPlans'
+  | 'plannedWorkouts'
+  | 'chatMessages'
+  | 'shoes';
+
 /**
- * Dexie Cloud accepts any unique string as an `@id` value on insert; it only
- * generates one itself when the property is absent. Minting them here (rather
- * than letting the server assign) is what makes the remap deterministic and
- * lets foreign keys be rewritten in the same pass.
+ * Mints a primary key that Dexie Cloud will accept for a given table.
  *
- * The table prefix is cosmetic but genuinely useful when reading raw rows or
- * debugging a sync conflict — a bare UUID tells you nothing about what it is.
+ * This CANNOT be a locally-invented string. Dexie Cloud derives a short
+ * per-table prefix (`runs` → `rns`) and validates every `@id` against it:
+ *
+ *     ConstraintError: The ID "3" is not valid for table "runs".
+ *     Primary '@' keys requires the key to be prefixed with "rns"
+ *
+ * An earlier version of this module minted `run_<uuid>` and would have failed
+ * the same validation — a bare UUID or any hand-rolled prefix is rejected too.
+ * So the id must come from Dexie's own `table.newId()`, which is injected here
+ * rather than imported: keeping it a parameter is what lets the remap stay a
+ * pure function with no database dependency, and lets tests supply a
+ * deterministic stand-in.
  */
-function mintId(table: string): string {
-  return `${table}_${crypto.randomUUID()}`;
-}
+export type NewIdFactory = (table: CloudTable) => string;
 
 /**
  * Builds old-id -> new-id for one table, skipping rows that have no id at all
  * (possible in a hand-edited backup; they simply get a fresh id and cannot be
  * referenced by anything, which is correct).
  */
-function buildIdMap(rows: { id?: EntityId }[], table: string): IdMap {
+function buildIdMap(
+  rows: { id?: EntityId }[],
+  table: CloudTable,
+  newId: NewIdFactory,
+): IdMap {
   const map: IdMap = new Map();
   for (const row of rows) {
     if (row.id === undefined) continue;
-    map.set(key(row.id), mintId(table));
+    map.set(key(row.id), newId(table));
   }
   return map;
 }
@@ -101,14 +118,19 @@ export interface CloudMigrationResult {
  */
 export function remapBackupForCloud(
   envelope: BackupEnvelope,
+  newId: NewIdFactory,
 ): CloudMigrationResult {
   const { tables } = envelope;
 
-  const planIds = buildIdMap(tables.trainingPlans, 'plan');
-  const workoutIds = buildIdMap(tables.plannedWorkouts, 'workout');
-  const shoeIds = buildIdMap(tables.shoes, 'shoe');
-  const runIds = buildIdMap(tables.runs, 'run');
-  const messageIds = buildIdMap(tables.chatMessages, 'msg');
+  const planIds = buildIdMap(tables.trainingPlans, 'trainingPlans', newId);
+  const workoutIds = buildIdMap(
+    tables.plannedWorkouts,
+    'plannedWorkouts',
+    newId,
+  );
+  const shoeIds = buildIdMap(tables.shoes, 'shoes', newId);
+  const runIds = buildIdMap(tables.runs, 'runs', newId);
+  const messageIds = buildIdMap(tables.chatMessages, 'chatMessages', newId);
 
   let droppedReferences = 0;
   /** Counts a reference that was present but unresolvable. */
@@ -123,19 +145,19 @@ export function remapBackupForCloud(
 
   const runs = tables.runs.map((run) => ({
     ...run,
-    id: runIds.get(key(run.id ?? '')) ?? mintId('run'),
+    id: runIds.get(key(run.id ?? '')) ?? newId('runs'),
     plannedWorkoutId: resolve(run.plannedWorkoutId, workoutIds),
     shoeId: resolve(run.shoeId, shoeIds),
   }));
 
   const trainingPlans = tables.trainingPlans.map((plan) => ({
     ...plan,
-    id: planIds.get(key(plan.id ?? '')) ?? mintId('plan'),
+    id: planIds.get(key(plan.id ?? '')) ?? newId('trainingPlans'),
   }));
 
   const plannedWorkouts = tables.plannedWorkouts.map((workout) => ({
     ...workout,
-    id: workoutIds.get(key(workout.id ?? '')) ?? mintId('workout'),
+    id: workoutIds.get(key(workout.id ?? '')) ?? newId('plannedWorkouts'),
     // planId is required on PlannedWorkout, so a dropped reference would make
     // the row invalid. Keep the row but let the caller see it in the stats —
     // an orphaned workout is recoverable; a crashed migration is not.
@@ -144,13 +166,13 @@ export function remapBackupForCloud(
 
   const chatMessages = tables.chatMessages.map((message) => ({
     ...message,
-    id: messageIds.get(key(message.id ?? '')) ?? mintId('msg'),
+    id: messageIds.get(key(message.id ?? '')) ?? newId('chatMessages'),
     planId: resolve(message.planId, planIds),
   }));
 
   const shoes = tables.shoes.map((shoe) => ({
     ...shoe,
-    id: shoeIds.get(key(shoe.id ?? '')) ?? mintId('shoe'),
+    id: shoeIds.get(key(shoe.id ?? '')) ?? newId('shoes'),
   }));
 
   return {

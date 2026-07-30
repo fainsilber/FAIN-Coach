@@ -226,6 +226,10 @@ export const he: Record<MessageKey, string> = {
   'settings.importConfirm':
     'לייבא גיבוי מתאריך {date} ({counts})?\n\nפעולה זו מחליפה את כל הנתונים במכשיר זה.',
   'settings.imported': 'הגיבוי יובא.',
+  'settings.importRemapNote':
+    'הגיבוי הזה נוצר במכשיר מקומי, ולכן המזהים של הריצות ימופו מחדש לחשבון שלכם. הקישורים בין ריצות, תוכניות ונעליים נשמרים.',
+  'settings.importedWithDropped':
+    'הגיבוי יובא. {count} קישורים לא נמצאו ונוקו — הריצות עצמן נשמרו במלואן.',
   'settings.importFailed': 'ייבוא הגיבוי נכשל.',
   'settings.storage': 'אחסון',
   'settings.storageLine': 'בשימוש {usage} MB מתוך {quota} MB',

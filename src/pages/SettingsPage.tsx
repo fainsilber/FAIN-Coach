@@ -2,6 +2,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { db, requestPersistentStorage } from '@/db/db';
+import { isCloudBuild } from '@/db/cloudConfig';
+import {
+  isAlreadyCloudShaped,
+  remapBackupForCloud,
+  type CloudMigrationStats,
+} from '@/lib/cloudMigration';
 import { SETTING_KEYS, setSetting } from '@/db/settings';
 import {
   exportBackup,
@@ -158,26 +164,56 @@ export function SettingsPage() {
   async function handleImportFile(file: File) {
     setImportError(undefined);
     try {
-      const envelope = parseBackup(await file.text());
+      let envelope = parseBackup(await file.text());
+
+      // A backup from a local/free device carries auto-increment NUMBER ids.
+      // The cloud database's `@id` keys must be strings Dexie Cloud itself
+      // minted, so importing one here means re-keying every row and repointing
+      // every foreign key first (dev plan §12.2). Without this the write fails:
+      //   ConstraintError: The ID "3" is not valid for table "runs".
+      const needsRemap = isCloudBuild() && !isAlreadyCloudShaped(envelope);
+      let remapStats: CloudMigrationStats | undefined;
+      if (needsRemap) {
+        // Ids come from Dexie, never hand-rolled — it validates them against a
+        // per-table prefix it derives itself (`runs` → "rns").
+        const result = remapBackupForCloud(envelope, (table) =>
+          (db as unknown as Record<string, { newId(): string }>)[table].newId(),
+        );
+        envelope = result.envelope;
+        remapStats = result.stats;
+      }
+
       const counts = t('settings.importCounts', {
         runs: envelope.tables.runs.length,
         plans: envelope.tables.trainingPlans.length,
         messages: envelope.tables.chatMessages.length,
       });
+      // Say that re-keying will happen BEFORE doing it — it's a one-way
+      // transformation of the file's contents, not a plain copy.
+      const remapNote = needsRemap ? `\n\n${t('settings.importRemapNote')}` : '';
       if (
         !window.confirm(
           t('settings.importConfirm', {
             date: envelope.exportedAt.slice(0, 10),
             counts,
-          }),
+          }) + remapNote,
         )
       ) {
         return;
       }
       await importBackup(envelope);
       void logEvent('info', 'backup.imported', `runs=${envelope.tables.runs.length}`);
-      setStatus(t('settings.imported'));
-      setTimeout(() => setStatus(undefined), 2500);
+      // A dropped link is legitimate (a run whose planned workout was deleted
+      // before export) but the user should hear about it rather than wonder
+      // later why a run lost its workout.
+      setStatus(
+        remapStats && remapStats.droppedReferences > 0
+          ? t('settings.importedWithDropped', {
+              count: remapStats.droppedReferences,
+            })
+          : t('settings.imported'),
+      );
+      setTimeout(() => setStatus(undefined), 6000);
     } catch (e) {
       void logEvent(
         'error',
