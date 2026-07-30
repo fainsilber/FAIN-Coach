@@ -36,6 +36,15 @@
         "dev:cloud"
       ],
       "port": 5174
+    },
+    {
+      "name": "fain-coach-dev-garmin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:garmin"
+      ],
+      "port": 5175
     }
   ]
 }

@@ -72,6 +72,21 @@ export const he: Record<MessageKey, string> = {
     'בייבוא מרובה לא נשאלים איך הרגישה כל ריצה — אפשר להוסיף הערות לריצות בודדות מאוחר יותר.',
   'upload.batchFailed': 'ייבוא הריצות נכשל. שום דבר לא נשמר.',
 
+  // ייבוא מגרמין (ספרינט 15, שלב ב')
+  'garmin.title': 'ייבוא מגרמין',
+  'garmin.connectHelp':
+    "הריצו פעם אחת את כלי הייצוא עם ‎--link‎ כדי לחבר את חשבון הגרמין, והדביקו כאן את הקוד שהוא מדפיס. סיסמת הגרמין שלכם לא עוזבת את המחשב שלכם.",
+  'garmin.codeLabel': 'קוד חיבור',
+  'garmin.connect': 'חיבור',
+  'garmin.badCode': 'זה לא נראה כמו קוד חיבור — הוא אמור להתחיל ב-‎fc_‎.',
+  'garmin.from': 'מתאריך',
+  'garmin.to': 'עד תאריך',
+  'garmin.fetch': 'משיכת ריצות',
+  'garmin.fetching': 'מושך {done} מתוך {total}…',
+  'garmin.disconnect': 'ניתוק מגרמין',
+  'garmin.noneFound': 'לא נמצאו ריצות בטווח התאריכים הזה.',
+  'garmin.failed': 'לא הצלחנו להגיע לגרמין. נסו שוב.',
+
   // Stat labels
   'stat.distance': 'מרחק',
   'stat.time': 'זמן',

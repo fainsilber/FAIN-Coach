@@ -1,7 +1,7 @@
 {
   "name": "fain-coach",
   "private": true,
-  "version": "1.9.0",
+  "version": "1.10.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -b --noEmit",
-    "dev:cloud": "cross-env VITE_DEXIE_CLOUD_URL=https://z18kml7kr.dexie.cloud vite"
+    "dev:cloud": "cross-env VITE_DEXIE_CLOUD_URL=https://z18kml7kr.dexie.cloud vite",
+    "dev:garmin": "cross-env VITE_GARMIN_WORKER_URL=http://127.0.0.1:8787 vite"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

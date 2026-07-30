@@ -103,6 +103,64 @@ def with_retries(fn, what: str):
     return None
 
 
+def link_to_worker(worker_url: str) -> int:
+    """
+    Sign in locally, then hand ONLY the resulting tokens to the Worker.
+
+    The password never leaves this machine — it is used here to mint tokens,
+    and the tokens are what travel. The Worker returns a link code, which is
+    what you paste into FAIN Coach; from then on the app imports on its own.
+    """
+    import json
+
+    import requests
+    from garminconnect.client import token_file_path
+
+    connect()  # mints and caches tokens (prompting only if needed)
+
+    token_file = token_file_path(str(TOKENSTORE))
+    try:
+        tokens = json.loads(token_file.read_text(encoding="utf-8"))
+    except OSError as e:
+        print(f"Could not read tokens from {token_file}: {e}")
+        return 1
+
+    missing = [k for k in ("di_token", "di_refresh_token", "di_client_id") if not tokens.get(k)]
+    if missing:
+        print(f"Token file is missing {', '.join(missing)}. Delete {TOKENSTORE} and try again.")
+        return 1
+
+    endpoint = f"{worker_url}/api/garmin/link"
+    print(f"\nSending tokens to {endpoint} …")
+    try:
+        r = requests.post(
+            endpoint,
+            json={"tokens": tokens, "label": "garmin-export helper"},
+            timeout=30,
+        )
+    except Exception as e:  # noqa: BLE001
+        print(f"Could not reach the Worker: {e}")
+        return 1
+
+    if not r.ok:
+        print(f"Worker refused the link ({r.status_code}): {r.text[:300]}")
+        return 1
+
+    code = r.json().get("linkCode")
+    if not code:
+        print(f"Worker replied without a link code: {r.text[:300]}")
+        return 1
+
+    print("\n" + "=" * 60)
+    print(" Linked. Paste this code into FAIN Coach → Settings → Garmin:\n")
+    print(f"   {code}\n")
+    print(" Treat it like a password: anyone holding it can read your Garmin")
+    print(" activities through this Worker. You can revoke it any time from")
+    print(" Settings, which also stops the Worker using your tokens.")
+    print("=" * 60)
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Export Garmin runs as TCX for FAIN Coach.")
     ap.add_argument("--days", type=int, help="How many days back to export.")
@@ -111,7 +169,14 @@ def main() -> int:
     ap.add_argument("--out", default="garmin-runs", help="Output folder.")
     ap.add_argument("--all-activities", action="store_true",
                     help="Include non-running activities too.")
+    ap.add_argument("--link", metavar="URL",
+                    help="Instead of downloading, hand the tokens to your FAIN "
+                         "Coach Worker so the app can import on its own "
+                         "(e.g. --link https://coach.fainsilber.co.il).")
     args = ap.parse_args()
+
+    if args.link:
+        return link_to_worker(args.link.rstrip("/"))
 
     if args.days:
         end = date.today()

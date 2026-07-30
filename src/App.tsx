@@ -1,6 +1,6 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
-import { CloudSignInGate } from './components/CloudSignInGate';
+import { CloudSignInGate, useCloudUser } from './components/CloudSignInGate';
 import { ProfileGate } from './components/ProfileGate';
 import { UpdateBanner } from './components/UpdateBanner';
 import { db, type FainCoachCloudDB } from './db/db';
@@ -79,24 +79,46 @@ function LocalApp() {
 }
 
 function CloudApp() {
-  const t = useT();
   return (
     <>
       <UpdateBanner />
       <CloudSignInGate>
-        <AppShell
-          identityChip={
-            <button
-              type="button"
-              onClick={() => void (db as FainCoachCloudDB).cloud.logout()}
-              className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent"
-            >
-              {t('cloud.signOut')}
-            </button>
-          }
-        />
+        <AppShell identityChip={<CloudIdentityChip />} />
       </CloudSignInGate>
     </>
+  );
+}
+
+/**
+ * Which account you are signed in as, next to the sign-out button. On a shared
+ * or multi-account device "am I in the right account?" is otherwise
+ * unanswerable without signing out to find out.
+ *
+ * The address is `<bdi>`-isolated and truncated: an email is LTR even in a
+ * Hebrew interface, and a long one must not push the sign-out button off a
+ * phone screen.
+ */
+function CloudIdentityChip() {
+  const t = useT();
+  const user = useCloudUser();
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      {user?.email && (
+        <span
+          className="max-w-[45vw] truncate text-xs text-muted-foreground sm:max-w-xs"
+          title={user.email}
+        >
+          <bdi>{user.email}</bdi>
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={() => void (db as FainCoachCloudDB).cloud.logout()}
+        className="shrink-0 rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent"
+      >
+        {t('cloud.signOut')}
+      </button>
+    </div>
   );
 }
 

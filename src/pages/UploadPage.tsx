@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GarminImport } from '@/components/GarminImport';
 import { MatchConfirm } from '@/components/MatchConfirm';
 import { PostRunForm, type PostRunDetails } from '@/components/PostRunForm';
 import { StatGrid } from '@/components/StatGrid';
@@ -100,24 +101,30 @@ export function UploadPage() {
       const parsed = await Promise.all(
         tcx.map(async (f) => parseImportCandidate(f.name, await f.text())),
       );
-      const marked = await markDuplicates(parsed);
-
-      // Auto-match against the active plan, consuming each workout as it is
-      // claimed — otherwise two runs a day apart could both match the same
-      // planned session.
-      const pool = await activePlanWorkouts();
-      const rows: BatchRow[] = marked.map((c) => {
-        const match = c.run ? findMatchCandidate(c.run, pool) : undefined;
-        if (match) pool.splice(pool.indexOf(match), 1);
-        return { ...c, selected: c.status === 'ready', ...(match && { match }) };
-      });
-
-      const failed = rows.filter((r) => r.status === 'error').length;
-      if (failed > 0) void logEvent('warn', 'import.batch.partial', `failed=${failed}`);
-      setState({ step: 'batch', rows });
+      await showBatch(await markDuplicates(parsed));
     } finally {
       setBatchReading(0);
     }
+  }
+
+  /**
+   * Turn parsed candidates into the batch review screen. Shared by file drop
+   * and the Garmin Worker import, so both routes get identical review,
+   * matching and dedupe — the provider is just a different way to obtain the
+   * same TCX.
+   */
+  async function showBatch(candidates: ImportCandidate[], workouts?: PlannedWorkout[]) {
+    // Auto-match consumes each workout as it is claimed — otherwise two runs a
+    // day apart could both match the same planned session.
+    const pool = workouts ?? (await activePlanWorkouts());
+    const rows: BatchRow[] = candidates.map((c) => {
+      const match = c.run ? findMatchCandidate(c.run, pool) : undefined;
+      if (match) pool.splice(pool.indexOf(match), 1);
+      return { ...c, selected: c.status === 'ready', ...(match && { match }) };
+    });
+    const failed = rows.filter((r) => r.status === 'error').length;
+    if (failed > 0) void logEvent('warn', 'import.batch.partial', `failed=${failed}`);
+    setState({ step: 'batch', rows });
   }
 
   async function handleBatchSave() {
@@ -400,6 +407,7 @@ export function UploadPage() {
         />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
+      <GarminImport onCandidates={(c) => void showBatch(c)} />
       <Link
         to="/upload/manual"
         className="block text-center text-sm text-muted-foreground underline"

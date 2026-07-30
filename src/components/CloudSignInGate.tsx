@@ -55,6 +55,25 @@ interface CloudUser {
   isLoggedIn?: boolean;
 }
 
+/**
+ * The signed-in account, or undefined before the addon has reported one.
+ *
+ * Subscribes to the raw RxJS observable rather than going through
+ * `useObservable`, for the same reason the gate does: nothing here may pull in
+ * an import that the local/free build (where the addon is aliased out) cannot
+ * resolve. Only ever called from inside an `isCloudBuild()` branch, which folds
+ * to a constant so this is dropped entirely from the local bundle.
+ */
+export function useCloudUser(): CloudUser | undefined {
+  const cloud = (db as FainCoachCloudDB).cloud;
+  const [user, setUser] = useState<CloudUser>();
+  useEffect(() => {
+    const sub = cloud.currentUser.subscribe((next: CloudUser) => setUser(next));
+    return () => sub.unsubscribe();
+  }, [cloud]);
+  return user;
+}
+
 const ALERT_CLASS: Record<CloudAlert['type'], string> = {
   error: 'border-destructive/40 text-destructive',
   warning: 'border-destructive/30 text-foreground',
@@ -81,23 +100,23 @@ export function CloudSignInGate({ children }: { children: ReactNode }) {
   const t = useT();
   const cloud = (db as FainCoachCloudDB).cloud;
   const [interaction, setInteraction] = useState<CloudInteraction>();
-  const [user, setUser] = useState<CloudUser>();
   const [busy, setBusy] = useState(false);
+  const user = useCloudUser();
 
-  // Plain subscriptions rather than useObservable: these are RxJS observables
+  // Plain subscription rather than useObservable: this is an RxJS observable
   // from the addon, and going through the raw API keeps this component free of
-  // any import that would break the local build.
+  // any import that would break the local build. (`currentUser` is handled by
+  // `useCloudUser` above, which the header chip shares.)
   useEffect(() => {
-    const subs = [
-      cloud.userInteraction.subscribe((next: CloudInteraction | undefined) => {
+    const sub = cloud.userInteraction.subscribe(
+      (next: CloudInteraction | undefined) => {
         setInteraction(next);
         // A new prompt (or the prompt clearing) means the previous submit
         // resolved — stop showing the spinner even if it failed.
         setBusy(false);
-      }),
-      cloud.currentUser.subscribe((next: CloudUser) => setUser(next)),
-    ];
-    return () => subs.forEach((s) => s.unsubscribe());
+      },
+    );
+    return () => sub.unsubscribe();
   }, [cloud]);
 
   // requireAuth:true makes the addon start its own login flow, so there is

@@ -63,6 +63,27 @@ const CLOUD_URL_BY_TARGET: Record<DeployTarget, string | null> = {
   cloudflare: 'https://z18kml7kr.dexie.cloud',
 };
 
+/**
+ * Where the Garmin import Worker lives (dev plan §15.1 stage B).
+ *
+ * `''` means **same origin** — on Cloudflare the Worker serves the app and the
+ * `/api/garmin/*` routes from one deployment, so no absolute URL is needed and
+ * there is no CORS hop.
+ *
+ * `null` means the deployment has no Worker, and the Garmin connect UI is not
+ * rendered at all. GitHub Pages is static-only, so it gets null. It *could* be
+ * pointed at the Cloudflare Worker cross-origin (the Worker sends CORS headers
+ * for exactly that reason), but that would couple the free tier to the paid
+ * deployment's infrastructure, so it is opt-in rather than the default.
+ *
+ * `VITE_GARMIN_WORKER_URL` overrides — that is how you point `npm run dev` at a
+ * local `wrangler dev` on :8787.
+ */
+const GARMIN_WORKER_BY_TARGET: Record<DeployTarget, string | null> = {
+  pages: null,
+  cloudflare: '',
+};
+
 // No public/_redirects for the Cloudflare target: an earlier version of this
 // file shipped one (`/* /index.html 200`, the classic Pages SPA-fallback
 // idiom) and it broke the deploy outright. Cloudflare's current import flow
@@ -150,6 +171,13 @@ export default defineConfig(({ command, isPreview }) => {
       // the cloud branch dead and drop dexie-cloud-addon (~240 kB) from a
       // local-only build. Not a secret — see docs/dexie-cloud-setup.md.
       __CLOUD_DATABASE_URL__: JSON.stringify(cloudUrl ?? null),
+      // Garmin import Worker (§15.1 stage B). Same `define` reasoning as
+      // above: a literal null lets Rollup drop the whole feature from a build
+      // that has no Worker. Not a secret — it is only an address.
+      __GARMIN_WORKER_URL__: JSON.stringify(
+        process.env.VITE_GARMIN_WORKER_URL ??
+          (isDevServer ? null : GARMIN_WORKER_BY_TARGET[target]),
+      ),
     },
     plugins: [
       react(),

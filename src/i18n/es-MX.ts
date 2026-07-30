@@ -73,6 +73,21 @@ export const esMX: Record<MessageKey, string> = {
     'En una importación masiva no se pregunta cómo se sintió cada carrera — puedes agregar notas a carreras individuales después.',
   'upload.batchFailed': 'No se pudieron importar las carreras. No se guardó nada.',
 
+  // Importación desde Garmin (Sprint 15, etapa B)
+  'garmin.title': 'Importar de Garmin',
+  'garmin.connectHelp':
+    'Ejecuta el ayudante de exportación una vez con --link para conectar tu cuenta de Garmin, y pega aquí el código que imprime. Tu contraseña de Garmin nunca sale de tu propia computadora.',
+  'garmin.codeLabel': 'Código de vínculo',
+  'garmin.connect': 'Conectar',
+  'garmin.badCode': 'Eso no parece un código de vínculo — debe empezar con fc_.',
+  'garmin.from': 'Desde',
+  'garmin.to': 'Hasta',
+  'garmin.fetch': 'Traer carreras',
+  'garmin.fetching': 'Trayendo {done} de {total}…',
+  'garmin.disconnect': 'Desconectar Garmin',
+  'garmin.noneFound': 'No se encontraron carreras en ese rango de fechas.',
+  'garmin.failed': 'No se pudo contactar a Garmin. Inténtalo de nuevo.',
+
   // Stat labels
   'stat.distance': 'Distancia',
   'stat.time': 'Tiempo',

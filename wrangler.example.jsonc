@@ -1,0 +1,39 @@
+// Worker configuration for FAIN Coach (dev plan §15.1 stage B).
+//
+// This is an EXAMPLE, not the live config. Copy it to `wrangler.jsonc` and fill
+// in the KV namespace id — see docs/garmin-worker-setup.md.
+//
+// It is deliberately not committed as `wrangler.jsonc`, because Cloudflare's
+// Git integration deploys whatever config it finds in the repo. A committed
+// config naming a KV namespace that does not exist yet would fail every deploy,
+// and this repo has been bitten before by a config file that broke the
+// Cloudflare deploy outright (see the _redirects note in vite.config.ts).
+//
+// Until a real wrangler.jsonc exists, Cloudflare keeps auto-generating its
+// static-assets-only config and the app deploys exactly as it does today —
+// the /api/garmin/* routes simply aren't there, and the app hides the feature.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fain-coach",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-07-01",
+
+  // Static assets keep being served exactly as before. The Worker only
+  // intercepts /api/*; everything else is handed to this binding untouched.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+
+  // Holds Garmin tokens, keyed by the SHA-256 of a link code. Create it with:
+  //   npx wrangler kv namespace create GARMIN_LINKS
+  // then paste the printed id below. The id is an identifier, not a secret —
+  // same reasoning as the Dexie Cloud URL in vite.config.ts.
+  "kv_namespaces": [
+    {
+      "binding": "GARMIN_LINKS",
+      "id": "PASTE_THE_KV_NAMESPACE_ID_HERE"
+    }
+  ]
+}

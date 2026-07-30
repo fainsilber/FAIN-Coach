@@ -71,6 +71,21 @@ export const en = {
     'How each run felt is not asked for on a bulk import — you can add notes to individual runs later.',
   'upload.batchFailed': 'Failed to import the runs. Nothing was saved.',
 
+  // Garmin import via the Worker (Sprint 15 stage B)
+  'garmin.title': 'Import from Garmin',
+  'garmin.connectHelp':
+    'Run the export helper once with --link to connect your Garmin account, then paste the code it prints here. Your Garmin password never leaves your own machine.',
+  'garmin.codeLabel': 'Link code',
+  'garmin.connect': 'Connect',
+  'garmin.badCode': "That doesn't look like a link code — it should start with fc_.",
+  'garmin.from': 'From',
+  'garmin.to': 'To',
+  'garmin.fetch': 'Fetch runs',
+  'garmin.fetching': 'Fetching {done} of {total}…',
+  'garmin.disconnect': 'Disconnect Garmin',
+  'garmin.noneFound': 'No runs found in that date range.',
+  'garmin.failed': 'Could not reach Garmin. Please try again.',
+
   // Stat labels
   'stat.distance': 'Distance',
   'stat.time': 'Time',

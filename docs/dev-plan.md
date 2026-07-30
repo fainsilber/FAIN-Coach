@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v3.2)
+# FAIN Coach — Development Plan (v3.3)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -47,7 +47,13 @@ fallback survived (§15.1); **v3.2 (2026-07-31)** records **Sprint 15
 stage A as shipped** (v1.9.0) — batch multi-file import with
 `[source+externalId]` dedupe and a single summary coach message, plus
 `tools/garmin-export/`, and stages the rest as A → B → C where each
-reuses the last rather than replacing it (§15.1).
+reuses the last rather than replacing it (§15.1); **v3.3 (2026-07-31)**
+records **stage B shipped** (v1.10.0) — a Cloudflare Worker holding
+Garmin tokens behind a link code, so importing is one click from inside
+the app. Confirmed by measurement that a Worker can both refresh tokens
+and call Garmin's API over plain TLS; only the login needs Python.
+Deployment (KV namespace + wrangler.jsonc) is an owner step —
+[garmin-worker-setup.md](garmin-worker-setup.md).
 
 **Status:** Sprints 1–8, 10, 11, 13, and 14 complete. Live on
 https://fainsilber.github.io/FAIN-Coach/ (local tier) and
