@@ -2,7 +2,7 @@
 
 ## AI Running Coach PWA ("OpenRun Coach")
 
-**Document Version:** 1.6 (2026-07-23: §4.9 Provider Import. Previously: §4.8 Version Visibility & Diagnostics, §4.7 Shoe Tracking, §4.6 Manual Run Entry + revised FR-3.3, §4.4 Local Profiles, §4.5 Localization & Units, §3 architecture corrected to as-built)
+**Document Version:** 1.7 (2026-07-30: revised FR-9.10 and the §7 roadmap after a real spike + provider-terms research — build order is now Garmin, then Smashrun, then Strava, the reverse of the original assumption. Previously: 1.6 (2026-07-23: §4.9 Provider Import. Previously: §4.8 Version Visibility & Diagnostics, §4.7 Shoe Tracking, §4.6 Manual Run Entry + revised FR-3.3, §4.4 Local Profiles, §4.5 Localization & Units, §3 architecture corrected to as-built))
 
 **Target Release:** MVP shipped — live at https://fainsilber.github.io/FAIN-Coach/
 
@@ -194,11 +194,11 @@ An installed PWA caches aggressively, so "I refreshed — am I actually running 
 * **FR-8.10:** The log **must not** be bundled into the normal data backup (FR-2.3); it is a separate, deliberately-exported artifact.
 * **FR-8.11:** Logging **must** be resilient: a failure inside the logger must never break the feature it was observing.
 
-### 4.9 Provider Import — Garmin, Strava (added v1.6)
+### 4.9 Provider Import — Garmin, Smashrun, Strava (added v1.6)
 
 Manual `.tcx` export is friction that loses casual users. Importing directly from the platform the runner already syncs to removes it. **One provider per sprint** — each has a different auth model, API shape, and risk profile.
 
-* **FR-9.1:** The app **must** support importing runs from a connected third-party provider, starting with Strava and Garmin Connect, with Smashrun as a further candidate. Additional providers must slot in behind the same internal contract without touching feature code.
+* **FR-9.1:** The app **must** support importing runs from a connected third-party provider, starting with Garmin Connect, then Smashrun, then Strava (build order reordered 2026-07-30 — see FR-9.10). Additional providers must slot in behind the same internal contract without touching feature code.
 * **FR-9.2:** An imported run **must** produce the same `RunRecord` shape as a parsed TCX (lap aggregates, no trackpoints stored) and behave identically downstream — history, coaching, plan matching, backups.
 * **FR-9.3:** Import **must** be idempotent: re-importing must not create duplicates. Each run records its provider and the provider's own activity id, and that pair is unique.
 * **FR-9.4:** The user **must** choose what to import — a date range or an explicit selection — rather than the app silently pulling an entire history.
@@ -207,7 +207,7 @@ Manual `.tcx` export is friction that loses casual users. Importing directly fro
 * **FR-9.7 (credentials):** Provider credentials and tokens **must never** be stored in the browser or in synced data. Where a provider requires OAuth, the token exchange and refresh happen server-side. **The app must not ask for or store a third-party account password** unless that provider offers no other mechanism — and where it does (see FR-9.9), that must be disclosed prominently to the user before they enter anything.
 * **FR-9.8:** Provider outages, revoked access, and rate limits **must** be surfaced as clear, recoverable states — never silent failure or data loss.
 * **FR-9.9 (Garmin scope limitation & disclosure):** Garmin's official API is a paid, approval-gated programme. If Garmin import is delivered via an unofficial client library instead, then: it requires the user's Garmin credentials, it may break without notice, and it may conflict with Garmin's terms of service. All three **must** be disclosed in-app before connecting, and this path **must** be optional and clearly marked as unofficial.
-* **FR-9.10:** Because Garmin Connect can auto-forward activities to Strava, Strava import **should** be delivered first — it covers many Garmin users transitively, with an official API and no password handling.
+* **FR-9.10 (revised 2026-07-30):** Garmin import **should** be delivered first, not Strava. The original reasoning — Garmin can auto-forward to Strava, and Strava's API was official and free — no longer holds: as of 2026-06-30 Strava requires an **$11.99/mo Standard-tier subscription** to serve more than one athlete and defaults to Single Player Mode, while Garmin's unofficial route (`python-garminconnect`) is free, self-serve, and has already proven resilient to a real breakage (see dev-plan §15). Smashrun's official OAuth2 API is simpler than either but gates on a manual, no-SLA developer-access request, so it should start **in parallel** with Garmin rather than after it, and land second once granted.
 * **FR-9.11 (aggregators):** Where an existing sync service (e.g. tapiriik) can bridge a provider, the app **should** document that route for users rather than building a bespoke integration — it is cheaper and, for password-based providers, avoids credential handling entirely. Adopting such a service as *implementation* is acceptable, but does not relax FR-9.7 or FR-9.9.
 
 ---
@@ -264,7 +264,7 @@ export interface RunRecord {
 ## 7. Development Roadmap
 
 Superseded by [dev-plan.md §5](dev-plan.md), which is the authoritative sprint
-breakdown. Status as of 2026-07-26:
+breakdown. Status as of 2026-07-30:
 
 | Sprint | Scope | Status |
 |---|---|---|
@@ -285,7 +285,7 @@ breakdown. Status as of 2026-07-26:
 | 12b | Pricing investigation + billing + gating | ▶ Specified, **blocked** — payment provider undecided (dev-plan §12.4) |
 | 13 | Shoe tracking (§4.7, FR-7.1–7.11) | ✅ Complete |
 | 14 | Version visibility & diagnostics (§4.8, FR-8.1–8.11) | ✅ Complete |
-| 15–16 | Provider import: Strava, then Garmin (§4.9, FR-9.1–9.11) | ▶ Specified — **requires Sprint 12's Worker, not 12b's billing** (see dev-plan §15) |
-| 17 | Provider import: Smashrun (§4.9) | ▶ Specified, low priority — only on demand |
+| 15 | Provider import: Garmin (§4.9, FR-9.1–9.11) | ▶ Specified — **needs no Worker and no Sprint 12 at all**, only Sprint 11 (see dev-plan §15) |
+| 16–17 | Provider import: Smashrun, then Strava (§4.9) | ▶ Specified — need *a* Worker, not necessarily Sprint 12's (see dev-plan §15) |
 
 ---

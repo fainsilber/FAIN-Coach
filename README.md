@@ -54,14 +54,14 @@ Data is per-device by design — there is no server and no sync. Each device sta
 ## Roadmap
 
 - **Design refresh** — planned; direction not yet defined.
-- **Import from Strava, Garmin and Smashrun** — connect the platform you already sync to instead of exporting files by hand. Needs the hosted backend first. [Spec](docs/dev-plan.md)
+- **Import from Garmin, Smashrun and Strava** (build order, reordered 2026-07-30) — connect the platform you already sync to instead of exporting files by hand. Garmin needs no hosted backend at all; Smashrun and Strava do. [Spec](docs/dev-plan.md)
 - **Paid tiers** — see [docs/monetization.md](docs/monetization.md) and dev-plan §12. Cloudflare hosting and the **Sync** tier (accounts, multi-device sync, cloud backup, still bring-your-own key) are both done and live at [coach.fainsilber.co.il](https://coach.fainsilber.co.il/). Remaining: a **managed AI key** so there's no setup required, then the billing that turns it into a paid **Pro** tier.
 
-In the meantime, if your watch already syncs to Strava (Garmin can forward automatically, and tools like [tapiriik](https://github.com/cpfair/tapiriik) bridge other platforms), a bulk export from there imports fine through the existing file upload.
+In the meantime, a bulk export from Garmin, Strava, Smashrun, or almost anywhere else imports fine through the existing file upload — tools like [tapiriik](https://github.com/cpfair/tapiriik) can bridge between platforms first if you need that (it's unmaintained since 2023, but still works as a one-off sync).
 
 Longer-term items live in [docs/dev-plan.md §16](docs/dev-plan.md), notably a GPX parser for native Apple Watch exports.
 
 ## Docs
 
-- [Product Requirements (PRD v1.6)](docs/PRD.md)
-- [Development Plan v2.8](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
+- [Product Requirements (PRD v1.7)](docs/PRD.md)
+- [Development Plan v2.9](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks

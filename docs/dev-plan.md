@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v2.8)
+# FAIN Coach — Development Plan (v2.9)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -19,9 +19,18 @@ output is now its own sellable **Sync** tier, not just a stepping stone to 12
 (2026-07-30) splits Sprint 12 into **12 (managed AI proxy, buildable)** and
 **12b (pricing + billing, blocked)**, corrects §15's dependency to Sprint 12's
 Worker only, and records Sprint 11 as still open pending two-device sync;
-**v2.8 (2026-07-30)** records **Sprint 11 as fully done** — the owner ran both
+v2.8 (2026-07-30) records **Sprint 11 as fully done** — the owner ran both
 its exit criteria (cross-device sync, simultaneous offline edits on two
-devices) against the live database and both passed clean.
+devices) against the live database and both passed clean; **v2.9
+(2026-07-30)** reorders §15 to **Garmin → Smashrun → Strava** after a real
+spike (tapiriik: stale since 2023, don't build on it) and current-terms
+research (Strava now costs $11.99/mo to operate at Standard tier; Garmin's
+unofficial route just survived a real breakage and works today), corrects
+the section's dependency claim (Garmin needs no Worker and no Sprint 12 at
+all; Smashrun/Strava need *a* Worker, not specifically Sprint 12's), and
+records five other providers investigated (Polar: free/self-serve, best
+next candidate; COROS, Wahoo: official but gated; Suunto: no personal-use
+access; Runkeeper: dead, skip).
 
 **Status:** Sprints 1–8, 10, 11, 13, and 14 complete. Live on
 https://fainsilber.github.io/FAIN-Coach/ (local tier) and
@@ -29,13 +38,15 @@ https://coach.fainsilber.co.il/ + https://fain-coach.fainsilber.workers.dev/
 (cloud tier, Sync — accounts, multi-device sync, cloud backup). Version 1.8.1,
 195 tests passing. Three languages: English, Hebrew, Spanish (Mexico).
 
-**Next up.** One standalone track, then one dependent chain:
+**Next up.** Two tracks that can run independently of each other — **provider
+import no longer needs to wait on the paid tier**:
 
 | | Sprint(s) | Notes |
 |---|---|---|
 | Standalone | **9** (§11) design refresh | Awaiting a design direction |
-| **Chain** | **12 → 12b** (§12.3, §12.4) paid hosted tier | 10 and 11 done. **12** = managed AI proxy + transport, buildable now (needs only the OpenRouter key as a Worker secret). **12b** = pricing investigation + billing, blocked on an undecided payment provider |
-| **Chain** | **15 → 16 → (17)** (§15) Strava, then Garmin, optionally Smashrun | **Requires Sprint 12's Worker** — *not* 12b. A frontend-only PWA cannot hold an OAuth secret. Run the tapiriik spike (§15.4) *before* 16 |
+| **Chain** | **15 → 16 → (17)** (§15) Garmin, then Smashrun, then Strava — reordered 2026-07-30 | Garmin needs no Worker at all (10 + 11 only). Smashrun/Strava need *a* Worker, which this chain can create itself — start the Smashrun access-request email in parallel with Garmin, not after |
+| **Chain** | **12 → 12b** (§12.3, §12.4) paid hosted tier | 10 and 11 done. **12** = managed AI proxy + transport, buildable now (needs only the OpenRouter key as a Worker secret) — reuses the Worker from 15–17 if that chain went first. **12b** = pricing investigation + billing, blocked on an undecided payment provider |
+| Candidate, not yet scheduled | Polar (AccessLink) | Free, self-serve OAuth2, no approval wait — best next provider after 15–17 (§15.5) |
 
 Ongoing risks are in §16 — none blocking.
 
@@ -866,9 +877,13 @@ account gets coaching with no OpenRouter key of its own. Sellable only once
   per-user token cap** (monetization.md §3.2), forwards to OpenRouter with the
   server-held key, streams SSE back. Restrict to the **cheap managed model
   set** (§3.3) — premium models stay BYO-key only.
-  - This is the repo's **first Worker request handler.** Cloudflare currently
-    serves static assets only, so `wrangler.jsonc` gains a `main` entry
-    alongside the existing assets binding — new architecture, not an edit.
+  - **Whether this is the repo's first Worker request handler depends on build
+    order.** Cloudflare currently serves static assets only. If this sprint
+    lands before §15, it introduces `wrangler.jsonc`'s `main` entry (new
+    architecture, not an edit); if §15's Smashrun/Strava OAuth routes (§15.2,
+    §15.3) land first, `/ai` is simply the next route on an already-existing
+    Worker. Either way the code here is the same — only which sprint pays the
+    one-time infrastructure cost changes.
 - **`ProxyClient implements LlmClient`**: the app picks transport by tier — BYO
   `OpenRouterClient` for free, `ProxyClient` for Pro. No component changes;
   this is the payoff of the Sprint 3 abstraction (`src/llm/LlmClient.ts`).
@@ -1207,22 +1222,69 @@ two consecutive real Cloudflare/GitHub Pages deployments once one is made —
 straightforward to check next time two commits ship back to back, just not
 something a single implementation pass can observe.
 
-## 15. Sprints 15–16 — Provider Import (specified; DEPEND on §12's Worker)
+## 15. Sprints 15–17 — Provider Import (specified; dependency below is NOT what it used to be)
 
 Implements PRD §4.9 (FR-9.1 – 9.10). One provider per sprint, as they share
 almost nothing: different auth, different API shape, very different risk.
+**Build order is Garmin → Smashrun → Strava** — the reverse of the original
+plan; see the 2026-07-30 note below for why.
 
-> **Hard dependency: Sprint 12's Worker (§12.3).** This is a frontend-only PWA
-> today, and neither provider can be integrated from the browser alone — what
-> they need is a **server-side place to hold an OAuth secret**, which is exactly
-> what Sprint 12 introduces. They are *not* independent tracks like 13/14.
+> **Corrected 2026-07-30, second time: the dependency is on "a server", not
+> specifically on Sprint 12.** Every earlier version of this note said these
+> sprints need "Sprint 12's Worker" or "the backend from Sprints 10–12" — true
+> when Strava was first (it needs Cloudflare Worker OAuth routes, and Sprint 12
+> was assumed to build the first ones), false now that the order is
+> **Garmin-first**:
 >
-> **Corrected 2026-07-30:** this previously said "the backend from Sprints
-> 10–12", which implied billing was also a prerequisite. It isn't — **Sprint
-> 12b (§12.4) is not required for provider import.** Splitting 12 from 12b
-> therefore unblocks this track earlier than the old wording suggested: it needs
-> 10 (hosting), 11 (accounts, to own the stored tokens) and 12 (the Worker), but
-> not a payment provider.
+> - **Garmin (§15.1) needs no Cloudflare Worker and no Sprint 12 at all.**
+>   Garmin's unofficial route runs entirely on its own Python-capable service
+>   (point 3 of §15.1) — a self-contained piece of infrastructure with its own
+>   OAuth-free session flow. Its only real dependency is **Sprint 11**
+>   (an account to own the "connected" flag and receive imported runs). It can
+>   be built and shipped with Sprint 12 still unstarted.
+> - **Smashrun (§15.2) and Strava (§15.3) do need a Cloudflare Worker** —
+>   OAuth token exchange requires a client secret that can't ship in frontend
+>   code. But that Worker does not have to be *Sprint 12's* Worker. Sprint 12
+>   was only ever "the first Worker route" because Strava-first made it the
+>   first feature that needed one. With Garmin first, **Sprint 16 (Smashrun)
+>   can stand up the Worker itself**, and Sprint 12's AI proxy would then be
+>   the second route added to an already-existing Worker, not the first.
+>
+> **So: yes, 15–17 can be built ahead of Sprint 12.** Garmin outright doesn't
+> need it. Smashrun/Strava need *a* Worker to exist, which this track can
+> create itself rather than wait for. What's unchanged: Sprint 11 (accounts) is
+> a real prerequisite for all three, since imported runs need an account to
+> belong to, and Sprint 12b (billing) was never required for any of this.
+
+> **Reordered 2026-07-30, after running the tapiriik spike §15.4 named and
+> researching current provider terms.** The original order was Strava first
+> because it was "official, free" and required no new infrastructure. Both of
+> those changed:
+>
+> - **Strava is no longer free to operate.** Strava overhauled its developer
+>   program 2026-06-01: new apps start capped at 1 athlete ("Single Player
+>   Mode") until self-upgraded to Standard tier (≤10 athletes) or approved for
+>   Extended Access (more). As of 2026-06-30, **Standard-tier API access
+>   requires an active $11.99/mo Strava subscription** — a real recurring cost
+>   that did not exist when this section was written.
+>   [API Agreement](https://www.strava.com/legal/api) ·
+>   [Developer program changes](https://appsforstrava.com/blog/strava-developer-program-changes-2026)
+> - **Garmin's unofficial route is proven working right now**, not just
+>   theoretically viable. `garth` (this section's original recommendation) is
+>   dead — deprecated after its final release 2026-03-28, when Garmin tightened
+>   Cloudflare bot-protection (TLS fingerprinting) and broke it within a day.
+>   `python-garminconnect` **survived** by rewriting its login to impersonate
+>   the official Android app at the TLS layer; works again as of v0.3.5
+>   (2026-06-04), with MFA support.
+>   [garth deprecation](https://github.com/matin/garth/discussions/222) ·
+>   [python-garminconnect](https://github.com/cyberjunky/python-garminconnect)
+>
+> Net effect: Garmin has a real up-front cost (the second Python service, point
+> 3 below) but no ongoing per-provider fee, while Strava now has an ongoing fee
+> and a review step to scale past 10 users. Smashrun sits between them — no fee,
+> but access is granted by a human on an unknown timeline, so starting that
+> conversation costs nothing and should happen in parallel with Garmin, not
+> after it.
 
 ### 15.0 Shared design
 
@@ -1231,7 +1293,7 @@ almost nothing: different auth, different API shape, very different risk.
   from JSON instead of XML. Feature code, coaching, and matching stay untouched —
   the same reasoning that keeps a future GPX parser cheap (§16 risk note).
 - **Dedupe (FR-9.3)** needs schema: extend `RunRecord.source` beyond
-  `'tcx' | 'manual'` to include `'strava' | 'garmin'`, and add
+  `'tcx' | 'manual'` to include `'garmin' | 'smashrun' | 'strava'`, and add
   `externalId?: string` with a **compound unique index** on `[source+externalId]`
   so a re-import cannot duplicate. Another Dexie version bump — coordinate with
   §13/§14.
@@ -1240,113 +1302,163 @@ almost nothing: different auth, different API shape, very different risk.
 - **Import is explicit (FR-9.4)**: pick a date range, preview the list, choose
   what to pull. No silent full-history sync.
 
-### 15.1 Sprint 15 — Strava (do this one first)
-
-The clean path: **official, free API**, no password handling, and — because
-Garmin Connect can auto-forward activities to Strava — it covers many Garmin
-users transitively (FR-9.10).
-
-- **Why it still needs the Worker**: OAuth token exchange requires the client
-  secret, which cannot ship in frontend code, and Strava's token endpoint is not
-  browser-CORS-friendly. Worker routes: `/strava/connect`, `/strava/callback`
-  (stores the refresh token against the account), `/strava/activities`.
-- **Data mapping**: build the run from the activity summary plus the laps
-  endpoint. Note Strava's public API does **not** expose the original FIT/TCX
-  file, so there is no file to parse — the adapter maps JSON → lap aggregates.
-  Metrics absent from Strava (often power, sometimes cadence) must stay
-  **absent**, never zero — the existing FR-3.4/FR-6.4 guarantee.
-- **Rate limits** *(verify current figures)*: roughly 100 requests / 15 min and
-  1,000 / day for a default app — so batch, and surface a clear "try again
-  shortly" state rather than failing opaquely (FR-9.8).
-- **Exit**: connect an account, preview a date range, import runs that appear
-  identically to uploaded ones; re-running the import adds nothing; disconnect
-  revokes and stops imports while keeping imported runs.
-
-### 15.2 Sprint 16 — Garmin Connect (unofficial route; read the caveats)
+### 15.1 Sprint 15 — Garmin Connect (unofficial route; read the caveats, but it works today)
 
 Garmin's official API is a **paid, approval-gated programme**, which is why the
-practical route is an unofficial client (the `garminconnect` / `garth` Python
-libraries). That works consistently in practice, but it carries three costs that
-must be accepted deliberately, not discovered later:
+practical route is an unofficial client. That route carries three costs that
+must be accepted deliberately, not discovered later — none of them hypothetical
+as of 2026-07-30:
 
 1. **It needs the user's Garmin email and password.** There is no OAuth. That is
-   a materially different security posture from Strava, and it sits awkwardly
-   with this app's privacy positioning. Mitigations: credentials are used
-   server-side only to establish a session, **never stored in the browser or in
-   sync**, ideally exchanged for a session token and the password discarded
-   immediately. Disclose prominently before the user types anything (FR-9.9).
-2. **It is unofficial**: it can break without notice when Garmin changes their
-   SSO flow, and it may conflict with Garmin's terms of service. Ship it marked
-   as unofficial/best-effort.
-3. **It cannot run on Cloudflare Workers.** Workers are JS/WASM; that Python
-   dependency tree isn't viable there. This sprint therefore adds a **second,
-   Python-capable service** (Fly.io / Railway / Cloud Run) — a real infrastructure
-   and cost addition beyond §12, and the main reason Strava should come first.
-   *(A JS reimplementation of garth would avoid the extra service but is less
-   maintained — evaluate before committing.)*
+   a materially different security posture from the other two providers, and it
+   sits awkwardly with this app's privacy positioning. Mitigations: credentials
+   are used server-side only to establish a session, **never stored in the
+   browser or in sync**, ideally exchanged for a session token and the password
+   discarded immediately. Disclose prominently before the user types anything
+   (FR-9.9).
+2. **It is unofficial and demonstrably fragile.** `garth` — actively maintained
+   — was broken by a Garmin bot-protection change within a day, and its
+   maintainer discontinued it rather than keep chasing Garmin. The replacement,
+   `python-garminconnect`, currently works (v0.3.5+, curl_cffi TLS
+   impersonation, MFA support) but this is an ongoing arms race, not a
+   one-time integration. Budget for it breaking again without notice, and ship
+   it marked unofficial/best-effort.
+3. **It cannot run on Cloudflare Workers.** Workers are JS/WASM; the Python
+   dependency tree isn't viable there. This sprint adds a **second,
+   Python-capable service** (Fly.io / Railway / Cloud Run) — real
+   infrastructure and cost beyond §12.
 
 - **Data mapping**: Garmin activity + splits JSON → the same `ParsedRun` shape.
   Garmin can also serve the original TCX/FIT, so an alternative is to fetch the
   TCX and reuse the **existing parser unchanged** — likely the least-code path,
   worth preferring if the download endpoint is reachable.
-- **Exit**: same as Strava, plus: the disclosure appears before any credential
-  entry, no credential or long-lived secret is ever written to browser storage,
-  and a Garmin-side auth failure is reported as a recoverable state.
+- **Exit**: connect an account, preview a date range, import runs that appear
+  identically to uploaded ones; re-running the import adds nothing; disconnect
+  stops imports while keeping imported runs. Plus: the credential disclosure
+  appears before any entry, no credential or long-lived secret is ever written
+  to browser storage, and a Garmin-side auth failure is reported as a
+  recoverable state, not a crash.
 
-### 15.3 Sprint 17 — Smashrun (optional, low risk)
+### 15.2 Sprint 16 — Smashrun (start the conversation early; low engineering once granted)
 
-Smashrun has an **official OAuth2 REST API** *(verify current terms and whether
-personal-use access is still free)*, so it is the same shape of work as Strava
-and slots behind the same adapter contract — but for a much smaller user base.
+Smashrun has an **official OAuth2 REST API**, vanilla and well-documented — the
+same shape of work as Strava, slotting behind the same adapter contract — but
+access is not self-service.
 
-- Same Worker-side OAuth pattern as §15.1; no new infrastructure.
-- **Priority: low.** Do it only if there is actual user demand — the adapter
-  contract means it stays cheap to add later, which is the point of §15.0.
+- **Getting access is the actual task here, not the code.** Developer access is
+  granted by email (`chris@smashrun.com`), with no stated turnaround time. Start
+  this **in parallel with Sprint 15**, not after it — there is no engineering
+  cost to asking early, and the wait is the bottleneck, not the integration.
+- **Not evidence of Smashrun shutting down**: a 2025-03 blog post,
+  ["Adidas Integration discontinued"](https://blog.smashrun.com/2025/03/20/adidas-integration-discontinued/),
+  is Smashrun losing an *upstream* data source (Adidas/Runtastic devices
+  syncing in), unrelated to Smashrun's own developer API for third parties
+  syncing out. Worth naming explicitly since the two are easy to conflate.
+- Same Worker-side OAuth pattern as Strava; no new infrastructure.
+- **Priority stays modest** — smaller user base than the other two — but no
+  longer "only on demand": the free access-request email costs nothing to send
+  now, so there's no reason to wait for demand to ask.
 
-### 15.4 Aggregators (tapiriik et al.) — an implementation strategy, not a provider
+### 15.3 Sprint 17 — Strava (do last; budget for the subscription)
+
+Still the cleanest *engineering* path — official API, OAuth, no password
+handling — and because Garmin Connect can auto-forward activities to Strava, it
+covers many Garmin users transitively (FR-9.10). What changed is the cost, not
+the mechanics.
+
+- **Before starting, confirm the current tier and price** — this is now a
+  monetization-adjacent decision, not just an engineering one. As of
+  2026-06-30: Standard tier (≤10 athletes) requires an active $11.99/mo Strava
+  subscription; new apps launch at 1-athlete "Single Player Mode" until
+  upgraded; scaling past 10 athletes needs Extended Access, which is a formal
+  review. Confirm these figures are still current before committing — Strava
+  changed them once in 2026 already.
+- **Why it still needs the Worker**: OAuth token exchange requires the client
+  secret, which cannot ship in frontend code, and Strava's token endpoint is not
+  browser-CORS-friendly. Worker routes: `/strava/connect`, `/strava/callback`
+  (stores the refresh token against the account), `/strava/activities`.
+- **Data mapping**: build the run from the activity summary plus the laps
+  endpoint. Strava's public API does **not** expose the original FIT/TCX file,
+  so there is no file to parse — the adapter maps JSON → lap aggregates.
+  Metrics absent from Strava (often power, sometimes cadence) must stay
+  **absent**, never zero — the existing FR-3.4/FR-6.4 guarantee.
+- **Rate limits** *(verify current figures)*: roughly 600 requests / 15 min and
+  6,000 / day overall for an approved app (300 / 15 min, 3,000 / day for reads)
+  — so batch, and surface a clear "try again shortly" state rather than failing
+  opaquely (FR-9.8).
+- **Exit**: connect an account, preview a date range, import runs that appear
+  identically to uploaded ones; re-running the import adds nothing; disconnect
+  revokes and stops imports while keeping imported runs.
+
+### 15.4 Aggregators (tapiriik et al.) — spike run 2026-07-30, verdict: Option A only
 
 **[tapiriik](https://github.com/cpfair/tapiriik)** is an open-source Python
 service that syncs workouts *between* fitness platforms (Garmin, Strava,
-Smashrun, Dropbox and others). It is worth evaluating because it already solves
-the multi-provider problem this whole section describes — but it is not a fourth
-provider sprint. There are two distinct ways to use it, with very different costs:
+Smashrun, Dropbox and others). It already solves the multi-provider problem
+this whole section describes, but it is not a fourth provider sprint — there
+were two distinct ways to use it, and the spike below resolves which:
 
-**Option A — recommend it to users (zero engineering).**
-Point users at tapiriik (hosted or self-hosted) to sync Garmin → Strava, then
-import from Strava via §15.1. Costs nothing, ships as a documentation line, and
-sidesteps Garmin credentials entirely. **Strictly better than building §15.2 for
-users willing to set it up.**
+**Option A — recommend it to users (zero engineering). Adopted.**
+Point users at tapiriik (hosted or self-hosted) to sync Garmin → Strava, or
+Garmin → anywhere. Costs nothing, ships as a documentation line
+(§15.5), and sidesteps Garmin credentials entirely for users willing to set it
+up themselves.
 
-**Option B — self-host it as the backend for §15.2 (replaces work).**
-If a Python service is being stood up for Garmin anyway (§15.2 point 3), running
-tapiriik's provider layer there could deliver **Garmin + Smashrun + others at
-once** instead of one adapter per sprint. Potentially collapses Sprints 16–17.
+**Option B — self-host it as the Sprint 15 Garmin backend. Rejected.**
+The idea: if a Python service is being stood up for Garmin anyway, running
+tapiriik's provider layer there could deliver Garmin + Smashrun + others at
+once instead of one adapter per sprint.
 
-**Before committing to Option B, verify — do not assume:**
-1. **Maintenance status.** The project has seen little recent activity; Garmin has
-   changed its SSO/MFA flow repeatedly and has broken many unofficial clients.
-   **Confirm its Garmin module still works today** before designing around it.
-2. **Licence.** Check the current licence and whether it permits this use
-   (particularly if it ever becomes part of a paid tier).
-3. It still needs Garmin credentials, so **FR-9.9's disclosure applies
-   unchanged** — an aggregator does not make the credential question go away, it
-   relocates it.
+**Spike result: the project is stale.** Last commit **2023-11-24** — over two
+and a half years before this note. Apache 2.0 licensed (permits this use), but
+licence was never the blocker. The disqualifying fact: `python-garminconnect` —
+an *actively maintained* library — needed emergency surgery in 2026 to survive
+Garmin's bot-protection changes (§15.1 point 2). A project untouched since 2023
+has no realistic chance of still working against Garmin's current defenses, and
+no evidence turned up of anyone having recently gotten its Garmin module
+working. **Do not build on it.** Sprint 15 proceeds hand-rolled on
+`python-garminconnect`, as specced.
 
-**Recommendation:** adopt **Option A immediately** as documentation (it is free
-and helps users today), and treat Option B as a **spike to run before Sprint 16**
-— if tapiriik's Garmin support is alive, it likely beats hand-rolling; if it is
-stale, depending on a dormant project for core functionality is the wrong trade
-and §15.2 proceeds as specced.
+### 15.5 Other providers researched but not yet scheduled (2026-07-30)
 
-### 15.5 Non-integration alternatives worth mentioning to users
+Investigated while re-scoping this section, since "provider import" shouldn't
+mean just the three originally named. Ranked by how much friction stands
+between here and a working integration:
+
+- **Polar (AccessLink) — best candidate for a Sprint 18.** Official, **free**,
+  fully self-service OAuth2 — register at
+  [admin.polaraccesslink.com](https://admin.polaraccesslink.com) with a Polar
+  Flow account, no approval wait. Easier onboarding than Strava ever was, even
+  before Strava's 2026 changes. Worth scheduling once 15–17 are done.
+- **COROS (Open API)** — official OAuth2, but onboarding is business-shaped: an
+  "authorized technical representative" submits company details, technical
+  contacts, and redirect URIs for review, not a self-serve form. Real platform,
+  increasingly popular among serious runners specifically — worth the friction
+  eventually, just not a quick add.
+- **Wahoo (Cloud API)** — official OAuth2, application-and-approval gated. Note
+  a 2026-01-01 change limiting apps to 10 unrevoked access tokens per user
+  *(meaning unclear from what's public — confirm before relying on it)*. Wahoo
+  is a cycling-first brand (KICKR trainers, ELEMNT bike computers); it does have
+  running hardware (TICKR, KICKR RUN) but is a lower match for a *running* coach
+  than the others here.
+- **Suunto** — **does not offer API access for personal-use projects at all.**
+  Access is restricted to "companies and organizations providing tools, apps,
+  or services for public audience," reviewed weekly, up to two weeks. Revisit
+  only if this app becomes a registered business offering — which the Sprint
+  12b paid tier might eventually make true, but isn't today.
+- **Runkeeper (Health Graph API)** — **discontinued for new registrations since
+  ~2020**, still true in 2026: Runkeeper has stated they only support
+  pre-existing partnerships. **Not viable — do not pursue.**
+
+### 15.6 Non-integration alternatives worth mentioning to users
 
 Cheapest of all, and worth documenting in-app regardless of what gets built:
 
-- Garmin Connect can **auto-export to Strava** — making §15.1 sufficient for many
-  people with no work on our side.
-- **tapiriik** as above (Option A).
-- Both Garmin and Strava support **bulk export**, which already works through the
-  existing file upload for one-off historical imports.
+- Garmin Connect can **auto-export to Strava** — making Sprint 17 sufficient for
+  many people with no work on our side.
+- **tapiriik** as above (Option A, §15.4).
+- Garmin, Strava, and most others support **bulk export**, which already works
+  through the existing file upload for one-off historical imports.
 - Phone-side sync utilities (RunGap, SyncMyTracks, HealthFit and similar) can
   bridge platforms without any server involvement.
 
