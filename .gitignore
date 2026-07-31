@@ -22,9 +22,6 @@ dexie-cloud.key
 .idea
 .DS_Store
 
-# Worker config: created locally from wrangler.example.jsonc once a KV
-# namespace exists (docs/garmin-worker-setup.md). Not committed while the
-# Cloudflare deploy is still assets-only — a config naming a missing KV
-# namespace would fail every deploy.
-wrangler.jsonc
+# wrangler.jsonc is committed as of 2026-07-31 (GARMIN_LINKS KV namespace
+# exists, docs/garmin-worker-setup.md). Only the local dev cache is ignored.
 .wrangler/

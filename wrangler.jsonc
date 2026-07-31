@@ -1,0 +1,33 @@
+// Worker configuration for FAIN Coach (dev plan §15.1 stage B).
+//
+// Adds /api/garmin/* routes to the existing "fain-coach" Worker without
+// changing how the app itself is served — every non-/api request still goes
+// to the assets binding untouched.
+//
+// GARMIN_LINKS namespace created 2026-07-31 via the Cloudflare dashboard
+// (Workers & Pages → KV). Its id is an identifier, not a secret — same
+// reasoning as the Dexie Cloud URL already committed in vite.config.ts; access
+// needs Cloudflare account credentials, not knowledge of this id.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fain-coach",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-07-01",
+
+  // Static assets keep being served exactly as before. The Worker only
+  // intercepts /api/*; everything else is handed to this binding untouched.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+
+  // Holds Garmin tokens, keyed by the SHA-256 of a link code (never the code
+  // itself — see worker/garminTokens.ts:linkKeyFor).
+  "kv_namespaces": [
+    {
+      "binding": "GARMIN_LINKS",
+      "id": "117a25a5f6af40238b73150fd3dc51b7"
+    }
+  ]
+}
