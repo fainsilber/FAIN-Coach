@@ -4,7 +4,7 @@ Local-first AI running coach PWA. Users upload `.tcx` files from any GPS watch, 
 
 **Live:** https://fainsilber.github.io/FAIN-Coach/ and https://fain-coach.fainsilber.workers.dev/ (both auto-deploy on push to `main` — see Deployment below)
 
-**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v3.6 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
+**Read first:** [docs/PRD.md](docs/PRD.md) (requirements) and [docs/dev-plan.md](docs/dev-plan.md) (v3.7 — authoritative for schema, sprints, and decisions; supersedes the PRD wherever they conflict).
 
 ## Commands
 
@@ -28,6 +28,7 @@ Vite + React 18 + TypeScript (SPA, static hosting) · Tailwind CSS v4 (`@tailwin
 - `worker/` — the Cloudflare Worker (Sprint 15 stage B). `garminTokens.ts` is pure and unit-tested (JWT expiry read, refresh-request shape, link-code hashing); `index.ts` routes `/api/garmin/*` and hands **everything else to the ASSETS binding untouched**. Typechecked by its own `tsconfig.worker.json` with **no DOM lib**, so a stray `window` is a compile error rather than a production crash. Deploying it needs a KV namespace — [docs/garmin-worker-setup.md](docs/garmin-worker-setup.md), an owner step.
 - `src/lib/garminLink.ts` — the app's client for that Worker. Holds only a **link code**, never Garmin tokens, in the unsynced `settings` table (same treatment as the API key, FR-9.7).
 - `src/lib/providerImport.ts` — pure batch-import rules: `externalIdFromFilename` (reads the id back out of `garmin-<activityId>.tcx`), `parseImportCandidate` (a bad file becomes an error row, never throws), `markDuplicates` (existing rows *and* repeats within one batch).
+- **One importable run, from any source, gets the single-run screen — never the batch one.** `UploadPage.handleGarminCandidates` and the file-drop path both route to `showSingleRun` (RPE/feel/notes, `buildCoachMessage`) whenever exactly one candidate comes back `status === 'ready'`; anything else — 0, 2+, or a lone duplicate/error — goes to `showBatch`. The *count and status* decide the screen; `source`/`externalId` still flow through either path (`UploadState.review.externalId`), so a single Garmin run is still tagged `source: 'garmin'` on save. Don't let "it came from Garmin" push a single run toward the batch flow again — that's the bug this rule fixes.
 - `src/lib/manualRun.ts` — pure validation/conversion for manual entry (form strings → `NewRun`), so the rules are testable without the form.
 - `src/lib/shoes.ts` — pure shoe-mileage functions (`shoeStatus`, `shoeMileage`, `mostRecentShoeId`) over a shoe + run list; mileage is always derived, never stored. `src/pages/ShoesPage.tsx` is the management UI (off Settings, not the bottom nav).
 - `src/lib/log.ts` — bounded (~500 entry) diagnostics log; `logEvent()` enforces redaction, swallows its own errors, never throws.

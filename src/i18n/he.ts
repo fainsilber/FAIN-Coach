@@ -82,6 +82,8 @@ export const he: Record<MessageKey, string> = {
   'garmin.from': 'מתאריך',
   'garmin.to': 'עד תאריך',
   'garmin.fetch': 'משיכת ריצות',
+  'garmin.fetchLast': 'ייבוא הריצה האחרונה',
+  'garmin.importedLabel': 'יובאה מגרמין',
   'garmin.fetching': 'מושך {done} מתוך {total}…',
   'garmin.disconnect': 'ניתוק מגרמין',
   'garmin.noneFound': 'לא נמצאו ריצות בטווח התאריכים הזה.',

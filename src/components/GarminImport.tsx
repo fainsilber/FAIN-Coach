@@ -11,6 +11,7 @@ import {
   listActivities,
   looksLikeLinkCode,
   setLinkCode,
+  type GarminActivity,
 } from '@/lib/garminLink';
 import { logEvent } from '@/lib/log';
 import { markDuplicates, parseImportCandidate, type ImportCandidate } from '@/lib/providerImport';
@@ -69,6 +70,32 @@ export function GarminImport({
     }
   }
 
+  /** Download + parse each activity, reporting progress as it goes. One
+   * activity failing must not lose the rest — it becomes an error row
+   * instead, same as a corrupt file in a batch drop. */
+  async function downloadAndParse(
+    activities: GarminActivity[],
+  ): Promise<ImportCandidate[]> {
+    const candidates: ImportCandidate[] = [];
+    for (const [i, a] of activities.entries()) {
+      setProgress({ done: i, total: activities.length });
+      try {
+        const xml = await fetchActivityTcx(linkCode!, a.activityId);
+        // Same filename convention the helper writes, so dedupe and the
+        // batch review behave identically whichever route the file took.
+        candidates.push(parseImportCandidate(`garmin-${a.activityId}.tcx`, xml));
+      } catch (e) {
+        candidates.push({
+          fileName: `garmin-${a.activityId}.tcx`,
+          status: 'error',
+          error: e instanceof GarminLinkError ? e.message : String(e),
+          externalId: a.activityId,
+        });
+      }
+    }
+    return candidates;
+  }
+
   async function handleImport() {
     if (!linkCode) return;
     setError(undefined);
@@ -80,27 +107,40 @@ export function GarminImport({
         setError(t('garmin.noneFound'));
         return;
       }
+      onCandidates(await markDuplicates(await downloadAndParse(activities)));
+      setProgress(undefined);
+    } catch (e) {
+      setProgress(undefined);
+      const known = e instanceof GarminLinkError;
+      void logEvent('error', 'garmin.import.failed', known ? e.code : 'unknown');
+      setError(known ? e.message : t('garmin.failed'));
+    }
+  }
 
-      const candidates: ImportCandidate[] = [];
-      for (const [i, a] of activities.entries()) {
-        setProgress({ done: i, total: activities.length });
-        try {
-          const xml = await fetchActivityTcx(linkCode, a.activityId);
-          // Same filename convention the helper writes, so dedupe and the
-          // batch review behave identically whichever route the file took.
-          candidates.push(parseImportCandidate(`garmin-${a.activityId}.tcx`, xml));
-        } catch (e) {
-          // One activity failing must not lose the rest of the batch.
-          candidates.push({
-            fileName: `garmin-${a.activityId}.tcx`,
-            status: 'error',
-            error: e instanceof GarminLinkError ? e.message : String(e),
-            externalId: a.activityId,
-          });
-        }
+  /**
+   * The most recent run in the currently selected date range — one click,
+   * no date picking, for the common "just grab today's/yesterday's run"
+   * case. Reuses `from`/`to` rather than a separate hidden window, so it's
+   * "the newest run in what's on screen", not a surprise different range;
+   * widening the visible range (e.g. to catch a run after time off) makes
+   * this button reach further too.
+   *
+   * Relies on Garmin's activity list coming back newest-first — observed
+   * directly during the Sprint 15 spike, not assumed — so the first
+   * element is simply the one we want.
+   */
+  async function handleImportLast() {
+    if (!linkCode) return;
+    setError(undefined);
+    setProgress({ done: 0, total: 1 });
+    try {
+      const activities = await listActivities(linkCode, from, to);
+      if (activities.length === 0) {
+        setProgress(undefined);
+        setError(t('garmin.noneFound'));
+        return;
       }
-
-      onCandidates(await markDuplicates(candidates));
+      onCandidates(await markDuplicates(await downloadAndParse([activities[0]])));
       setProgress(undefined);
     } catch (e) {
       setProgress(undefined);
@@ -175,6 +215,14 @@ export function GarminImport({
                     total: Math.max(progress.total, 1),
                   })
                 : t('garmin.fetch')}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleImportLast()}
+              disabled={busy}
+              className="rounded-md border px-4 py-2 text-sm font-medium disabled:opacity-50"
+            >
+              {t('garmin.fetchLast')}
             </button>
           </div>
           <button

@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v3.6)
+# FAIN Coach — Development Plan (v3.7)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -64,7 +64,10 @@ the one-time `--link` step for Windows/macOS/Linux — separate from
 deployment owner, not the person connecting their own account. Writing
 it surfaced a real bug, now fixed: the script's own success message
 told users to look in *Settings*, but the panel has always lived on
-**Upload**; **v3.6 (2026-07-31)** records the first real multi-user
+**Upload**; **v3.7 (2026-07-31)** makes a single Garmin-imported run
+behave exactly like a single TCX upload — RPE/feel/notes, the standard
+per-run coach message, not the batch summary — and adds an "Import
+last run" one-click button. See §15.1's new note. **v3.6 (2026-07-31)** records the first real multi-user
 failure: two accounts connecting minutes apart on one shared PC hit
 `python-garminconnect`'s "All login strategies exhausted" — Garmin's
 own login cascade tries 5 strategies and raises this (or a distinct
@@ -1420,6 +1423,35 @@ sync-time `ConstraintError` when two devices import the same activity offline.
 otherwise flood the thread and fire eighty LLM calls. It also collects no
 subjective input: nobody recalls RPE months later, and FR-6.4 requires absent
 to stay absent.
+
+**A single Garmin run behaves exactly like a single TCX upload (2026-07-31).**
+`GarminImport`'s Worker fetch used to route through `showBatch` regardless of
+count, so importing one run from Garmin — a single date range that happened to
+contain one activity, or a deliberate one-off — skipped RPE/feel/notes and got
+the generic batch summary message instead of the standard per-run one. Fixed:
+`UploadPage.handleGarminCandidates` routes to the same single-run review
+screen `handleFile` already used for a single dropped `.tcx`, whenever exactly
+one candidate comes back **and** it's actually importable (`status ===
+'ready'`) — a single result that's a duplicate or a parse error still goes to
+batch, since there's nothing to review. `UploadState.review` gained an
+optional `externalId`, threaded into `handleSave` so the saved run still gets
+`source: 'garmin'` — the count decides which *screen* you see, never which
+provider a run is attributed to.
+
+Also added **"Import last run"** next to "Fetch runs" — the most recent
+activity in whatever date range is currently selected, one click, no manual
+range-narrowing for the common case. Reuses the visible `from`/`to` rather
+than a separate hidden window, so widening the picker (e.g. after time off)
+extends what "last" can reach too. Relies on Garmin's activity list coming
+back newest-first, which was directly observed during the spike, not assumed.
+
+Verified in-browser end to end (fetch intercepted with canned Garmin
+responses, no real credentials): one new run → single-run screen with
+`source: 'garmin'` and the standard coach message; "Import last run" against
+two mocked activities correctly took only the newer one; two new runs still
+→ batch; and — the case that would have silently mis-routed — one run that
+was **already imported** correctly fell through to batch's "Already imported"
+state rather than being treated as fresh.
 
 #### Caveats of the unofficial route (unchanged)
 

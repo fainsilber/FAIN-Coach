@@ -81,6 +81,8 @@ export const en = {
   'garmin.from': 'From',
   'garmin.to': 'To',
   'garmin.fetch': 'Fetch runs',
+  'garmin.fetchLast': 'Import last run',
+  'garmin.importedLabel': 'Imported from Garmin',
   'garmin.fetching': 'Fetching {done} of {total}…',
   'garmin.disconnect': 'Disconnect Garmin',
   'garmin.noneFound': 'No runs found in that date range.',

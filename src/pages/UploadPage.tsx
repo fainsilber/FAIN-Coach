@@ -38,6 +38,12 @@ type UploadState =
       run: ParsedRun;
       fileName: string;
       match?: PlannedWorkout;
+      /** Present only when this run came from Garmin — the provider's own
+       * activity id, carried through to `handleSave` so a single imported
+       * run is tagged `source: 'garmin'` exactly like a batch one, instead
+       * of silently reverting to 'tcx' just because it took the single-run
+       * review screen. */
+      externalId?: string;
     }
   | { step: 'batch'; rows: BatchRow[] };
 
@@ -53,6 +59,22 @@ export function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
+  /**
+   * The single-run review screen — RPE/feel/notes, match confirm, one
+   * standard coach message on save. Shared by a plain file drop and a Garmin
+   * import that resolves to exactly one importable run, so "I imported one
+   * run from Garmin" behaves identically to "I uploaded one TCX file": same
+   * screen, same questions, same per-run coach message. Only a *batch* of
+   * runs (from either source) skips subjective input and gets the summary
+   * message instead — that distinction is about how many runs arrived, not
+   * where they came from.
+   */
+  async function showSingleRun(run: ParsedRun, fileName: string, externalId?: string) {
+    const match = findMatchCandidate(run, await activePlanWorkouts());
+    setMatchAccepted(true);
+    setState({ step: 'review', run, fileName, match, ...(externalId && { externalId }) });
+  }
+
   async function handleFile(file: File) {
     setError(undefined);
     if (!file.name.toLowerCase().endsWith('.tcx')) {
@@ -61,10 +83,7 @@ export function UploadPage() {
     }
     try {
       const run = parseTcx(await file.text());
-      // Auto-match against the active plan (confirmed by the user below).
-      const match = findMatchCandidate(run, await activePlanWorkouts());
-      setMatchAccepted(true);
-      setState({ step: 'review', run, fileName: file.name, match });
+      await showSingleRun(run, file.name);
     } catch (e) {
       void logEvent(
         'error',
@@ -77,6 +96,22 @@ export function UploadPage() {
           : t('upload.readFailed', { name: file.name }),
       );
     }
+  }
+
+  /**
+   * Router for whatever GarminImport hands back. A single, ready-to-save run
+   * goes to the single-run screen (see showSingleRun above); anything else —
+   * several runs, or the one run turning out to already be a duplicate/error —
+   * goes to batch review, which already renders those states clearly (e.g.
+   * "Already imported" with nothing left to select).
+   */
+  async function handleGarminCandidates(candidates: ImportCandidate[]) {
+    const [only] = candidates;
+    if (candidates.length === 1 && only.status === 'ready' && only.run) {
+      await showSingleRun(only.run, only.fileName, only.externalId);
+      return;
+    }
+    await showBatch(candidates);
   }
 
   /**
@@ -169,7 +204,15 @@ export function UploadPage() {
     if (state.step !== 'review') return;
     setSaving(true);
     try {
-      const run = { ...state.run, ...details, source: 'tcx' as const };
+      const run = {
+        ...state.run,
+        ...details,
+        // Same rule as the batch save path: an externalId means this run
+        // came from Garmin, whichever way it arrived at this screen.
+        ...(state.externalId
+          ? { source: 'garmin' as const, externalId: state.externalId }
+          : { source: 'tcx' as const }),
+      };
       const linkedWorkout = matchAccepted ? state.match : undefined;
       await saveRunAndPromptCoach({
         run,
@@ -312,7 +355,7 @@ export function UploadPage() {
   }
 
   if (state.step === 'review') {
-    const { run, fileName } = state;
+    const { run, fileName, externalId } = state;
     const stats: Array<[string, string]> = [
       [t('stat.distance'), formatDistance(run.totalDistanceMeters, unitSystem)],
       [t('stat.time'), formatDuration(run.totalDurationSeconds)],
@@ -336,7 +379,9 @@ export function UploadPage() {
         <div>
           <h2 className="text-xl font-semibold">{t('upload.reviewTitle')}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            <bdi>{fileName}</bdi> ·{' '}
+            {/* A raw "garmin-23754217618.tcx" means nothing to a user — show
+                the same friendly label the batch review uses instead. */}
+            <bdi>{externalId ? t('garmin.importedLabel') : fileName}</bdi> ·{' '}
             <bdi>{new Date(run.date).toLocaleString(localeOf(language))}</bdi>
           </p>
         </div>
@@ -407,7 +452,7 @@ export function UploadPage() {
         />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <GarminImport onCandidates={(c) => void showBatch(c)} />
+      <GarminImport onCandidates={(c) => void handleGarminCandidates(c)} />
       <Link
         to="/upload/manual"
         className="block text-center text-sm text-muted-foreground underline"

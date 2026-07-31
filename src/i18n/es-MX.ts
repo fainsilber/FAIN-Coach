@@ -83,6 +83,8 @@ export const esMX: Record<MessageKey, string> = {
   'garmin.from': 'Desde',
   'garmin.to': 'Hasta',
   'garmin.fetch': 'Traer carreras',
+  'garmin.fetchLast': 'Importar la última carrera',
+  'garmin.importedLabel': 'Importada de Garmin',
   'garmin.fetching': 'Trayendo {done} de {total}…',
   'garmin.disconnect': 'Desconectar Garmin',
   'garmin.noneFound': 'No se encontraron carreras en ese rango de fechas.',

@@ -66,5 +66,5 @@ Longer-term items live in [docs/dev-plan.md §16](docs/dev-plan.md), notably a G
 ## Docs
 
 - [Product Requirements (PRD v1.7)](docs/PRD.md)
-- [Development Plan v3.6](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
+- [Development Plan v3.7](docs/dev-plan.md) — locked decisions, schema, sprint outcomes, open risks
 - [Connect your Garmin account](docs/connect-garmin.md) — step-by-step, Windows/macOS/Linux, no assumed background
