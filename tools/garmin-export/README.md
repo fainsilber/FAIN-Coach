@@ -1,5 +1,10 @@
 # Garmin export helper
 
+> **Just want to connect your own account?** Use
+> [docs/connect-garmin.md](../../docs/connect-garmin.md) instead — a
+> step-by-step walkthrough for Windows/macOS/Linux with no assumed background.
+> This file is the terser reference: every flag, and the reasoning behind it.
+
 Downloads your Garmin Connect runs as `.tcx` files so you can import them into
 FAIN Coach in one go, instead of exporting them one at a time by hand.
 

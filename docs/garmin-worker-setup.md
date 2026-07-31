@@ -90,6 +90,11 @@ Treat the link code like a password: anyone holding it can read your Garmin
 activities through the Worker. **Disconnect** in the app revokes it on the
 Worker, not just locally.
 
+For anyone else connecting their own account — a family member, a friend —
+send them [docs/connect-garmin.md](connect-garmin.md) instead of this file. It
+walks the same step with no assumed background, covers Windows/macOS/Linux,
+and the `--profile` flag for sharing one computer.
+
 ---
 
 ## How it fits together

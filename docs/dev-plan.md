@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v3.4)
+# FAIN Coach — Development Plan (v3.5)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -57,7 +57,14 @@ Deployment (KV namespace + wrangler.jsonc) is an owner step —
 records the Worker config as deployed and live, and adds the helper's
 `--profile` flag so more than one person can connect their own Garmin
 account from one shared computer without colliding — see §15.1's
-multi-user note.
+multi-user note; **v3.5 (2026-07-31)** adds
+[connect-garmin.md](connect-garmin.md), a non-technical walkthrough of
+the one-time `--link` step for Windows/macOS/Linux — separate from
+[garmin-worker-setup.md](garmin-worker-setup.md), which is for the
+deployment owner, not the person connecting their own account. Writing
+it surfaced a real bug, now fixed: the script's own success message
+told users to look in *Settings*, but the panel has always lived on
+**Upload**.
 
 **Status:** Sprints 1–8, 10, 11, 13, and 14 complete. Live on
 https://fainsilber.github.io/FAIN-Coach/ (local tier) and
@@ -1368,6 +1375,14 @@ plan; see the 2026-07-30 note below for why.
 > a real scope change — it puts a password, even briefly, through server-side
 > infrastructure, which this build has otherwise avoided entirely — so it stays
 > gated on actual demand, not built speculatively.
+>
+> **[docs/connect-garmin.md](connect-garmin.md) added 2026-07-31** — a
+> non-technical, OS-tabbed (Windows/macOS/Linux) walkthrough of the one-time
+> `--link` step, for anyone connecting their own account, not just the
+> deployment owner. Writing it surfaced a real bug: the script's own success
+> message pointed users to *Settings → Garmin*, but the panel has always lived
+> on **Upload** — fixed in `garmin_export.py` so the tool's own output matches
+> where the UI actually is.
 > - **C (optional, gated on demand):** a Python service mints tokens
 >   server-side, removing the local step. **C is B with minting relocated**, so
 >   it replaces nothing — *provided* B's token store stays agnostic about who

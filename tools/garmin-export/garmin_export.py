@@ -188,11 +188,12 @@ def link_to_worker(worker_url: str, tokenstore: Path) -> int:
         return 1
 
     print("\n" + "=" * 60)
-    print(" Linked. Paste this code into FAIN Coach → Settings → Garmin:\n")
+    print(" Linked. In FAIN Coach, go to Upload -> Import from Garmin")
+    print(" and paste this code:\n")
     print(f"   {code}\n")
     print(" Treat it like a password: anyone holding it can read your Garmin")
-    print(" activities through this Worker. You can revoke it any time from")
-    print(" Settings, which also stops the Worker using your tokens.")
+    print(" activities through this Worker. \"Disconnect Garmin\" in that same")
+    print(" panel revokes it, on the Worker, not just on this device.")
     print("=" * 60)
     return 0
 
