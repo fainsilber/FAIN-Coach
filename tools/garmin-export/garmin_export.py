@@ -13,6 +13,17 @@ those are cached (outside this repo) so later runs need no password at all.
     python garmin_export.py --from 2026-01-01 --to 2026-06-30
     python garmin_export.py --days 30 --out ./my-runs
 
+If more than one person uses this computer to connect their OWN Garmin
+account (e.g. a shared family PC), add --profile so your cached sessions
+don't collide -- each profile gets its own token cache:
+
+    python garmin_export.py --link https://coach.fainsilber.co.il --profile dad
+    python garmin_export.py --link https://coach.fainsilber.co.il --profile mia
+
+Without --profile, everyone on this machine shares one cache, and whoever
+connects second will silently resume the first person's Garmin session
+instead of being asked to log in.
+
 Requires:  pip install garminconnect curl_cffi
 
 This uses Garmin's PRIVATE web API through an unofficial client. See the
@@ -22,6 +33,7 @@ disclosure printed on first run, and README.md.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import time
 from datetime import date, timedelta
@@ -35,7 +47,31 @@ except ImportError:  # pragma: no cover - guidance, not logic
 
 # Deliberately outside the repository — a token file is a live credential and
 # must never end up in a commit.
-TOKENSTORE = Path.home() / ".fain-coach" / "garmin-tokens"
+TOKEN_ROOT = Path.home() / ".fain-coach"
+DEFAULT_TOKENSTORE = TOKEN_ROOT / "garmin-tokens"
+
+_SAFE_PROFILE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def tokenstore_for(profile: str | None) -> Path:
+    """
+    Where this person's cached Garmin session lives.
+
+    Without --profile, every user of this machine shares
+    DEFAULT_TOKENSTORE — fine for a single person, but the second person to
+    connect on a shared computer would silently resume the FIRST person's
+    Garmin session (login is skipped whenever cached tokens already exist)
+    rather than being asked for their own credentials. --profile gives each
+    person their own path so that can't happen.
+    """
+    if not profile:
+        return DEFAULT_TOKENSTORE
+    if not _SAFE_PROFILE.match(profile):
+        sys.exit(
+            f"--profile {profile!r} is invalid — use only letters, digits, "
+            "-, and _ (it becomes part of a folder name)."
+        )
+    return TOKEN_ROOT / f"garmin-tokens-{profile}"
 
 DISCLOSURE = """\
 ------------------------------------------------------------------
@@ -60,13 +96,13 @@ DOWNLOAD_PAUSE_SECONDS = 1.0
 MAX_RETRIES = 4
 
 
-def connect() -> Garmin:
+def connect(tokenstore: Path) -> Garmin:
     """Resume from cached tokens when possible, otherwise log in once."""
-    if TOKENSTORE.exists() and any(TOKENSTORE.iterdir()):
+    if tokenstore.exists() and any(tokenstore.iterdir()):
         try:
             client = Garmin()
-            client.login(str(TOKENSTORE))
-            print(f"Signed in from cached tokens ({TOKENSTORE}).")
+            client.login(str(tokenstore))
+            print(f"Signed in from cached tokens ({tokenstore}).")
             return client
         except Exception as e:  # noqa: BLE001 - expired/rotated tokens are normal
             print(f"Cached tokens unusable ({e}); signing in again.")
@@ -80,9 +116,9 @@ def connect() -> Garmin:
         password,
         prompt_mfa=lambda: input("MFA code: ").strip(),
     )
-    client.login(str(TOKENSTORE))
-    TOKENSTORE.parent.mkdir(parents=True, exist_ok=True)
-    print(f"Signed in. Tokens cached in {TOKENSTORE} — no password needed next time.")
+    client.login(str(tokenstore))
+    tokenstore.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Signed in. Tokens cached in {tokenstore} — no password needed next time.")
     return client
 
 
@@ -103,7 +139,7 @@ def with_retries(fn, what: str):
     return None
 
 
-def link_to_worker(worker_url: str) -> int:
+def link_to_worker(worker_url: str, tokenstore: Path) -> int:
     """
     Sign in locally, then hand ONLY the resulting tokens to the Worker.
 
@@ -116,9 +152,9 @@ def link_to_worker(worker_url: str) -> int:
     import requests
     from garminconnect.client import token_file_path
 
-    connect()  # mints and caches tokens (prompting only if needed)
+    connect(tokenstore)  # mints and caches tokens (prompting only if needed)
 
-    token_file = token_file_path(str(TOKENSTORE))
+    token_file = token_file_path(str(tokenstore))
     try:
         tokens = json.loads(token_file.read_text(encoding="utf-8"))
     except OSError as e:
@@ -127,7 +163,7 @@ def link_to_worker(worker_url: str) -> int:
 
     missing = [k for k in ("di_token", "di_refresh_token", "di_client_id") if not tokens.get(k)]
     if missing:
-        print(f"Token file is missing {', '.join(missing)}. Delete {TOKENSTORE} and try again.")
+        print(f"Token file is missing {', '.join(missing)}. Delete {tokenstore} and try again.")
         return 1
 
     endpoint = f"{worker_url}/api/garmin/link"
@@ -173,10 +209,19 @@ def main() -> int:
                     help="Instead of downloading, hand the tokens to your FAIN "
                          "Coach Worker so the app can import on its own "
                          "(e.g. --link https://coach.fainsilber.co.il).")
+    ap.add_argument("--profile", metavar="NAME",
+                    help="Keep this person's cached Garmin session separate "
+                         "from anyone else's on this machine (letters, "
+                         "digits, -, _ only). Only needed when more than one "
+                         "person connects their OWN account from one computer.")
     args = ap.parse_args()
 
+    tokenstore = tokenstore_for(args.profile)
+    if args.profile:
+        print(f"Using profile {args.profile!r} — tokens at {tokenstore}")
+
     if args.link:
-        return link_to_worker(args.link.rstrip("/"))
+        return link_to_worker(args.link.rstrip("/"), tokenstore)
 
     if args.days:
         end = date.today()
@@ -190,7 +235,7 @@ def main() -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    client = connect()
+    client = connect(tokenstore)
     print(f"\nLooking for activities from {start} to {end}…")
     activities = with_retries(
         lambda: client.get_activities_by_date(start.isoformat(), end.isoformat()),

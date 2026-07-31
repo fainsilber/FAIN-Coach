@@ -25,3 +25,9 @@ dexie-cloud.key
 # wrangler.jsonc is committed as of 2026-07-31 (GARMIN_LINKS KV namespace
 # exists, docs/garmin-worker-setup.md). Only the local dev cache is ignored.
 .wrangler/
+
+# tools/garmin-export/ is a plain Python script, run directly rather than
+# imported as a package — no reason for a compiled cache to exist, let alone
+# be committed.
+__pycache__/
+*.pyc

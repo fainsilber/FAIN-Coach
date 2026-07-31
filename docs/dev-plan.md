@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v3.3)
+# FAIN Coach — Development Plan (v3.4)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -53,7 +53,11 @@ Garmin tokens behind a link code, so importing is one click from inside
 the app. Confirmed by measurement that a Worker can both refresh tokens
 and call Garmin's API over plain TLS; only the login needs Python.
 Deployment (KV namespace + wrangler.jsonc) is an owner step —
-[garmin-worker-setup.md](garmin-worker-setup.md).
+[garmin-worker-setup.md](garmin-worker-setup.md); **v3.4 (2026-07-31)**
+records the Worker config as deployed and live, and adds the helper's
+`--profile` flag so more than one person can connect their own Garmin
+account from one shared computer without colliding — see §15.1's
+multi-user note.
 
 **Status:** Sprints 1–8, 10, 11, 13, and 14 complete. Live on
 https://fainsilber.github.io/FAIN-Coach/ (local tier) and
@@ -1335,8 +1339,35 @@ plan; see the 2026-07-30 note below for why.
 > - **A (done):** `tools/garmin-export/` downloads TCX locally; the app gained
 >   **batch import** with dedupe. **No backend**, so it works on the free tier
 >   too, and batch import helps anyone with a bulk export regardless of the API.
-> - **B (next):** the helper pushes tokens to a Worker, which does the
->   downloads. One click, works on mobile, Sync tier only.
+> - **B (done, deployed 2026-07-31):** the helper pushes tokens to a Worker,
+>   which does the downloads. One click, works on mobile, Sync tier only.
+>
+> **Multi-user note (2026-07-31).** The Worker and app needed zero changes for
+> more than one person: every `--link` mints a fresh random code and a fresh KV
+> entry, and the app stores the code inside the **active profile's** own
+> settings — so two people, each with their own FAIN Coach profile (local
+> profiles on the free tier, or separate sign-ins on Sync), get fully isolated
+> Garmin connections through the same shared Worker automatically. Verified
+> against the live deployment: two `--link` runs produced two different codes,
+> no collision.
+>
+> The one real gap was the **local helper's fixed token-cache path**
+> (`~/.fain-coach/garmin-tokens`) — per Windows user, not per person, so a
+> second person on the *same* login would silently resume the first person's
+> Garmin session instead of being prompted to log in. Fixed with `--profile
+> <name>`, giving each person on a shared computer their own cache
+> (`garmin-tokens-<name>`). Optional — only needed when sharing a machine, not
+> when each person has their own device.
+>
+> **Login remains desktop-only** — `curl_cffi`'s native TLS-impersonation
+> binaries aren't published for iOS or Android, and the `requests`-only login
+> strategies aren't reliably enough (one hit 429 in the very spike that proved
+> the others work). This is a one-time step per person, though: everything
+> after connecting is phone-friendly, since it's just the Worker's bearer-token
+> API. A person with no computer at all needs stage C (hosted login), which is
+> a real scope change — it puts a password, even briefly, through server-side
+> infrastructure, which this build has otherwise avoided entirely — so it stays
+> gated on actual demand, not built speculatively.
 > - **C (optional, gated on demand):** a Python service mints tokens
 >   server-side, removing the local step. **C is B with minting relocated**, so
 >   it replaces nothing — *provided* B's token store stays agnostic about who

@@ -26,6 +26,26 @@ Tokens are cached in `~/.fain-coach/garmin-tokens`, deliberately **outside this
 repository** so they can never end up in a commit. Delete that folder to sign
 out.
 
+## More than one person, one computer
+
+If a family member connects **their own** Garmin account from this same
+computer, add `--profile` so your sessions don't collide:
+
+```bash
+python garmin_export.py --link https://coach.fainsilber.co.il --profile mia
+```
+
+Without it, everyone on this machine shares one token cache — and since a
+cached session means the tool never asks for a password again, the **second**
+person to run it would silently be signed in as the **first** person, not
+prompted for their own login at all. `--profile <name>` gives each person a
+separate cache (`~/.fain-coach/garmin-tokens-<name>`) and a separate link code,
+so each ends up connected to their own Garmin account, in their own FAIN Coach
+profile.
+
+You only need this if you share a computer. Her own laptop/PC needs nothing
+extra — running the plain command there is already independent of yours.
+
 ## Install
 
 ```bash
