@@ -1,4 +1,4 @@
-# FAIN Coach — Development Plan (v3.5)
+# FAIN Coach — Development Plan (v3.6)
 
 Supersedes the PRD roadmap. Decisions from 2026-07-21; v1.2 added local
 profiles and the account-migration path; v1.3 (2026-07-22) recorded sprints
@@ -64,7 +64,21 @@ the one-time `--link` step for Windows/macOS/Linux — separate from
 deployment owner, not the person connecting their own account. Writing
 it surfaced a real bug, now fixed: the script's own success message
 told users to look in *Settings*, but the panel has always lived on
-**Upload**.
+**Upload**; **v3.6 (2026-07-31)** records the first real multi-user
+failure: two accounts connecting minutes apart on one shared PC hit
+`python-garminconnect`'s "All login strategies exhausted" — Garmin's
+own login cascade tries 5 strategies and raises this (or a distinct
+`...rate limited (429)` message) only once every one of them fails.
+This is **IP-based**, not tied to `--profile` or the Windows account —
+the fix already shipped never touched it. What was a real bug: the
+fresh-login path in `connect()` had no `try/except` at all, so this
+(and a wrong-password `GarminConnectAuthenticationError`) surfaced as a
+raw traceback instead of the guidance the script gives for every other
+expected failure. Both are now caught with a clean, actionable message.
+connect-garmin.md's troubleshooting table and its "Sharing this
+computer" section record the actual mitigation — space logins out or
+use a different network — since no code change can fix Garmin's own
+per-IP throttling.
 
 **Status:** Sprints 1–8, 10, 11, 13, and 14 complete. Live on
 https://fainsilber.github.io/FAIN-Coach/ (local tier) and

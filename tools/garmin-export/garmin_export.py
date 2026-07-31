@@ -41,7 +41,12 @@ from getpass import getpass
 from pathlib import Path
 
 try:
-    from garminconnect import Garmin
+    from garminconnect import (
+        Garmin,
+        GarminConnectAuthenticationError,
+        GarminConnectConnectionError,
+        GarminConnectTooManyRequestsError,
+    )
 except ImportError:  # pragma: no cover - guidance, not logic
     sys.exit("Missing dependency. Run:  pip install garminconnect curl_cffi")
 
@@ -116,7 +121,33 @@ def connect(tokenstore: Path) -> Garmin:
         password,
         prompt_mfa=lambda: input("MFA code: ").strip(),
     )
-    client.login(str(tokenstore))
+    try:
+        client.login(str(tokenstore))
+    except GarminConnectAuthenticationError:
+        # This one stops Garmin's own 5-strategy cascade immediately — it's
+        # confident enough about wrong credentials not to try the others.
+        sys.exit(
+            "\nGarmin rejected that email/password. Run the command again "
+            "and re-check for typos (the password isn't shown as you type — "
+            "that's normal, not a sign anything went wrong)."
+        )
+    except (GarminConnectTooManyRequestsError, GarminConnectConnectionError) as e:
+        # Garmin's login tries 5 strategies before giving up; this fires only
+        # once ALL of them fail. Almost always IP-based rate limiting, not a
+        # credentials problem — and it gets MORE likely, not less, if someone
+        # else already logged in from this same network recently (e.g. two
+        # people connecting their own accounts back-to-back on one Wi-Fi).
+        sys.exit(
+            "\nGarmin refused every login attempt just now:\n"
+            f"  {e}\n\n"
+            "This is Garmin's own rate limiting, not a problem with your\n"
+            "email or password. It gets worse, not better, if you retry\n"
+            "immediately. Two things that usually help:\n"
+            "  - Wait 30+ minutes, then run this exact command again.\n"
+            "  - If someone else on this network just connected their own\n"
+            "    Garmin account, that's very likely why — try from a\n"
+            "    different network (e.g. a phone hotspot) if you can't wait."
+        )
     tokenstore.parent.mkdir(parents=True, exist_ok=True)
     print(f"Signed in. Tokens cached in {tokenstore} — no password needed next time.")
     return client

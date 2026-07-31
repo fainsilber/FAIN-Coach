@@ -204,6 +204,16 @@ as the **first** person — the script sees a saved session already sitting
 there and skips the login prompt entirely, so they'd never even be asked for
 their own Garmin email/password. `--profile` keeps everyone's login separate.
 
+**`--profile` doesn't fix a separate, real issue: logging in twice back-to-back
+on one network.** Garmin rate-limits logins per **IP address**, not per
+Windows account — so if one person connects, and a few minutes later a second
+person on the *same* Wi-Fi tries to connect too, Garmin can refuse the second
+attempt outright (`All login strategies exhausted` or `...rate limited (429)`)
+even with `--profile` used correctly. This isn't a bug to fix, it's Garmin's
+own anti-abuse behaviour. If it happens: wait 30+ minutes and try again, or
+have the second person use a different network (a phone hotspot works) for
+just this one-time step.
+
 ## Why a real computer?
 
 The one-time login step relies on code that impersonates a real browser
@@ -221,6 +231,8 @@ browser with no computer involved.
 | `rate limited on …; waiting Ns` | Garmin is temporarily throttling logins from your connection. The script waits and retries on its own — let it. |
 | `externally-managed-environment` | You skipped the venv steps and tried to `pip install` directly. Go back to Step 3. |
 | `Missing dependency. Run: pip install …` | Same as above, or your venv isn't activated — check for `(venv)` at the start of your prompt. |
+| `Garmin refused every login attempt just now` | Garmin's rate limiting, almost always because someone (maybe you, a minute ago) already logged in from this same network. Wait 30+ minutes, or try from a different network. See [Sharing this computer](#sharing-this-computer) — this hits even with `--profile` used correctly. |
+| `Garmin rejected that email/password` | A real wrong-credentials response from Garmin, not a script bug — re-check for typos. The password shows nothing as you type; that's normal. |
 | The app says *"Garmin rejected the stored session"* | Your connection expired — just run Step 4 again for a fresh code. |
 
 If none of that fits, the technical write-up (architecture, what the Worker
